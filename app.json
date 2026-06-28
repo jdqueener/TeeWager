@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "GolfBeans",
-    "slug": "GolfBeans",
+    "name": "TeeWager",
+    "slug": "TeeWager",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
