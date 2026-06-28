@@ -26,7 +26,8 @@ const INITIAL_SETUP = {
   firstBonus: {},
   wagers: [],
   currentHole: 0,
-  ldCarryover: 0, // accumulated Long Drive carryover beans
+  ldCarryover: 0,
+  kpCarryover: 0,
 };
 
 function reducer(state, action) {
@@ -46,6 +47,8 @@ function reducer(state, action) {
         scores: makeEmptyScores(players.length),
         firstBonus: makeFirstBonus(players.length),
         currentHole: 0,
+        ldCarryover: 0,
+        kpCarryover: 0,
       };
     }
 
@@ -93,23 +96,43 @@ function reducer(state, action) {
       return { ...state, ldCarryover: state.ldCarryover + 1 };
 
     case 'LD_AWARD_WITH_CARRYOVER': {
-      // Award Long Drive to one player with accumulated carryover, then reset
       const { playerIdx, holeIdx, totalBeans: awardBeans } = action;
-      // First clear any existing long drive awards on this hole
-      let scores = state.scores.map((p, pi) =>
+      let scores = state.scores.map((p) =>
         p.map((h, hi) => hi !== holeIdx ? h : { ...h, longDrive: 0 })
       );
-      // Award the winner with 1 + carryover count
-      scores = scores.map((p, pi) =>
-        pi !== playerIdx ? p : p.map((h, hi) =>
-          hi !== holeIdx ? h : { ...h, longDrive: awardBeans }
-        )
-      );
+      if (playerIdx >= 0) {
+        scores = scores.map((p, pi) =>
+          pi !== playerIdx ? p : p.map((h, hi) =>
+            hi !== holeIdx ? h : { ...h, longDrive: awardBeans }
+          )
+        );
+      }
       return { ...state, scores, ldCarryover: 0 };
     }
 
-    case 'LD_RESET_CARRYOVER':
-      return { ...state, ldCarryover: 0 };
+    case 'LD_RESTORE_CARRYOVER':
+      return { ...state, ldCarryover: action.value };
+
+    case 'KP_CARRYOVER':
+      return { ...state, kpCarryover: state.kpCarryover + 1 };
+
+    case 'KP_AWARD_WITH_CARRYOVER': {
+      const { playerIdx, holeIdx, totalBeans: awardBeans } = action;
+      let scores = state.scores.map((p) =>
+        p.map((h, hi) => hi !== holeIdx ? h : { ...h, kp: 0 })
+      );
+      if (playerIdx >= 0) {
+        scores = scores.map((p, pi) =>
+          pi !== playerIdx ? p : p.map((h, hi) =>
+            hi !== holeIdx ? h : { ...h, kp: awardBeans }
+          )
+        );
+      }
+      return { ...state, scores, kpCarryover: 0 };
+    }
+
+    case 'KP_RESTORE_CARRYOVER':
+      return { ...state, kpCarryover: action.value };
 
     case 'SET_WAGER_WINNER': {
       const wagers = state.wagers.map((w, i) =>

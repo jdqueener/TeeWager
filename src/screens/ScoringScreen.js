@@ -8,7 +8,7 @@ import ProBanner from '../components/ProBanner';
 
 export default function ScoringScreen() {
   const { state, dispatch, pro, setPro, activeBeans } = useGame();
-  const { players, scores, firstBonus, currentHole, ldCarryover } = state;
+  const { players, scores, firstBonus, currentHole, ldCarryover, kpCarryover } = state;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const hole = currentHole;
   const par  = PARS[hole];
@@ -22,20 +22,43 @@ export default function ScoringScreen() {
 
     const currently = hasBean(playerIdx, bean.id);
 
-    if (bean.id === 'longDrive' && ldCarryover > 0 && !currently) {
-      // Award Long Drive with accumulated carryover beans
-      dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + ldCarryover });
-    } else if (bean.id === 'longDrive' && ldCarryover > 0 && currently) {
-      // Deselecting — restore carryover (undo the award)
-      dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
-      dispatch({ type: 'LD_RESET_CARRYOVER' });
-      // re-increment so carryover is preserved
-      // actually just clear the award and let carryover remain
+    if (bean.id === 'longDrive') {
+      if (!currently) {
+        if (ldCarryover > 0) {
+          dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + ldCarryover });
+        } else {
+          players.forEach((_, pi) => {
+            if (pi !== playerIdx && hasBean(pi, bean.id))
+              dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hole, beanId: bean.id, delta: -1, bean });
+          });
+          dispatch({ type: 'AWARD_BEAN', playerIdx, holeIdx: hole, beanId: bean.id, delta: 1, bean });
+        }
+      } else {
+        // Deselecting — restore carryover from the awarded amount
+        const awarded = scores[playerIdx]?.[hole]?.longDrive || 1;
+        dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
+        if (awarded > 1) dispatch({ type: 'LD_RESTORE_CARRYOVER', value: awarded - 1 });
+      }
+    } else if (bean.id === 'kp') {
+      if (!currently) {
+        if (kpCarryover > 0) {
+          dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + kpCarryover });
+        } else {
+          players.forEach((_, pi) => {
+            if (pi !== playerIdx && hasBean(pi, bean.id))
+              dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hole, beanId: bean.id, delta: -1, bean });
+          });
+          dispatch({ type: 'AWARD_BEAN', playerIdx, holeIdx: hole, beanId: bean.id, delta: 1, bean });
+        }
+      } else {
+        const awarded = scores[playerIdx]?.[hole]?.kp || 1;
+        dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
+        if (awarded > 1) dispatch({ type: 'KP_RESTORE_CARRYOVER', value: awarded - 1 });
+      }
     } else if (bean.solo && !currently) {
       players.forEach((_, pi) => {
-        if (pi !== playerIdx && hasBean(pi, bean.id)) {
+        if (pi !== playerIdx && hasBean(pi, bean.id))
           dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hole, beanId: bean.id, delta: -1, bean });
-        }
       });
       dispatch({ type: 'AWARD_BEAN', playerIdx, holeIdx: hole, beanId: bean.id, delta: 1, bean });
     } else {
@@ -107,8 +130,13 @@ export default function ScoringScreen() {
             pro={pro}
             firstBonus={firstBonus}
             hole={hole}
-            ldCarryover={bean.id === 'longDrive' ? ldCarryover : 0}
-            onCarryover={bean.id === 'longDrive' ? () => dispatch({ type: 'LD_CARRYOVER' }) : null}
+            carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : 0}
+            onCarryover={
+              bean.id === 'longDrive' ? () => dispatch({ type: 'LD_CARRYOVER' }) :
+              bean.id === 'kp'        ? () => dispatch({ type: 'KP_CARRYOVER' }) :
+              null
+            }
+            carryoverLabel={bean.id === 'kp' ? 'No one on the green' : 'No fairway'}
           />
         ))}
 
@@ -137,11 +165,11 @@ export default function ScoringScreen() {
   );
 }
 
-function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dimmed, ldCarryover = 0, onCarryover }) {
+function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dimmed, carryover = 0, onCarryover, carryoverLabel = 'No winner' }) {
   const locked = !bean.free && !pro;
   const anySelected = players.some((_, pi) => hasBean(pi));
-  const effectiveValue = bean.id === 'longDrive' && ldCarryover > 0
-    ? 1 + ldCarryover
+  const effectiveValue = carryover > 0
+    ? 1 + carryover
     : getEffectiveValue(bean, 0, hole, firstBonus);
 
   return (
@@ -149,15 +177,15 @@ function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dim
       <View style={styles.cardHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           <Text style={styles.beanName}>{locked ? '🔒 ' : ''}{bean.name}</Text>
-          {ldCarryover > 0 && (
+          {carryover > 0 && (
             <View style={styles.carryoverBadge}>
-              <Text style={styles.carryoverBadgeText}>🔄 ×{ldCarryover + 1}</Text>
+              <Text style={styles.carryoverBadgeText}>🔄 ×{carryover + 1}</Text>
             </View>
           )}
         </View>
         <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
           {effectiveValue > 0 ? `+${effectiveValue}` : effectiveValue} bean{Math.abs(effectiveValue) !== 1 ? 's' : ''}
-          {bean.solo && !ldCarryover ? ' · 1 winner' : ''}
+          {bean.solo && !carryover ? ' · 1 winner' : ''}
         </Text>
       </View>
 
@@ -184,7 +212,7 @@ function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dim
       {onCarryover && !anySelected && (
         <TouchableOpacity style={styles.carryoverBtn} onPress={onCarryover}>
           <Text style={styles.carryoverBtnText}>
-            No fairway — carry over {ldCarryover > 0 ? `(now ×${ldCarryover + 2})` : ''}
+            {carryoverLabel} — carry over {carryover > 0 ? `(now ×${carryover + 2})` : ''}
           </Text>
         </TouchableOpacity>
       )}
