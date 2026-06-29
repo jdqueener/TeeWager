@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEYS = {
-  GAME:    'golf_beans_game_v1',
-  DEFS:    'golf_beans_defs_v1',
-  PRO:     'golf_beans_pro',
-  STATS:   'golf_beans_stats_v1',
-  PLAYERS: 'golf_beans_players_v1',
+  GAME:    'teewager_game_v1',
+  DEFS:    'teewager_defs_v1',
+  PRO:     'teewager_pro',
+  STATS:   'teewager_stats_v1',
+  PLAYERS: 'teewager_players_v1',
 };
 
 export async function saveGame(state) {

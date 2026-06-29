@@ -4,6 +4,7 @@
     "slug": "TeeWager",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "teewager",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
@@ -19,6 +20,10 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-sharing",
+      "expo-web-browser"
+    ]
   }
 }
