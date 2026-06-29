@@ -1,17 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Switch, Modal, FlatList,
+  StyleSheet, Switch, Modal, FlatList, ActivityIndicator, Platform,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { BEAN_DEFS } from '../utils/beans';
+import { BEAN_DEFS, DEFAULT_PARS } from '../utils/beans';
 import { colors, spacing, radius } from '../utils/theme';
 import PaywallModal from '../components/PaywallModal';
 import ProBanner from '../components/ProBanner';
 import { loadSavedPlayers, savePlayer } from '../utils/storage';
+import {
+  searchCoursesByName,
+  searchCoursesByLocation,
+  getCourseDetails,
+  getAvailableTees,
+  getRecentCourses,
+  addRecentCourse,
+} from '../utils/courseApi';
 
 const MAX_FREE_PLAYERS = 4;
 const MAX_PRO_PLAYERS  = 5;
+const TEE_COLORS = { Blue: '#1a6fb5', White: '#e0e0e0', Red: '#c0392b', Gold: '#B8860B', Black: '#222', Green: '#1A4A2E' };
 
 export default function SetupScreen() {
   const { dispatch, pro, setPro } = useGame();
@@ -24,14 +33,110 @@ export default function SetupScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [savedPlayers, setSavedPlayers] = useState([]);
   const [pickerIdx, setPickerIdx] = useState(null);
-  // save prompt state
-  const [savePrompt, setSavePrompt] = useState(null); // { name, idx }
+  const [savePrompt, setSavePrompt] = useState(null);
+
+  // Course state
+  const [courseQuery, setCourseQuery] = useState('');
+  const [courseResults, setCourseResults] = useState([]);
+  const [courseLoading, setCourseLoading] = useState(false);
+  const [courseError, setCourseError] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState(null); // { id, name }
+  const [availableTees, setAvailableTees] = useState([]);
+  const [selectedTee, setSelectedTee] = useState('');
+  const [loadedCourse, setLoadedCourse] = useState(null); // full course detail
+  const [recentCourses, setRecentCourses] = useState([]);
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualPars, setManualPars] = useState(DEFAULT_PARS.map((p, i) => ({ number: i + 1, par: p, yardage: 0 })));
 
   const maxPlayers = pro ? MAX_PRO_PLAYERS : MAX_FREE_PLAYERS;
 
   useEffect(() => {
     loadSavedPlayers().then(setSavedPlayers);
+    getRecentCourses().then(setRecentCourses);
   }, []);
+
+  // Load tees when a course is selected
+  useEffect(() => {
+    if (!selectedCourse) return;
+    getAvailableTees(selectedCourse.id)
+      .then(tees => {
+        setAvailableTees(tees);
+        setSelectedTee(tees[0] ?? '');
+      })
+      .catch(() => setAvailableTees([]));
+  }, [selectedCourse]);
+
+  // Load full course detail when tee is selected
+  useEffect(() => {
+    if (!selectedCourse || !selectedTee) return;
+    getCourseDetails(selectedCourse.id, selectedTee)
+      .then(setLoadedCourse)
+      .catch(() => setLoadedCourse(null));
+  }, [selectedCourse, selectedTee]);
+
+  async function searchByName() {
+    if (!courseQuery.trim()) return;
+    setCourseLoading(true);
+    setCourseError('');
+    try {
+      const results = await searchCoursesByName(courseQuery.trim());
+      setCourseResults(results);
+      if (!results.length) setCourseError('No courses found. Try a different name or enter manually.');
+    } catch {
+      setCourseError('Search failed. Check your connection or enter manually.');
+    } finally {
+      setCourseLoading(false);
+    }
+  }
+
+  async function searchByLocation() {
+    if (Platform.OS === 'web') {
+      // Use browser geolocation on web
+      if (!navigator.geolocation) { setCourseError('Location not supported in this browser.'); return; }
+      setCourseLoading(true);
+      setCourseError('');
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          try {
+            const results = await searchCoursesByLocation(pos.coords.latitude, pos.coords.longitude);
+            setCourseResults(results);
+            if (!results.length) setCourseError('No nearby courses found.');
+          } catch { setCourseError('Location search failed.'); }
+          finally { setCourseLoading(false); }
+        },
+        () => { setCourseError('Location access denied.'); setCourseLoading(false); }
+      );
+    } else {
+      try {
+        const Location = require('expo-location');
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') { setCourseError('Location permission denied.'); return; }
+        setCourseLoading(true);
+        setCourseError('');
+        const pos = await Location.getCurrentPositionAsync({});
+        const results = await searchCoursesByLocation(pos.coords.latitude, pos.coords.longitude);
+        setCourseResults(results);
+        if (!results.length) setCourseError('No nearby courses found.');
+      } catch { setCourseError('Location search failed.'); }
+      finally { setCourseLoading(false); }
+    }
+  }
+
+  function selectCourse(course) {
+    setSelectedCourse(course);
+    setLoadedCourse(null);
+    setShowCourseModal(false);
+    setCourseResults([]);
+  }
+
+  function clearCourse() {
+    setSelectedCourse(null);
+    setLoadedCourse(null);
+    setAvailableTees([]);
+    setSelectedTee('');
+    setShowManualEntry(false);
+  }
 
   function handleNameBlur(idx) {
     const name = names[idx].trim();
@@ -70,11 +175,32 @@ export default function SetupScreen() {
       setSavePrompt({ error: 'Enter a positive dollar amount per bean.' });
       return;
     }
+
+    let course = null;
+    if (showManualEntry) {
+      course = {
+        id: 'manual',
+        name: 'Manual Entry',
+        tee: '',
+        totalPar: manualPars.reduce((s, h) => s + h.par, 0),
+        holes: manualPars,
+      };
+    } else if (loadedCourse) {
+      course = loadedCourse;
+      addRecentCourse({ id: course.id, name: course.name });
+    }
+
     dispatch({
       type: 'START_ROUND',
-      payload: { players, beanValue: val, enabledBeans: [...enabledBeans], wagers: [] },
+      payload: { players, beanValue: val, enabledBeans: [...enabledBeans], wagers: [], course },
     });
   }
+
+  const courseLabel = loadedCourse
+    ? `${loadedCourse.name} · ${loadedCourse.tee} · Par ${loadedCourse.totalPar}`
+    : selectedCourse
+    ? `${selectedCourse.name} — selecting tee…`
+    : null;
 
   return (
     <View style={styles.root}>
@@ -82,6 +208,111 @@ export default function SetupScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.heading}>⛳ TeeWager</Text>
         <Text style={styles.sub}>Set up your round</Text>
+
+        {/* Course */}
+        <Text style={styles.label}>Course</Text>
+        {courseLabel ? (
+          <View style={styles.courseChip}>
+            <Text style={styles.courseChipText} numberOfLines={1}>{courseLabel}</Text>
+            <TouchableOpacity onPress={clearCourse} style={styles.courseChipClear}>
+              <Text style={styles.courseChipClearText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <View style={styles.courseSearchRow}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                placeholder="Search course name…"
+                placeholderTextColor={colors.textLight}
+                value={courseQuery}
+                onChangeText={setCourseQuery}
+                onSubmitEditing={searchByName}
+                returnKeyType="search"
+              />
+              <TouchableOpacity style={styles.searchBtn} onPress={searchByName}>
+                {courseLoading
+                  ? <ActivityIndicator color={colors.white} size="small" />
+                  : <Text style={styles.searchBtnText}>Search</Text>}
+              </TouchableOpacity>
+            </View>
+            <View style={styles.courseAltRow}>
+              <TouchableOpacity style={styles.altBtn} onPress={searchByLocation}>
+                <Text style={styles.altBtnText}>📍 Use my location</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.altBtn} onPress={() => { setShowManualEntry(true); clearCourse(); }}>
+                <Text style={styles.altBtnText}>✏️ Enter manually</Text>
+              </TouchableOpacity>
+            </View>
+            {!!courseError && <Text style={styles.courseError}>{courseError}</Text>}
+
+            {/* Recent courses */}
+            {!courseResults.length && recentCourses.length > 0 && (
+              <>
+                <Text style={styles.recentLabel}>Recent</Text>
+                {recentCourses.map(c => (
+                  <TouchableOpacity key={c.id} style={styles.courseResult} onPress={() => selectCourse(c)}>
+                    <Text style={styles.courseResultName}>{c.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+
+            {/* Search results */}
+            {courseResults.map(c => (
+              <TouchableOpacity key={c.id} style={styles.courseResult} onPress={() => selectCourse(c)}>
+                <Text style={styles.courseResultName}>{c.name}</Text>
+                {(c.city || c.state) && (
+                  <Text style={styles.courseResultSub}>{[c.city, c.state].filter(Boolean).join(', ')}</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
+        {/* Tee selector */}
+        {selectedCourse && !showManualEntry && availableTees.length > 0 && (
+          <>
+            <Text style={styles.label}>Tees</Text>
+            <View style={styles.row}>
+              {availableTees.map(tee => (
+                <TouchableOpacity
+                  key={tee}
+                  style={[styles.teeBtn, selectedTee === tee && { backgroundColor: TEE_COLORS[tee] ?? colors.green, borderColor: TEE_COLORS[tee] ?? colors.green }]}
+                  onPress={() => setSelectedTee(tee)}
+                >
+                  <Text style={[styles.teeBtnText, selectedTee === tee && styles.teeBtnTextActive]}>{tee}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* Manual par entry */}
+        {showManualEntry && (
+          <>
+            <Text style={styles.label}>Hole pars</Text>
+            <View style={styles.manualGrid}>
+              {manualPars.map((h, i) => (
+                <View key={i} style={styles.manualCell}>
+                  <Text style={styles.manualHoleNum}>{i + 1}</Text>
+                  <View style={styles.manualParRow}>
+                    <TouchableOpacity onPress={() => setManualPars(prev => prev.map((x, j) => j === i ? { ...x, par: Math.max(3, x.par - 1) } : x))}>
+                      <Text style={styles.manualAdj}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.manualPar}>{h.par}</Text>
+                    <TouchableOpacity onPress={() => setManualPars(prev => prev.map((x, j) => j === i ? { ...x, par: Math.min(6, x.par + 1) } : x))}>
+                      <Text style={styles.manualAdj}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.altBtn} onPress={() => setShowManualEntry(false)}>
+              <Text style={styles.altBtnText}>Cancel manual entry</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         {/* Player count */}
         <Text style={styles.label}>Players</Text>
@@ -235,6 +466,37 @@ const styles = StyleSheet.create({
   sub:     { fontSize: 16, color: colors.textMid, textAlign: 'center', marginBottom: spacing.lg },
   label:   { fontSize: 13, fontWeight: '700', color: colors.textMid, marginTop: spacing.md, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
   row:     { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+
+  // Course search
+  courseSearchRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
+  searchBtn:       { backgroundColor: colors.green, borderRadius: radius.sm, paddingHorizontal: spacing.md, justifyContent: 'center', alignItems: 'center', minWidth: 72 },
+  searchBtnText:   { color: colors.white, fontWeight: '700', fontSize: 14 },
+  courseAltRow:    { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
+  altBtn:          { flex: 1, paddingVertical: 9, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
+  altBtnText:      { fontSize: 13, color: colors.textMid, fontWeight: '600' },
+  courseError:     { fontSize: 13, color: colors.red, marginTop: spacing.xs, marginBottom: spacing.xs },
+  recentLabel:     { fontSize: 12, color: colors.textLight, fontWeight: '600', marginTop: spacing.sm, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.4 },
+  courseResult:    { backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.xs },
+  courseResultName:{ fontSize: 15, fontWeight: '600', color: colors.textDark },
+  courseResultSub: { fontSize: 12, color: colors.textLight, marginTop: 2 },
+  courseChip:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 10, paddingHorizontal: spacing.md, marginBottom: spacing.xs },
+  courseChipText:  { flex: 1, color: colors.white, fontWeight: '700', fontSize: 14 },
+  courseChipClear: { paddingLeft: spacing.sm },
+  courseChipClearText: { color: 'rgba(255,255,255,0.8)', fontSize: 16, fontWeight: '700' },
+
+  // Tee selector
+  teeBtn:         { flex: 1, paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
+  teeBtnText:     { fontWeight: '600', color: colors.textDark, fontSize: 13 },
+  teeBtnTextActive: { color: colors.white },
+
+  // Manual entry
+  manualGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.sm },
+  manualCell:  { width: '18%', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, padding: spacing.xs, alignItems: 'center' },
+  manualHoleNum: { fontSize: 11, color: colors.textLight, fontWeight: '700', marginBottom: 2 },
+  manualParRow:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  manualPar:   { fontSize: 16, fontWeight: '800', color: colors.textDark, minWidth: 18, textAlign: 'center' },
+  manualAdj:   { fontSize: 18, color: colors.green, fontWeight: '700', paddingHorizontal: 2 },
+
   countBtn: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
   countBtnActive: { backgroundColor: colors.green, borderColor: colors.green },
   countBtnLocked: { opacity: 0.5 },
@@ -251,7 +513,6 @@ const styles = StyleSheet.create({
   beanDesc: { fontSize: 12, color: colors.textLight, marginTop: 2 },
   startBtn: { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center', marginTop: spacing.lg },
   startText: { color: colors.white, fontWeight: '800', fontSize: 17 },
-  // picker modal
   modalOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   pickerSheet:    { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: '60%', paddingBottom: 30 },
   pickerHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border },
@@ -262,7 +523,6 @@ const styles = StyleSheet.create({
   pickerAvatarText: { color: colors.white, fontWeight: '700', fontSize: 14 },
   pickerItemText: { fontSize: 16, color: colors.textDark, fontWeight: '500' },
   pickerEmpty:    { padding: spacing.lg, textAlign: 'center', color: colors.textLight, fontSize: 15, lineHeight: 24 },
-  // save / error prompt
   promptOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   promptCard:     { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg, width: '100%', maxWidth: 340 },
   promptTitle:    { fontSize: 18, fontWeight: '800', color: colors.textDark, marginBottom: spacing.xs },

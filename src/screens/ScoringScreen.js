@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { PARS, isParAllowed, getEffectiveValue } from '../utils/beans';
+import { isParAllowed, getEffectiveValue } from '../utils/beans';
 import { colors, spacing, radius } from '../utils/theme';
 import PaywallModal from '../components/PaywallModal';
 import ProBanner from '../components/ProBanner';
 
 export default function ScoringScreen() {
-  const { state, dispatch, pro, setPro, activeBeans } = useGame();
+  const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const { players, scores, firstBonus, currentHole, ldCarryover, kpCarryover } = state;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const hole = currentHole;
-  const par  = PARS[hole];
+  const par  = getHolePar(hole);
 
   function hasBean(playerIdx, beanId) {
     return (scores[playerIdx]?.[hole]?.[beanId] || 0) > 0;
@@ -77,8 +77,8 @@ export default function ScoringScreen() {
     return t;
   }
 
-  const visibleBeans = activeBeans.filter(b => isParAllowed(b, hole));
-  const dimmedBeans  = activeBeans.filter(b => !isParAllowed(b, hole));
+  const visibleBeans = activeBeans.filter(b => isParAllowed(b, par));
+  const dimmedBeans  = activeBeans.filter(b => !isParAllowed(b, par));
 
   return (
     <View style={styles.root}>
@@ -95,7 +95,10 @@ export default function ScoringScreen() {
         </TouchableOpacity>
         <View style={styles.holeCenter}>
           <Text style={styles.holeLabel}>Hole {hole + 1}</Text>
-          <Text style={styles.parLabel}>Par {par}</Text>
+          <Text style={styles.parLabel}>
+            Par {par}
+            {state.course?.holes?.[hole]?.yardage ? ` · ${state.course.holes[hole].yardage}y` : ''}
+          </Text>
         </View>
         <TouchableOpacity
           onPress={() => dispatch({ type: 'SET_HOLE', hole: Math.min(17, hole + 1) })}

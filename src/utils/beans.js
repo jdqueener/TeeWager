@@ -1,4 +1,4 @@
-export const PARS = [4,3,5,4,4,3,5,4,4,4,5,3,4,4,3,5,4,4];
+export const DEFAULT_PARS = [4,3,5,4,4,3,5,4,4,4,5,3,4,4,3,5,4,4];
 
 export const BEAN_DEFS = [
   { id: 'longDrive', name: 'Long Drive', v: 1, pf: [4,5], fb: false, free: true, solo: true, desc: 'Best drive on hole' },
@@ -16,9 +16,9 @@ export const BEAN_DEFS = [
   { id: 'fourPutt',  name: '4-Putt',     v:-2, pf: null,  fb: false, free: false, desc: '' },
 ];
 
-export function isParAllowed(bean, holeIdx) {
+export function isParAllowed(bean, par) {
   if (!bean.pf) return true;
-  return bean.pf.includes(PARS[holeIdx]);
+  return bean.pf.includes(par);
 }
 
 export function getEffectiveValue(bean, playerIdx, holeIdx, firstBonus) {

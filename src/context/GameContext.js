@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useReducer, useState } from 'react';
-import { BEAN_DEFS } from '../utils/beans';
+import { BEAN_DEFS, DEFAULT_PARS } from '../utils/beans';
 import { saveGame, loadGame, clearGame, isPro as checkPro, loadCustomDefs } from '../utils/storage';
 
 const GameContext = createContext(null);
@@ -28,6 +28,7 @@ const INITIAL_SETUP = {
   currentHole: 0,
   ldCarryover: 0,
   kpCarryover: 0,
+  course: null, // { id, name, tee, totalPar, holes: [{number,par,yardage,handicap}] }
 };
 
 function reducer(state, action) {
@@ -36,7 +37,7 @@ function reducer(state, action) {
       return action.payload;
 
     case 'START_ROUND': {
-      const { players, beanValue, enabledBeans, wagers } = action.payload;
+      const { players, beanValue, enabledBeans, wagers, course } = action.payload;
       return {
         ...state,
         phase: 'round',
@@ -44,6 +45,7 @@ function reducer(state, action) {
         beanValue,
         enabledBeans,
         wagers: wagers || [],
+        course: course || null,
         scores: makeEmptyScores(players.length),
         firstBonus: makeFirstBonus(players.length),
         currentHole: 0,
@@ -178,8 +180,12 @@ export function GameProvider({ children }) {
   const allBeans = [...BEAN_DEFS, ...(state.customBeans || [])];
   const activeBeans = allBeans.filter(b => state.enabledBeans.includes(b.id));
 
+  function getHolePar(holeIdx) {
+    return state.course?.holes?.[holeIdx]?.par ?? DEFAULT_PARS[holeIdx];
+  }
+
   return (
-    <GameContext.Provider value={{ state, dispatch, pro, setPro, loading, allBeans, activeBeans }}>
+    <GameContext.Provider value={{ state, dispatch, pro, setPro, loading, allBeans, activeBeans, getHolePar }}>
       {children}
     </GameContext.Provider>
   );
