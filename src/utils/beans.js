@@ -16,6 +16,14 @@ export const BEAN_DEFS = [
   { id: 'fourPutt',  name: '4-Putt',     v:-2, pf: null,  fb: false, free: false, desc: '' },
 ];
 
+export function beanLabel(value) {
+  const abs = Math.abs(value);
+  const noun = abs === 1 ? 'bean' : 'beans';
+  return value >= 0
+    ? `earns ${value} ${noun}`
+    : `costs ${abs} ${noun}`;
+}
+
 export function isParAllowed(bean, par) {
   if (!bean.pf) return true;
   return bean.pf.includes(par);

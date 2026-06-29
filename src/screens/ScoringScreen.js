@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { isParAllowed, getEffectiveValue } from '../utils/beans';
+import { isParAllowed, getEffectiveValue, beanLabel } from '../utils/beans';
 import { colors, spacing, radius } from '../utils/theme';
 import PaywallModal from '../components/PaywallModal';
 import ProBanner from '../components/ProBanner';
@@ -187,8 +187,7 @@ function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dim
           )}
         </View>
         <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
-          {effectiveValue > 0 ? `+${effectiveValue}` : effectiveValue} bean{Math.abs(effectiveValue) !== 1 ? 's' : ''}
-          {bean.solo && !carryover ? ' · 1 winner' : ''}
+          {beanLabel(effectiveValue)}{bean.solo && !carryover ? ' · 1 winner' : ''}
         </Text>
       </View>
 

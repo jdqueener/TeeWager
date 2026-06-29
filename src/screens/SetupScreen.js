@@ -4,7 +4,7 @@ import {
   StyleSheet, Switch, Modal, FlatList, ActivityIndicator, Platform,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { BEAN_DEFS, DEFAULT_PARS } from '../utils/beans';
+import { BEAN_DEFS, DEFAULT_PARS, beanLabel } from '../utils/beans';
 import { colors, spacing, radius } from '../utils/theme';
 import PaywallModal from '../components/PaywallModal';
 import ProBanner from '../components/ProBanner';
@@ -374,7 +374,7 @@ export default function SetupScreen() {
                 <Text style={styles.beanName}>
                   {locked ? '🔒 ' : ''}{bean.name}
                   <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
-                    {bean.v > 0 ? ` +${bean.v}` : ` ${bean.v}`}
+                    {' — '}{beanLabel(bean.v)}
                   </Text>
                 </Text>
                 {bean.desc ? <Text style={styles.beanDesc}>{bean.desc}</Text> : null}
