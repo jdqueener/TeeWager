@@ -25,6 +25,8 @@ const TEE_COLORS = { Blue: '#1a6fb5', White: '#e0e0e0', Red: '#c0392b', Gold: '#
 export default function SetupScreen() {
   const { dispatch, pro, setPro } = useGame();
   const [playerCount, setPlayerCount] = useState(2);
+  const [holeCount, setHoleCount] = useState(18);
+  const [nineChoice, setNineChoice] = useState('front'); // 'front' | 'back'
   const [names, setNames] = useState(['', '', '', '', '']);
   const [beanValue, setBeanValue] = useState('1.00');
   const [enabledBeans, setEnabledBeans] = useState(
@@ -47,7 +49,12 @@ export default function SetupScreen() {
   const [recentCourses, setRecentCourses] = useState([]);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
-  const [manualPars, setManualPars] = useState(DEFAULT_PARS.map((p, i) => ({ number: i + 1, par: p, yardage: 0 })));
+  const [manualPars, setManualPars] = useState(DEFAULT_PARS.slice(0, 9).map((p, i) => ({ number: i + 1, par: p, yardage: 0 })));
+
+  // Resize manual par grid when holeCount changes
+  useEffect(() => {
+    setManualPars(Array.from({ length: holeCount }, (_, i) => ({ number: i + 1, par: DEFAULT_PARS[i] ?? 4, yardage: 0 })));
+  }, [holeCount]);
 
   const maxPlayers = pro ? MAX_PRO_PLAYERS : MAX_FREE_PLAYERS;
 
@@ -176,6 +183,8 @@ export default function SetupScreen() {
       return;
     }
 
+    const holeOffset = holeCount === 9 && nineChoice === 'back' ? 9 : 0;
+
     let course = null;
     if (showManualEntry) {
       course = {
@@ -192,7 +201,7 @@ export default function SetupScreen() {
 
     dispatch({
       type: 'START_ROUND',
-      payload: { players, beanValue: val, enabledBeans: [...enabledBeans], wagers: [], course },
+      payload: { players, beanValue: val, enabledBeans: [...enabledBeans], wagers: [], course, holeCount, holeOffset },
     });
   }
 
@@ -311,6 +320,40 @@ export default function SetupScreen() {
             <TouchableOpacity style={styles.altBtn} onPress={() => setShowManualEntry(false)}>
               <Text style={styles.altBtnText}>Cancel manual entry</Text>
             </TouchableOpacity>
+          </>
+        )}
+
+        {/* Round length */}
+        <Text style={styles.label}>Round length</Text>
+        <View style={styles.row}>
+          {[9, 18].map(n => (
+            <TouchableOpacity
+              key={n}
+              style={[styles.countBtn, holeCount === n && styles.countBtnActive]}
+              onPress={() => setHoleCount(n)}
+            >
+              <Text style={[styles.countBtnText, holeCount === n && styles.countBtnTextActive]}>
+                {n} holes
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {holeCount === 9 && (
+          <>
+            <Text style={styles.label}>Which 9?</Text>
+            <View style={styles.row}>
+              {['front', 'back'].map(choice => (
+                <TouchableOpacity
+                  key={choice}
+                  style={[styles.countBtn, nineChoice === choice && styles.countBtnActive]}
+                  onPress={() => setNineChoice(choice)}
+                >
+                  <Text style={[styles.countBtnText, nineChoice === choice && styles.countBtnTextActive]}>
+                    {choice === 'front' ? 'Front 9 (1–9)' : 'Back 9 (10–18)'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </>
         )}
 

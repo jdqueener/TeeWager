@@ -8,9 +8,10 @@ import ProBanner from '../components/ProBanner';
 
 export default function ScoringScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
-  const { players, scores, firstBonus, currentHole, ldCarryover, kpCarryover } = state;
+  const { players, scores, firstBonus, currentHole, ldCarryover, kpCarryover, holeCount = 18, holeOffset = 0 } = state;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const hole = currentHole;
+  const lastHole = holeCount - 1;
   const par  = getHolePar(hole);
 
   function hasBean(playerIdx, beanId) {
@@ -69,7 +70,7 @@ export default function ScoringScreen() {
   function playerTotalBeans(pi) {
     let t = 0;
     activeBeans.forEach(bean => {
-      for (let h = 0; h < 18; h++) {
+      for (let h = 0; h < holeCount; h++) {
         const count = scores[pi]?.[h]?.[bean.id] || 0;
         t += count * getEffectiveValue(bean, pi, h, firstBonus);
       }
@@ -94,15 +95,15 @@ export default function ScoringScreen() {
           <Text style={[styles.navArrow, hole === 0 && styles.navDisabled]}>‹</Text>
         </TouchableOpacity>
         <View style={styles.holeCenter}>
-          <Text style={styles.holeLabel}>Hole {hole + 1}</Text>
+          <Text style={styles.holeLabel}>Hole {holeOffset + hole + 1}</Text>
           <Text style={styles.parLabel}>
             Par {par}
-            {state.course?.holes?.[hole]?.yardage ? ` · ${state.course.holes[hole].yardage}y` : ''}
+            {state.course?.holes?.[holeOffset + hole]?.yardage ? ` · ${state.course.holes[holeOffset + hole].yardage}y` : ''}
           </Text>
         </View>
         <TouchableOpacity
-          onPress={() => dispatch({ type: 'SET_HOLE', hole: Math.min(17, hole + 1) })}
-          disabled={hole === 17}
+          onPress={() => dispatch({ type: 'SET_HOLE', hole: Math.min(lastHole, hole + 1) })}
+          disabled={hole === lastHole}
           style={styles.navBtn}
         >
           <Text style={[styles.navArrow, hole === 17 && styles.navDisabled]}>›</Text>

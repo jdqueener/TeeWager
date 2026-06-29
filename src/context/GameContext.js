@@ -28,6 +28,8 @@ const INITIAL_SETUP = {
   currentHole: 0,
   ldCarryover: 0,
   kpCarryover: 0,
+  holeCount: 18,   // 9 or 18
+  holeOffset: 0,   // 0 = front nine, 9 = back nine (only relevant for 9-hole rounds)
   course: null, // { id, name, tee, totalPar, holes: [{number,par,yardage,handicap}] }
 };
 
@@ -37,7 +39,7 @@ function reducer(state, action) {
       return action.payload;
 
     case 'START_ROUND': {
-      const { players, beanValue, enabledBeans, wagers, course } = action.payload;
+      const { players, beanValue, enabledBeans, wagers, course, holeCount = 18, holeOffset = 0 } = action.payload;
       return {
         ...state,
         phase: 'round',
@@ -46,6 +48,8 @@ function reducer(state, action) {
         enabledBeans,
         wagers: wagers || [],
         course: course || null,
+        holeCount,
+        holeOffset,
         scores: makeEmptyScores(players.length),
         firstBonus: makeFirstBonus(players.length),
         currentHole: 0,
@@ -181,7 +185,8 @@ export function GameProvider({ children }) {
   const activeBeans = allBeans.filter(b => state.enabledBeans.includes(b.id));
 
   function getHolePar(holeIdx) {
-    return state.course?.holes?.[holeIdx]?.par ?? DEFAULT_PARS[holeIdx];
+    const offset = state.holeOffset ?? 0;
+    return state.course?.holes?.[offset + holeIdx]?.par ?? DEFAULT_PARS[offset + holeIdx];
   }
 
   return (

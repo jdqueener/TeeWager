@@ -9,7 +9,7 @@ import { colors, spacing, radius } from '../utils/theme';
 
 export default function ImpromptuBeanModal({ visible, onClose }) {
   const { state, dispatch, activeBeans, getHolePar } = useGame();
-  const { players, scores, currentHole, firstBonus } = state;
+  const { players, scores, currentHole, firstBonus, holeCount = 18, holeOffset = 0 } = state;
 
   const [selectedHole, setSelectedHole] = useState(currentHole);
   const [showHolePicker, setShowHolePicker] = useState(false);
@@ -47,7 +47,7 @@ export default function ImpromptuBeanModal({ visible, onClose }) {
         <View style={styles.header}>
           <Text style={styles.title}>Add Bean</Text>
           <TouchableOpacity onPress={() => setShowHolePicker(true)} style={styles.holePill}>
-            <Text style={styles.holePillText}>Hole {selectedHole + 1} · Par {par} ▾</Text>
+            <Text style={styles.holePillText}>Hole {holeOffset + selectedHole + 1} · Par {par} ▾</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} style={styles.doneBtn}>
             <Text style={styles.doneBtnText}>Done</Text>
@@ -113,7 +113,7 @@ export default function ImpromptuBeanModal({ visible, onClose }) {
                 </TouchableOpacity>
               </View>
               <FlatList
-                data={Array.from({ length: 18 }, (_, i) => i)}
+                data={Array.from({ length: holeCount }, (_, i) => i)}
                 keyExtractor={i => String(i)}
                 numColumns={6}
                 contentContainerStyle={styles.holeGrid}
@@ -123,7 +123,7 @@ export default function ImpromptuBeanModal({ visible, onClose }) {
                     onPress={() => { setSelectedHole(i); setShowHolePicker(false); }}
                   >
                     <Text style={[styles.holeCellText, selectedHole === i && styles.holeCellTextActive]}>
-                      {i + 1}
+                      {holeOffset + i + 1}
                     </Text>
                     <Text style={[styles.holeCellPar, selectedHole === i && styles.holeCellTextActive]}>
                       P{getHolePar(i)}
