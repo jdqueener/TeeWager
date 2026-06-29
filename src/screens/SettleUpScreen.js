@@ -23,20 +23,25 @@ export default function SettleUpScreen() {
     if (!pro) { setPaywallVisible(true); return; }
     const stats = await loadStats();
     const date  = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const maxBeans = Math.max(...beanTotals);
     players.forEach((name, i) => {
-      const t = beanTotals[i];
-      const prev = stats[name] || { rounds: 0, totalBeans: 0, totalDollars: 0, bestRoundBeans: -Infinity };
+      const t   = beanTotals[i];
+      const won = t === maxBeans; // first-place tie counts as a win for all tied
+      const prev = stats[name] || { rounds: 0, wins: 0, totalBeans: 0, totalDollars: 0, bestRoundBeans: -Infinity, bestRound: null };
       stats[name] = {
-        rounds:       prev.rounds + 1,
-        totalBeans:   prev.totalBeans + t,
-        totalDollars: prev.totalDollars + t * beanValue,
-        bestRound:    t > prev.bestRoundBeans ? date : prev.bestRound,
-        bestRoundBeans: Math.max(prev.bestRoundBeans, t),
+        rounds:         prev.rounds + 1,
+        wins:           (prev.wins || 0) + (won ? 1 : 0),
+        totalBeans:     prev.totalBeans + t,
+        totalDollars:   prev.totalDollars + t * beanValue,
+        bestRound:      t > (prev.bestRoundBeans ?? -Infinity) ? date : prev.bestRound,
+        bestRoundBeans: Math.max(prev.bestRoundBeans ?? -Infinity, t),
       };
     });
     await saveStats(stats);
     setSaved(true);
-    Alert.alert('Saved!', 'Stats updated for all players.');
+    if (Platform.OS !== 'web') {
+      Alert.alert('Saved!', 'Lifetime stats updated for all players.');
+    }
   }
 
   function newRound() {
@@ -108,8 +113,8 @@ export default function SettleUpScreen() {
         <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={() => (pro ? setShareVisible(true) : setPaywallVisible(true))}>
           <Text style={styles.btnSecText}>📤 Share Results {!pro ? '🔒' : ''}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={saveToStats}>
-          <Text style={styles.btnSecText}>💾 Save to Lifetime Stats {!pro ? '🔒' : ''}</Text>
+        <TouchableOpacity style={[styles.btn, styles.btnSecondary, saved && styles.btnSaved]} onPress={saved ? null : saveToStats}>
+          <Text style={styles.btnSecText}>{saved ? '✓ Stats Saved' : `💾 Save to Lifetime Stats${!pro ? ' 🔒' : ''}`}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btn} onPress={newRound}>
           <Text style={styles.btnText}>⛳ New Round</Text>
@@ -163,6 +168,7 @@ const styles = StyleSheet.create({
   allSquare:    { fontSize: 16, color: colors.green, textAlign: 'center', padding: spacing.md },
   btn:          { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', marginTop: spacing.sm },
   btnSecondary: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.green },
+  btnSaved:     { borderColor: colors.textLight },
   btnText:      { color: colors.white, fontWeight: '800', fontSize: 16 },
   btnSecText:   { color: colors.green, fontWeight: '700', fontSize: 15 },
   confirmOverlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
