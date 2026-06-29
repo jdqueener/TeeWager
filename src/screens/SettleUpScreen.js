@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { totalBeansForPlayer, computeSettleUp } from '../utils/beans';
 import { saveStats, loadStats } from '../utils/storage';
 import { colors, spacing, radius } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
+import ShareCard from '../components/ShareCard';
 
 export default function SettleUpScreen() {
   const { state, dispatch, pro, setPro, activeBeans } = useGame();
-  const { players, scores, firstBonus, beanValue, wagers } = state;
+  const { players, scores, firstBonus, beanValue, wagers, course } = state;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [saved, setSaved] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [shareVisible, setShareVisible] = useState(false);
 
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
   const payments   = computeSettleUp(players, beanTotals, beanValue, wagers);
@@ -41,7 +43,6 @@ export default function SettleUpScreen() {
     if (Platform.OS === 'web') {
       setConfirmVisible(true);
     } else {
-      const { Alert } = require('react-native');
       Alert.alert('Start new round?', 'This will clear all scoring data.', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'New Round', style: 'destructive', onPress: () => dispatch({ type: 'RESET' }) },
@@ -104,6 +105,9 @@ export default function SettleUpScreen() {
         ))}
 
         {/* Actions */}
+        <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={() => (pro ? setShareVisible(true) : setPaywallVisible(true))}>
+          <Text style={styles.btnSecText}>📤 Share Results {!pro ? '🔒' : ''}</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={saveToStats}>
           <Text style={styles.btnSecText}>💾 Save to Lifetime Stats {!pro ? '🔒' : ''}</Text>
         </TouchableOpacity>
@@ -113,6 +117,17 @@ export default function SettleUpScreen() {
       </ScrollView>
 
       <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
+
+      <ShareCard
+        visible={shareVisible}
+        onClose={() => setShareVisible(false)}
+        players={players}
+        beanTotals={beanTotals}
+        beanValue={beanValue}
+        payments={payments}
+        wagers={wagers}
+        course={course}
+      />
 
       <Modal visible={confirmVisible} transparent animationType="fade">
         <View style={styles.confirmOverlay}>
