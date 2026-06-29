@@ -19,7 +19,18 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "TeeWager",
+      "shortName": "TeeWager",
+      "description": "Golf wagering made easy. Track beans, settle up, share results.",
+      "lang": "en",
+      "themeColor": "#1A4A2E",
+      "backgroundColor": "#F0F4F0",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "scope": "/",
+      "icon": "./assets/icon.png"
     },
     "plugins": [
       "expo-sharing",
