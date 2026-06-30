@@ -30,7 +30,7 @@ export default function SetupScreen() {
   const [names, setNames] = useState(['', '', '', '', '']);
   const [beanValue, setBeanValue] = useState('1.00');
   const [enabledBeans, setEnabledBeans] = useState(
-    new Set(BEAN_DEFS.filter(b => b.free).map(b => b.id))
+    new Set(BEAN_DEFS.map(b => b.id))
   );
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [savedPlayers, setSavedPlayers] = useState([]);
@@ -415,7 +415,7 @@ export default function SetupScreen() {
             <View key={bean.id} style={styles.beanRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.beanName}>
-                  {locked ? '🔒 ' : ''}{bean.name}
+                  {locked && !pro ? '🔒 ' : ''}{bean.name}
                   <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
                     {' — '}{beanLabel(bean.v)}
                   </Text>
@@ -423,10 +423,10 @@ export default function SetupScreen() {
                 {bean.desc ? <Text style={styles.beanDesc}>{bean.desc}</Text> : null}
               </View>
               <Switch
-                value={on && !locked}
+                value={on}
                 onValueChange={() => toggleBean(bean.id, bean.free)}
                 trackColor={{ true: colors.green }}
-                disabled={locked}
+                disabled={locked && !pro}
               />
             </View>
           );
