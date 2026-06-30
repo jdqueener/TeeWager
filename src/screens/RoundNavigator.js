@@ -6,12 +6,13 @@ import LeaderboardScreen  from './LeaderboardScreen';
 import BreakdownScreen    from './BreakdownScreen';
 import SettleUpScreen     from './SettleUpScreen';
 import StatsScreen        from './StatsScreen';
+import ScorecardScreen    from './ScorecardScreen';
 import ImpromptuBeanModal from '../components/ImpromptuBeanModal';
 import { useGame }        from '../context/GameContext';
 import { colors, radius } from '../utils/theme';
 
 const Tab = createBottomTabNavigator();
-const ICON = { Scoring: '⛳', Leaderboard: '🏆', Breakdown: '📋', 'Settle Up': '💰', Stats: '📊' };
+const ICON = { Scoring: '⛳', Scorecard: '📋', Leaderboard: '🏆', Breakdown: '📊', 'Settle Up': '💰', Stats: '🎖️' };
 
 export default function RoundNavigator() {
   const { pro, setPro } = useGame();
@@ -35,6 +36,7 @@ export default function RoundNavigator() {
         })}
       >
         <Tab.Screen name="Scoring"     component={ScoringScreen} />
+        <Tab.Screen name="Scorecard"   component={ScorecardScreen} />
         <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
         <Tab.Screen name="Breakdown"   component={BreakdownScreen} />
         <Tab.Screen name="Settle Up"   component={SettleUpScreen} />

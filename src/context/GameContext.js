@@ -10,6 +10,12 @@ function makeEmptyScores(playerCount) {
   );
 }
 
+function makeEmptyStrokes(playerCount) {
+  return Array.from({ length: playerCount }, () =>
+    Array.from({ length: 18 }, () => 0)
+  );
+}
+
 function makeFirstBonus(playerCount) {
   return Object.fromEntries(
     Array.from({ length: playerCount }, (_, i) => [i, {}])
@@ -26,6 +32,7 @@ const INITIAL_SETUP = {
   firstBonus: {},
   wagers: [],
   currentHole: 0,
+  strokes: [],
   ldCarryover: 0,
   kpCarryover: 0,
   holeCount: 18,   // 9 or 18
@@ -51,6 +58,7 @@ function reducer(state, action) {
         holeCount,
         holeOffset,
         scores: makeEmptyScores(players.length),
+        strokes: makeEmptyStrokes(players.length),
         firstBonus: makeFirstBonus(players.length),
         currentHole: 0,
         ldCarryover: 0,
@@ -60,6 +68,14 @@ function reducer(state, action) {
 
     case 'SET_HOLE':
       return { ...state, currentHole: action.hole };
+
+    case 'SET_STROKE': {
+      const { playerIdx, holeIdx, value } = action;
+      const strokes = state.strokes.map((p, pi) =>
+        pi !== playerIdx ? p : p.map((v, hi) => hi !== holeIdx ? v : Math.max(0, value))
+      );
+      return { ...state, strokes };
+    }
 
     case 'AWARD_BEAN': {
       const { playerIdx, holeIdx, beanId, delta, bean } = action;
