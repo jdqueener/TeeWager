@@ -162,14 +162,13 @@ export function GameProvider({ children }) {
 
   useEffect(() => {
     (async () => {
-      const [saved, proVal, customs] = await Promise.all([
+      const [saved, customs] = await Promise.all([
         loadGame(),
-        checkPro(),
         loadCustomDefs(),
       ]);
       if (saved) dispatch({ type: 'LOAD', payload: { ...saved, customBeans: customs } });
       else if (customs.length) dispatch({ type: 'LOAD', payload: { ...INITIAL_SETUP, customBeans: customs } });
-      setPro(proVal);
+      setPro(true); // TODO: revert to checkPro() when Stripe is live
       setLoading(false);
     })();
   }, []);
