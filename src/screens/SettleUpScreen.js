@@ -57,7 +57,7 @@ export default function SettleUpScreen() {
 
   return (
     <View style={styles.root}>
-      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} />
+      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.heading}>Settle Up</Text>
 

@@ -4,6 +4,7 @@ import {
   StyleSheet, Platform,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
+import ProBanner from '../components/ProBanner';
 import { getEffectiveValue } from '../utils/beans';
 import { colors, spacing, radius } from '../utils/theme';
 
@@ -11,7 +12,7 @@ const CELL_W = 38;
 const LABEL_W = 70;
 
 export default function ScorecardScreen() {
-  const { state, dispatch, activeBeans, getHolePar } = useGame();
+  const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const { players, scores, strokes, firstBonus, beanValue, course, holeCount = 18, holeOffset = 0 } = state;
 
   const [editCell, setEditCell] = useState(null); // { playerIdx, holeIdx }
@@ -75,6 +76,7 @@ export default function ScorecardScreen() {
 
   return (
     <View style={styles.root}>
+      <ProBanner pro={pro} onUpgrade={() => {}} onReset={() => dispatch({ type: 'RESET' })} />
       <View style={styles.titleBar}>
         <Text style={styles.title} numberOfLines={1}>{courseName}{teeLabel}</Text>
         <Text style={styles.sub}>${beanValue.toFixed(2)}/bean · tap a score to edit</Text>

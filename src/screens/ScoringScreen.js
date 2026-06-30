@@ -83,7 +83,7 @@ export default function ScoringScreen() {
 
   return (
     <View style={styles.root}>
-      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} />
+      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} />
 
       {/* Hole nav */}
       <View style={styles.holeNav}>

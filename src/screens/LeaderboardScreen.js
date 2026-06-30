@@ -9,7 +9,7 @@ import ProBanner from '../components/ProBanner';
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 export default function LeaderboardScreen() {
-  const { state, pro, setPro, activeBeans } = useGame();
+  const { state, dispatch, pro, setPro, activeBeans } = useGame();
   const { players, scores, firstBonus, beanValue } = state;
 
   const ranked = players
@@ -20,7 +20,7 @@ export default function LeaderboardScreen() {
 
   return (
     <View style={styles.root}>
-      <ProBanner pro={pro} onUpgrade={() => {}} />
+      <ProBanner pro={pro} onUpgrade={() => {}} onReset={() => dispatch({ type: 'RESET' })} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.potCard}>
           <Text style={styles.potLabel}>Total Bean Pot</Text>
