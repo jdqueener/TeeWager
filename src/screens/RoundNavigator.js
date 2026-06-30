@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import ScoringScreen      from './ScoringScreen';
 import LeaderboardScreen  from './LeaderboardScreen';
 import BreakdownScreen    from './BreakdownScreen';
 import SettleUpScreen     from './SettleUpScreen';
@@ -12,7 +11,7 @@ import { useGame }        from '../context/GameContext';
 import { colors, radius } from '../utils/theme';
 
 const Tab = createBottomTabNavigator();
-const ICON = { Scoring: '⛳', Scorecard: '📋', Leaderboard: '🏆', Breakdown: '📊', 'Settle Up': '💰', Stats: '🎖️' };
+const ICON = { Scorecard: '⛳', Leaderboard: '🏆', Breakdown: '📊', 'Settle Up': '💰', Stats: '🎖️' };
 
 export default function RoundNavigator() {
   const { pro, setPro } = useGame();
@@ -35,7 +34,6 @@ export default function RoundNavigator() {
           tabBarStyle: { borderTopWidth: 0.5, borderTopColor: '#ddd' },
         })}
       >
-        <Tab.Screen name="Scoring"     component={ScoringScreen} />
         <Tab.Screen name="Scorecard"   component={ScorecardScreen} />
         <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
         <Tab.Screen name="Breakdown"   component={BreakdownScreen} />
