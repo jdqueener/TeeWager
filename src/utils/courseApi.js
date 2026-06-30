@@ -8,7 +8,11 @@ async function apiFetch(path) {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { Authorization: `Key ${API_KEY}` },
   });
-  if (!res.ok) throw new Error(`API ${res.status}`);
+  if (!res.ok) {
+    let msg = `API error ${res.status}`;
+    try { const j = await res.json(); msg = j.message || j.error || msg; } catch {}
+    throw new Error(msg);
+  }
   return res.json();
 }
 

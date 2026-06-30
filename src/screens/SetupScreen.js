@@ -90,8 +90,8 @@ export default function SetupScreen() {
       const results = await searchCoursesByName(courseQuery.trim());
       setCourseResults(results);
       if (!results.length) setCourseError('No courses found. Try a different name or enter manually.');
-    } catch {
-      setCourseError('Search failed. Check your connection or enter manually.');
+    } catch (e) {
+      setCourseError(`Search failed: ${e.message}. Try a different name or enter pars manually.`);
     } finally {
       setCourseLoading(false);
     }
