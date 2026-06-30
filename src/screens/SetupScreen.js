@@ -8,7 +8,10 @@ import { BEAN_DEFS, DEFAULT_PARS, beanLabel } from '../utils/beans';
 import { colors, spacing, radius } from '../utils/theme';
 import PaywallModal from '../components/PaywallModal';
 import ProBanner from '../components/ProBanner';
+import AccountMenu from '../components/AccountMenu';
+import AuthScreen from './AuthScreen';
 import { loadSavedPlayers, savePlayer } from '../utils/storage';
+import { useAuth } from '../context/AuthContext';
 import {
   searchCoursesByName,
   searchCoursesByLocation,
@@ -32,7 +35,13 @@ export default function SetupScreen() {
   const [enabledBeans, setEnabledBeans] = useState(
     new Set(BEAN_DEFS.map(b => b.id))
   );
+  const { user } = useAuth();
   const [paywallVisible, setPaywallVisible] = useState(false);
+  const [authVisible, setAuthVisible] = useState(false);
+
+  useEffect(() => {
+    if (user) setAuthVisible(false);
+  }, [user]);
   const [savedPlayers, setSavedPlayers] = useState([]);
   const [pickerIdx, setPickerIdx] = useState(null);
   const [savePrompt, setSavePrompt] = useState(null);
@@ -215,8 +224,16 @@ export default function SetupScreen() {
     <View style={styles.root}>
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.heading}>⛳ TeeWager</Text>
+        <View style={styles.headerRow}>
+          <View style={{ width: 36 }} />
+          <Text style={styles.heading}>⛳ TeeWager</Text>
+          <AccountMenu onSignIn={() => setAuthVisible(true)} />
+        </View>
         <Text style={styles.sub}>Set up your round</Text>
+
+        <Modal visible={authVisible} animationType="slide" onRequestClose={() => setAuthVisible(false)}>
+          <AuthScreen onSkip={() => setAuthVisible(false)} />
+        </Modal>
 
         {/* Course */}
         <Text style={styles.label}>Course</Text>
@@ -505,7 +522,8 @@ export default function SetupScreen() {
 const styles = StyleSheet.create({
   root:    { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingBottom: 60 },
-  heading: { fontSize: 30, fontWeight: '900', color: colors.green, textAlign: 'center', marginTop: spacing.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg },
+  heading: { fontSize: 30, fontWeight: '900', color: colors.green, textAlign: 'center' },
   sub:     { fontSize: 16, color: colors.textMid, textAlign: 'center', marginBottom: spacing.lg },
   label:   { fontSize: 13, fontWeight: '700', color: colors.textMid, marginTop: spacing.md, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
   row:     { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },

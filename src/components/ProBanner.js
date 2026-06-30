@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
 import { colors, spacing, radius } from '../utils/theme';
+import AccountMenu from './AccountMenu';
+import AuthScreen from '../screens/AuthScreen';
 
 export default function ProBanner({ pro, onUpgrade, onReset }) {
   const [menuVisible, setMenuVisible] = useState(false);
+  const [authVisible, setAuthVisible] = useState(false);
 
   return (
     <>
@@ -18,8 +21,14 @@ export default function ProBanner({ pro, onUpgrade, onReset }) {
             <Text style={styles.text}>TeeWager Free — tap to upgrade to Pro ✨</Text>
           </TouchableOpacity>
         )}
-        <View style={styles.menuBtn} />
+        <View style={[styles.menuBtn, { alignItems: 'flex-end' }]}>
+          <AccountMenu size={26} onSignIn={() => setAuthVisible(true)} />
+        </View>
       </View>
+
+      <Modal visible={authVisible} animationType="slide" onRequestClose={() => setAuthVisible(false)}>
+        <AuthScreen onSkip={() => setAuthVisible(false)} />
+      </Modal>
 
       <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
