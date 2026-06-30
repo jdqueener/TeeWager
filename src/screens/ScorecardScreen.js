@@ -169,8 +169,7 @@ export default function ScorecardScreen() {
             <View style={styles.holeCenter}>
               <Text style={styles.holeLabel}>Hole {holeOffset + hole + 1}</Text>
               <Text style={styles.parLabel}>
-                Par {par}{course?.holes?.[holeOffset + hole]?.yardage ? ` · ${course.holes[holeOffset + hole].yardage}y` : ''}
-                {course?.holes?.[holeOffset + hole]?.handicap ? `  HCP ${course.holes[holeOffset + hole].handicap}` : ''}
+                Par {par}{course?.holes?.[holeOffset + hole]?.yardage ? ` · ${course.holes[holeOffset + hole].yardage}y` : ''}{course?.holes?.[holeOffset + hole]?.handicap ? ` · HCP ${course.holes[holeOffset + hole].handicap}` : ''}
               </Text>
             </View>
             <TouchableOpacity
@@ -460,12 +459,12 @@ const styles = StyleSheet.create({
 
   // Hole mode
   holeNav:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.green, paddingVertical: spacing.sm },
-  navBtn:     { paddingHorizontal: spacing.lg },
+  navBtn:     { paddingHorizontal: spacing.md, minWidth: 44, alignItems: 'center' },
   navArrow:   { fontSize: 32, color: colors.white, fontWeight: '300' },
   navDisabled:{ opacity: 0.3 },
-  holeCenter: { flex: 1, alignItems: 'center' },
+  holeCenter: { flex: 1, alignItems: 'center', paddingVertical: 2 },
   holeLabel:  { fontSize: 20, fontWeight: '800', color: colors.white },
-  parLabel:   { fontSize: 13, color: 'rgba(255,255,255,0.75)' },
+  parLabel:   { fontSize: 12, color: 'rgba(255,255,255,0.75)', textAlign: 'center', flexWrap: 'wrap' },
 
   totalsBar:  { flexDirection: 'row', backgroundColor: colors.white, borderBottomWidth: 0.5, borderBottomColor: colors.border, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, gap: spacing.sm },
   totalChip:  { flex: 1, alignItems: 'center' },
