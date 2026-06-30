@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import LeaderboardScreen  from './LeaderboardScreen';
 import BreakdownScreen    from './BreakdownScreen';
@@ -17,6 +18,8 @@ export default function RoundNavigator() {
   const { pro, setPro } = useGame();
   const [modalVisible, setModalVisible] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 49 + insets.bottom;
 
   function onFabPress() {
     if (!pro) { setPaywallVisible(true); return; }
@@ -42,7 +45,7 @@ export default function RoundNavigator() {
       </Tab.Navigator>
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={onFabPress} activeOpacity={0.85}>
+      <TouchableOpacity style={[styles.fab, { bottom: tabBarHeight + 16 }]} onPress={onFabPress} activeOpacity={0.85}>
         <Text style={styles.fabText}>+</Text>
         {!pro && <Text style={styles.fabLock}>🔒</Text>}
       </TouchableOpacity>
@@ -62,7 +65,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 72, // sits just above the tab bar
+    bottom: 72, // overridden inline with safe-area-aware value
     width: 52,
     height: 52,
     borderRadius: 26,
