@@ -16,11 +16,9 @@ function makeEmptyStrokes(playerCount) {
   );
 }
 
-function makeFirstBonus(playerCount) {
-  return Object.fromEntries(
-    Array.from({ length: playerCount }, (_, i) => [i, {}])
-  );
-}
+// firstBonus tracks round-wide first occurrence per bean type:
+// { birdie: { playerIdx, holeIdx }, threePutt: { playerIdx, holeIdx }, ... }
+function makeFirstBonus() { return {}; }
 
 const INITIAL_SETUP = {
   phase: 'setup', // 'setup' | 'round'
@@ -59,7 +57,7 @@ function reducer(state, action) {
         holeOffset,
         scores: makeEmptyScores(players.length),
         strokes: makeEmptyStrokes(players.length),
-        firstBonus: makeFirstBonus(players.length),
+        firstBonus: makeFirstBonus(),
         currentHole: 0,
         ldCarryover: 0,
         kpCarryover: 0,
@@ -88,26 +86,22 @@ function reducer(state, action) {
         })
       );
 
-      // track first-bonus: when count goes from 0 to 1
+      // track first-bonus: round-wide first occurrence per bean type
       let firstBonus = state.firstBonus;
-      const key = beanId + '_f';
       if (bean?.fb && delta > 0) {
         const cur = state.scores[playerIdx][holeIdx][beanId] || 0;
-        if (cur === 0 && firstBonus[playerIdx][key] === undefined) {
-          firstBonus = {
-            ...firstBonus,
-            [playerIdx]: { ...firstBonus[playerIdx], [key]: holeIdx },
-          };
+        if (cur === 0 && firstBonus[beanId] === undefined) {
+          // First time this bean type has been awarded all round
+          firstBonus = { ...firstBonus, [beanId]: { playerIdx, holeIdx } };
         }
       }
-      // if decrementing removes the first occurrence, clear it
       if (bean?.fb && delta < 0) {
         const cur = state.scores[playerIdx][holeIdx][beanId] || 0;
-        if (cur === 1 && firstBonus[playerIdx][key] === holeIdx) {
-          firstBonus = {
-            ...firstBonus,
-            [playerIdx]: { ...firstBonus[playerIdx], [key]: undefined },
-          };
+        const first = firstBonus[beanId];
+        if (cur === 1 && first?.playerIdx === playerIdx && first?.holeIdx === holeIdx) {
+          // Undoing the round's first occurrence — restore the bonus slot
+          const { [beanId]: _removed, ...rest } = firstBonus;
+          firstBonus = rest;
         }
       }
 

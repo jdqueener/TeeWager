@@ -31,8 +31,8 @@ export function isParAllowed(bean, par) {
 
 export function getEffectiveValue(bean, playerIdx, holeIdx, firstBonus) {
   if (!bean.fb) return bean.v;
-  const firstHole = firstBonus?.[playerIdx]?.[bean.id + '_f'];
-  if (firstHole === holeIdx) return bean.v * 2;
+  const first = firstBonus?.[bean.id];
+  if (first && first.playerIdx === playerIdx && first.holeIdx === holeIdx) return bean.v * 2;
   return bean.v;
 }
 
