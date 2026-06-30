@@ -11,6 +11,7 @@ import ProBanner from '../components/ProBanner';
 import AccountMenu from '../components/AccountMenu';
 import AuthScreen from './AuthScreen';
 import { loadSavedPlayers, savePlayer } from '../utils/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import {
   searchCoursesByName,
@@ -39,9 +40,18 @@ export default function SetupScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [authVisible, setAuthVisible] = useState(false);
 
+  // Show auth prompt on first visit if not signed in
   useEffect(() => {
-    if (user) setAuthVisible(false);
+    if (user) { setAuthVisible(false); return; }
+    AsyncStorage.getItem('teewager_seen_auth').then(seen => {
+      if (!seen) setAuthVisible(true);
+    });
   }, [user]);
+
+  function dismissAuth() {
+    AsyncStorage.setItem('teewager_seen_auth', '1');
+    setAuthVisible(false);
+  }
   const [savedPlayers, setSavedPlayers] = useState([]);
   const [pickerIdx, setPickerIdx] = useState(null);
   const [savePrompt, setSavePrompt] = useState(null);
@@ -231,8 +241,8 @@ export default function SetupScreen() {
         </View>
         <Text style={styles.sub}>Set up your round</Text>
 
-        <Modal visible={authVisible} animationType="slide" onRequestClose={() => setAuthVisible(false)}>
-          <AuthScreen onSkip={() => setAuthVisible(false)} />
+        <Modal visible={authVisible} animationType="slide" onRequestClose={dismissAuth}>
+          <AuthScreen onSkip={dismissAuth} />
         </Modal>
 
         {/* Course */}
