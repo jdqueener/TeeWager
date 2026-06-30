@@ -157,7 +157,7 @@ function reducer(state, action) {
 
 export function GameProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_SETUP);
-  const [pro, setPro] = useState(false);
+  const [pro, setPro] = useState(true); // TODO: revert to false when Stripe is live
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
