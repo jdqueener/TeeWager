@@ -1,51 +1,57 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { getEffectiveValue } from '../utils/beans';
+import { getEffectiveValue, totalBeansForPlayer } from '../utils/beans';
 import { colors, spacing, radius } from '../utils/theme';
+import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
 
 export default function BreakdownScreen() {
-  const { state, pro, setPro, activeBeans } = useGame();
-  const { players, scores, firstBonus, beanValue } = state;
+  const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
+  const { players, scores, firstBonus, beanValue, holeCount = 18, holeOffset = 0 } = state;
   const [selectedPlayer, setSelectedPlayer] = useState(0);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
-  if (!pro) {
-    return (
-      <View style={styles.lockScreen}>
-        <Text style={styles.lockEmoji}>🔒</Text>
-        <Text style={styles.lockTitle}>Hole-by-Hole Breakdown</Text>
-        <Text style={styles.lockSub}>See every achievement, hole by hole. Pro only.</Text>
-        <TouchableOpacity style={styles.unlockBtn} onPress={() => setPaywallVisible(true)}>
-          <Text style={styles.unlockText}>Unlock Pro</Text>
-        </TouchableOpacity>
-        <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
-      </View>
-    );
+  // Build flat list of bean events for the selected player
+  const events = [];
+  for (let h = 0; h < holeCount; h++) {
+    const holeScores = scores[selectedPlayer]?.[h] || {};
+    for (const bean of activeBeans) {
+      const count = holeScores[bean.id] || 0;
+      if (count === 0) continue;
+      const ev    = getEffectiveValue(bean, selectedPlayer, h, firstBonus);
+      const beans = count * ev;
+      const first = firstBonus?.[bean.id];
+      const isFirst = bean.fb && first?.playerIdx === selectedPlayer && first?.holeIdx === h;
+      const par   = getHolePar(h);
+      events.push({ h, holeNum: holeOffset + h + 1, par, bean, count, beans, isFirst });
+    }
   }
 
-  const name = players[selectedPlayer];
-  const rows = [];
-  for (let h = 0; h < 18; h++) {
-    const holeScores = scores[selectedPlayer]?.[h] || {};
-    const earned = activeBeans.filter(b => (holeScores[b.id] || 0) > 0);
-    if (earned.length === 0) continue;
-    let holeTotal = 0;
-    const details = earned.map(bean => {
-      const count = holeScores[bean.id];
-      const ev    = getEffectiveValue(bean, selectedPlayer, h, firstBonus);
-      const sub   = count * ev;
-      holeTotal += sub;
-      return { bean, count, ev, sub };
-    });
-    rows.push({ hole: h + 1, details, holeTotal });
+  const grandTotal = totalBeansForPlayer(selectedPlayer, scores, activeBeans, firstBonus);
+
+  function beanDesc(event) {
+    const { bean, count, isFirst } = event;
+    let label = bean.name;
+    if (bean.id === 'lowBall')   label = 'Low Ball (skin)';
+    if (bean.id === 'longDrive') label = 'Long Drive';
+    if (bean.id === 'kp')        label = 'Closest to Pin';
+    if (count > 1 && !bean.fb)   label += ` ×${count}`;
+    if (isFirst)                 label += ' — first of round';
+    return label;
   }
 
   return (
     <View style={styles.root}>
+      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} />
+
       {/* Player tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.playerTabs} contentContainerStyle={{ padding: spacing.sm }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.playerTabs}
+        contentContainerStyle={{ padding: spacing.sm, gap: spacing.xs }}
+      >
         {players.map((p, i) => (
           <TouchableOpacity
             key={i}
@@ -58,55 +64,99 @@ export default function BreakdownScreen() {
       </ScrollView>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.playerHeading}>{name}</Text>
-        {rows.length === 0 ? (
-          <Text style={styles.empty}>No beans recorded yet.</Text>
-        ) : rows.map(row => (
-          <View key={row.hole} style={styles.holeCard}>
-            <View style={styles.holeHeader}>
-              <Text style={styles.holeNum}>Hole {row.hole}</Text>
-              <Text style={[styles.holeTotal, row.holeTotal < 0 && styles.neg]}>
-                {row.holeTotal >= 0 ? `+${row.holeTotal}` : row.holeTotal} beans
-                {' '}(${(row.holeTotal * beanValue).toFixed(2)})
+        {/* Summary header */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryName}>{players[selectedPlayer]}</Text>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryVal, grandTotal < 0 && styles.neg]}>
+                {grandTotal >= 0 ? `+${grandTotal}` : grandTotal}
               </Text>
+              <Text style={styles.summaryLabel}>beans</Text>
             </View>
-            {row.details.map(({ bean, count, ev, sub }) => (
-              <View key={bean.id} style={styles.detailRow}>
-                <Text style={styles.detailName}>{bean.name} ×{count}</Text>
-                <Text style={[styles.detailVal, sub < 0 && styles.neg]}>
-                  {sub >= 0 ? `+${sub}` : sub} bean{Math.abs(sub) !== 1 ? 's' : ''}
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryVal, grandTotal < 0 && styles.neg]}>
+                {grandTotal >= 0 ? '+' : ''}${(grandTotal * beanValue).toFixed(2)}
+              </Text>
+              <Text style={styles.summaryLabel}>net</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryVal}>{events.length}</Text>
+              <Text style={styles.summaryLabel}>{events.length === 1 ? 'event' : 'events'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {events.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyIcon}>⛳</Text>
+            <Text style={styles.empty}>No beans recorded yet for {players[selectedPlayer]}.</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.sectionLabel}>Bean by bean</Text>
+            {events.map((event, idx) => (
+              <View key={idx} style={[styles.eventRow, event.beans < 0 && styles.eventRowNeg]}>
+                <View style={styles.eventLeft}>
+                  <Text style={styles.eventHole}>Hole {event.holeNum}</Text>
+                  <Text style={styles.eventPar}>Par {event.par}</Text>
+                </View>
+                <View style={styles.eventMid}>
+                  <Text style={styles.eventDesc}>{beanDesc(event)}</Text>
+                </View>
+                <Text style={[styles.eventBeans, event.beans < 0 && styles.neg]}>
+                  {event.beans >= 0 ? `+${event.beans}` : event.beans}
+                  {'\n'}
+                  <Text style={styles.eventDollar}>
+                    {event.beans >= 0 ? '+' : ''}${(event.beans * beanValue).toFixed(2)}
+                  </Text>
                 </Text>
               </View>
             ))}
-          </View>
-        ))}
+          </>
+        )}
       </ScrollView>
+
+      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root:          { flex: 1, backgroundColor: colors.background },
-  lockScreen:    { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  lockEmoji:     { fontSize: 48, marginBottom: spacing.md },
-  lockTitle:     { fontSize: 22, fontWeight: '800', color: colors.textDark, textAlign: 'center' },
-  lockSub:       { fontSize: 15, color: colors.textMid, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.lg },
-  unlockBtn:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingVertical: 14, paddingHorizontal: 40 },
-  unlockText:    { color: colors.white, fontWeight: '800', fontSize: 16 },
+
   playerTabs:    { backgroundColor: colors.white, borderBottomWidth: 0.5, borderBottomColor: colors.border, maxHeight: 56 },
-  tab:           { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.pill, marginRight: spacing.xs },
+  tab:           { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.pill },
   tabActive:     { backgroundColor: colors.green },
   tabText:       { fontSize: 14, fontWeight: '600', color: colors.textMid },
   tabTextActive: { color: colors.white },
-  content:       { padding: spacing.md, paddingBottom: 80 },
-  playerHeading: { fontSize: 22, fontWeight: '800', color: colors.textDark, marginBottom: spacing.md },
-  empty:         { color: colors.textLight, textAlign: 'center', marginTop: 40, fontSize: 15 },
-  holeCard:      { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, marginBottom: spacing.sm, overflow: 'hidden' },
-  holeHeader:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, backgroundColor: colors.offWhite, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  holeNum:       { fontWeight: '700', fontSize: 15, color: colors.textDark },
-  holeTotal:     { fontWeight: '700', fontSize: 14, color: colors.green },
-  detailRow:     { flexDirection: 'row', justifyContent: 'space-between', padding: spacing.md, paddingVertical: 8 },
-  detailName:    { fontSize: 14, color: colors.textDark },
-  detailVal:     { fontSize: 14, fontWeight: '600', color: colors.green },
-  neg:           { color: colors.red },
+
+  content:       { padding: spacing.md, paddingBottom: 100 },
+
+  summaryCard:   { backgroundColor: colors.green, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md },
+  summaryName:   { fontSize: 18, fontWeight: '800', color: colors.white, marginBottom: spacing.sm },
+  summaryRow:    { flexDirection: 'row', alignItems: 'center' },
+  summaryItem:   { flex: 1, alignItems: 'center' },
+  summaryVal:    { fontSize: 24, fontWeight: '900', color: colors.white },
+  summaryLabel:  { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 2 },
+  summaryDivider:{ width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.25)' },
+  neg:           { color: '#ffb3b3' },
+
+  sectionLabel:  { fontSize: 11, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm },
+
+  eventRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, borderLeftWidth: 4, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.xs, gap: spacing.sm },
+  eventRowNeg:   { borderLeftColor: colors.red },
+  eventLeft:     { alignItems: 'center', minWidth: 44 },
+  eventHole:     { fontSize: 13, fontWeight: '800', color: colors.textDark },
+  eventPar:      { fontSize: 11, color: colors.textLight, fontWeight: '600' },
+  eventMid:      { flex: 1 },
+  eventDesc:     { fontSize: 14, fontWeight: '600', color: colors.textDark },
+  eventBeans:    { fontSize: 15, fontWeight: '800', color: colors.green, textAlign: 'right' },
+  eventDollar:   { fontSize: 11, fontWeight: '600', color: colors.textMid },
+
+  emptyWrap:     { alignItems: 'center', marginTop: 60 },
+  emptyIcon:     { fontSize: 40, marginBottom: spacing.sm },
+  empty:         { color: colors.textLight, textAlign: 'center', fontSize: 15 },
 });
