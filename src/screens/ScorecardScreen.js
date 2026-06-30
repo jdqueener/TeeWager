@@ -15,7 +15,7 @@ export default function ScorecardScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const {
     players, scores, firstBonus, beanValue,
-    currentHole, ldCarryover, kpCarryover,
+    currentHole, ldCarryover, kpCarryover, skinsCarryover = 0,
     holeCount = 18, holeOffset = 0, course,
   } = state;
 
@@ -70,6 +70,14 @@ export default function ScorecardScreen() {
         const awarded = scores[playerIdx]?.[hole]?.kp || 1;
         dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
         if (awarded > 1) dispatch({ type: 'KP_RESTORE_CARRYOVER', value: awarded - 1 });
+      }
+    } else if (bean.id === 'lowBall') {
+      if (!currently) {
+        dispatch({ type: 'SKINS_AWARD', playerIdx, holeIdx: hole, totalBeans: 1 + skinsCarryover });
+      } else {
+        const awarded = scores[playerIdx]?.[hole]?.lowBall || 1;
+        dispatch({ type: 'SKINS_AWARD', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
+        if (awarded > 1) dispatch({ type: 'SKINS_RESTORE_CARRYOVER', value: awarded - 1 });
       }
     } else if (bean.solo && !currently) {
       players.forEach((_, pi) => {
@@ -231,25 +239,50 @@ export default function ScorecardScreen() {
             </View>
 
             {/* Bean cards */}
-            {visibleBeans.map(bean => (
-              <BeanCard
-                key={bean.id}
-                bean={bean}
-                players={players}
-                hasBean={pi => hasBean(pi, bean.id)}
-                onToggle={pi => togglePlayer(bean, pi)}
-                pro={pro}
-                firstBonus={firstBonus}
-                hole={hole}
-                carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : 0}
-                onCarryover={
-                  bean.id === 'longDrive' ? () => dispatch({ type: 'LD_CARRYOVER' }) :
-                  bean.id === 'kp'        ? () => dispatch({ type: 'KP_CARRYOVER' }) :
-                  null
-                }
-                carryoverLabel={bean.id === 'kp' ? 'No one on the green' : 'No fairway'}
-              />
-            ))}
+            {visibleBeans.map(bean => {
+              if (bean.id === 'lowBall') {
+                // Auto-detect low scorer from strokes
+                const holeStrokes = players.map((_, pi) => getStroke(pi, hole));
+                const entered = holeStrokes.filter(s => s > 0);
+                const minS = entered.length > 0 ? Math.min(...entered) : null;
+                const leaders = minS != null ? players.map((_, pi) => holeStrokes[pi] === minS && holeStrokes[pi] > 0) : players.map(() => false);
+                const outright = leaders.filter(Boolean).length === 1;
+                return (
+                  <LowBallCard
+                    key="lowBall"
+                    bean={bean}
+                    players={players}
+                    strokes={holeStrokes}
+                    leaders={leaders}
+                    outright={outright}
+                    hasWinner={pi => hasBean(pi, 'lowBall')}
+                    onAward={pi => togglePlayer(bean, pi)}
+                    onCarryover={() => dispatch({ type: 'SKINS_CARRYOVER' })}
+                    carryover={skinsCarryover}
+                    anyAwarded={players.some((_, pi) => hasBean(pi, 'lowBall'))}
+                  />
+                );
+              }
+              return (
+                <BeanCard
+                  key={bean.id}
+                  bean={bean}
+                  players={players}
+                  hasBean={pi => hasBean(pi, bean.id)}
+                  onToggle={pi => togglePlayer(bean, pi)}
+                  pro={pro}
+                  firstBonus={firstBonus}
+                  hole={hole}
+                  carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : 0}
+                  onCarryover={
+                    bean.id === 'longDrive' ? () => dispatch({ type: 'LD_CARRYOVER' }) :
+                    bean.id === 'kp'        ? () => dispatch({ type: 'KP_CARRYOVER' }) :
+                    null
+                  }
+                  carryoverLabel={bean.id === 'kp' ? 'No one on the green' : 'No fairway'}
+                />
+              );
+            })}
 
             {dimmedBeans.length > 0 && (
               <>
@@ -373,6 +406,71 @@ function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dim
         <TouchableOpacity style={styles.carryoverBtn} onPress={onCarryover}>
           <Text style={styles.carryoverBtnText}>
             {carryoverLabel} — carry over {carryover > 0 ? `(now ×${carryover + 2})` : ''}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+// ── Low Ball / Skins card ─────────────────────────────────────────────────
+function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onAward, onCarryover, carryover, anyAwarded }) {
+  const pot = 1 + carryover;
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <Text style={styles.beanName}>Low Ball</Text>
+          {carryover > 0 && (
+            <View style={styles.carryoverBadge}>
+              <Text style={styles.carryoverBadgeText}>×{pot}</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.beanValue}>
+          {pot === 1 ? 'earns 1 bean · 1 winner' : `earns ${pot} beans · 1 winner`}
+        </Text>
+      </View>
+
+      {/* Status hint */}
+      {!anyAwarded && strokes.some(s => s > 0) && (
+        <Text style={[styles.skinsHint, outright && { color: colors.green }]}>
+          {outright
+            ? `${players[leaders.indexOf(true)].split(' ')[0]} leads — tap to award`
+            : 'Tied — award or carry over'}
+        </Text>
+      )}
+
+      {/* Player buttons with stroke count */}
+      <View style={styles.playerRow}>
+        {players.map((name, pi) => {
+          const won    = hasWinner(pi);
+          const leader = leaders[pi] && !won && !anyAwarded;
+          return (
+            <TouchableOpacity
+              key={pi}
+              style={[styles.playerBtn, won && styles.playerBtnActive, leader && styles.playerBtnLeader]}
+              onPress={() => onAward(pi)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.playerBtnText, (won || leader) && styles.playerBtnTextActive]} numberOfLines={1}>
+                {name.split(' ')[0]}
+              </Text>
+              {strokes[pi] > 0 && (
+                <Text style={[styles.skinsStokeText, (won || leader) && { color: 'rgba(255,255,255,0.85)' }]}>
+                  {strokes[pi]}
+                </Text>
+              )}
+              {won && <Text style={styles.checkmark}>✓</Text>}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {!anyAwarded && (
+        <TouchableOpacity style={styles.carryoverBtn} onPress={onCarryover}>
+          <Text style={styles.carryoverBtnText}>
+            Tie — carry over {carryover > 0 ? `(now ×${pot + 1})` : ''}
           </Text>
         </TouchableOpacity>
       )}
@@ -504,6 +602,9 @@ const styles = StyleSheet.create({
   carryoverBadgeText: { color: colors.white, fontSize: 12, fontWeight: '700' },
   carryoverBtn:       { marginTop: spacing.sm, borderTopWidth: 0.5, borderTopColor: colors.border, paddingTop: spacing.sm, alignItems: 'center' },
   carryoverBtnText:   { color: colors.gold, fontWeight: '700', fontSize: 13 },
+  skinsHint:          { fontSize: 12, color: colors.textMid, marginBottom: spacing.sm, fontStyle: 'italic' },
+  playerBtnLeader:    { backgroundColor: '#d4edda', borderColor: colors.green },
+  skinsStokeText:     { fontSize: 11, color: colors.textMid, fontWeight: '700', marginLeft: 2 },
 
   // Grid mode
   gridContent: { padding: spacing.sm, paddingBottom: 80 },

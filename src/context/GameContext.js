@@ -33,6 +33,7 @@ const INITIAL_SETUP = {
   strokes: [],
   ldCarryover: 0,
   kpCarryover: 0,
+  skinsCarryover: 0,
   holeCount: 18,   // 9 or 18
   holeOffset: 0,   // 0 = front nine, 9 = back nine (only relevant for 9-hole rounds)
   course: null, // { id, name, tee, totalPar, holes: [{number,par,yardage,handicap}] }
@@ -61,6 +62,7 @@ function reducer(state, action) {
         currentHole: 0,
         ldCarryover: 0,
         kpCarryover: 0,
+        skinsCarryover: 0,
       };
     }
 
@@ -149,6 +151,27 @@ function reducer(state, action) {
 
     case 'KP_RESTORE_CARRYOVER':
       return { ...state, kpCarryover: action.value };
+
+    case 'SKINS_CARRYOVER':
+      return { ...state, skinsCarryover: state.skinsCarryover + 1 };
+
+    case 'SKINS_AWARD': {
+      const { playerIdx, holeIdx, totalBeans: awardBeans } = action;
+      let scores = state.scores.map(p =>
+        p.map((h, hi) => hi !== holeIdx ? h : { ...h, lowBall: 0 })
+      );
+      if (playerIdx >= 0) {
+        scores = scores.map((p, pi) =>
+          pi !== playerIdx ? p : p.map((h, hi) =>
+            hi !== holeIdx ? h : { ...h, lowBall: awardBeans }
+          )
+        );
+      }
+      return { ...state, scores, skinsCarryover: 0 };
+    }
+
+    case 'SKINS_RESTORE_CARRYOVER':
+      return { ...state, skinsCarryover: action.value };
 
     case 'SET_WAGER_WINNER': {
       const wagers = state.wagers.map((w, i) =>

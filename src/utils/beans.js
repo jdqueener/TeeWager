@@ -1,6 +1,7 @@
 export const DEFAULT_PARS = [4,3,5,4,4,3,5,4,4,4,5,3,4,4,3,5,4,4];
 
 export const BEAN_DEFS = [
+  { id: 'lowBall',   name: 'Low Ball',   v: 1, pf: null,  fb: false, free: true, solo: true, desc: 'Low score wins; ties carry over', skins: true },
   { id: 'longDrive', name: 'Long Drive', v: 1, pf: [4,5], fb: false, free: true, solo: true, desc: 'Best drive on hole' },
   { id: 'kp',        name: 'KP',         v: 1, pf: [3],   fb: false, free: true, solo: true, desc: 'Closest to pin' },
   { id: 'birdie',    name: 'Birdie',     v: 1, pf: null,  fb: true,  free: true, desc: 'First birdie earns 2' },
