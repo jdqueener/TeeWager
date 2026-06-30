@@ -8,6 +8,9 @@ export default function ProBanner({ pro, onUpgrade, onReset }) {
   return (
     <>
       <View style={[styles.banner, pro ? styles.proBanner : styles.freeBanner]}>
+        <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={styles.menuIcon}>⚙</Text>
+        </TouchableOpacity>
         {pro ? (
           <Text style={styles.text}>⛳ TeeWager Pro — all features unlocked</Text>
         ) : (
@@ -15,9 +18,7 @@ export default function ProBanner({ pro, onUpgrade, onReset }) {
             <Text style={styles.text}>TeeWager Free — tap to upgrade to Pro ✨</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.menuIcon}>⚙</Text>
-        </TouchableOpacity>
+        <View style={styles.menuBtn} />
       </View>
 
       <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
@@ -54,7 +55,7 @@ const styles = StyleSheet.create({
   freeBanner:  { backgroundColor: colors.gold },
   proBanner:   { backgroundColor: colors.green },
   text:        { flex: 1, color: colors.white, fontWeight: '700', fontSize: 13, textAlign: 'center' },
-  menuBtn:     { paddingLeft: spacing.sm },
+  menuBtn:     { width: 32, alignItems: 'center' },
   menuIcon:    { fontSize: 18, color: 'rgba(255,255,255,0.85)' },
 
   overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 32 },

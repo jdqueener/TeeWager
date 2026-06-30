@@ -13,7 +13,10 @@ const LABEL_W = 70;
 
 export default function ScorecardScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
-  const { players, scores, strokes, firstBonus, beanValue, course, holeCount = 18, holeOffset = 0 } = state;
+  const { players, scores, firstBonus, beanValue, course, holeCount = 18, holeOffset = 0 } = state;
+  const strokes = state.strokes?.length === players.length
+    ? state.strokes
+    : Array.from({ length: players.length }, () => Array.from({ length: 18 }, () => 0));
 
   const [editCell, setEditCell] = useState(null); // { playerIdx, holeIdx }
   const [editValue, setEditValue] = useState(0);
