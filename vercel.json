@@ -1,11 +1,9 @@
 {
   "buildCommand": "npx expo export --platform web && cp public/index.html dist/landing.html",
   "outputDirectory": "dist",
-  "routes": [
-    { "src": "/", "dest": "/landing.html" },
-    { "src": "/app", "dest": "/index.html" },
-    { "src": "/app/(.*)", "dest": "/index.html" },
-    { "src": "/(.*\\.(js|css|png|jpg|svg|ico|json|woff|woff2|ttf))", "dest": "/$1" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/app", "destination": "/index.html" },
+    { "source": "/app/(.*)", "destination": "/index.html" },
+    { "source": "/", "destination": "/landing.html" }
   ]
 }
