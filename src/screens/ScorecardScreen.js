@@ -145,7 +145,7 @@ export default function ScorecardScreen() {
 
   return (
     <View style={styles.root}>
-      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} />
+      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
 
       {/* Mode toggle */}
       <View style={styles.modeBar}>

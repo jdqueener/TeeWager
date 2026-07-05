@@ -43,7 +43,7 @@ export default function BreakdownScreen() {
 
   return (
     <View style={styles.root}>
-      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} />
+      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
 
       {/* Player tabs */}
       <ScrollView

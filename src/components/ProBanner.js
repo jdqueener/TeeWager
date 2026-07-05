@@ -1,12 +1,59 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { colors, spacing, radius } from '../utils/theme';
 import AccountMenu from './AccountMenu';
 import AuthScreen from '../screens/AuthScreen';
+import PostRoundScreen from '../screens/PostRoundScreen';
+import {
+  incrementRoundsPlayed, isTrialUsed, setTrialUsed, setProPlan,
+} from '../utils/storage';
 
-export default function ProBanner({ pro, onUpgrade, onReset }) {
+// Flip to false when Stripe is live and the paywall should be enforced
+const IS_BETA = true;
+
+export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
   const [menuVisible, setMenuVisible] = useState(false);
   const [authVisible, setAuthVisible] = useState(false);
+  const [postRoundVisible, setPostRoundVisible] = useState(false);
+  const [postRoundView, setPostRoundView] = useState('nudge'); // 'nudge' | 'paywall'
+
+  async function handleNewRound() {
+    setMenuVisible(false);
+
+    if (IS_BETA) {
+      // In beta, skip post-round screens and just reset
+      onReset?.();
+      return;
+    }
+
+    const roundsCompleted = await incrementRoundsPlayed();
+    const trialAlreadyUsed = await isTrialUsed();
+
+    if (roundsCompleted === 1 && !trialAlreadyUsed) {
+      // After round 1 — show trial nudge
+      setPostRoundView('nudge');
+      setPostRoundVisible(true);
+    } else if (roundsCompleted === 2 && trialAlreadyUsed) {
+      // After the trial round — show soft paywall
+      setPostRoundView('paywall');
+      setPostRoundVisible(true);
+    } else {
+      onReset?.();
+    }
+  }
+
+  async function handleAcceptTrial() {
+    await setTrialUsed();
+    await setProPlan('trial');
+    onSetPro?.(true);
+    setPostRoundVisible(false);
+    onReset?.();
+  }
+
+  function handlePostRoundSkip() {
+    setPostRoundVisible(false);
+    onReset?.();
+  }
 
   return (
     <>
@@ -30,18 +77,19 @@ export default function ProBanner({ pro, onUpgrade, onReset }) {
         <AuthScreen onSkip={() => setAuthVisible(false)} />
       </Modal>
 
+      <PostRoundScreen
+        visible={postRoundVisible}
+        view={postRoundView}
+        onAcceptTrial={handleAcceptTrial}
+        onSkip={handlePostRoundSkip}
+      />
+
       <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
           <View style={styles.menu}>
             <Text style={styles.menuTitle}>Round Options</Text>
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuVisible(false);
-                onReset?.();
-              }}
-            >
+            <TouchableOpacity style={styles.menuItem} onPress={handleNewRound}>
               <Text style={styles.menuItemIcon}>🔄</Text>
               <View>
                 <Text style={styles.menuItemText}>New Round</Text>

@@ -20,7 +20,7 @@ export default function LeaderboardScreen() {
 
   return (
     <View style={styles.root}>
-      <ProBanner pro={pro} onUpgrade={() => {}} onReset={() => dispatch({ type: 'RESET' })} />
+      <ProBanner pro={pro} onUpgrade={() => {}} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.potCard}>
           <Text style={styles.potLabel}>Total Bean Pot</Text>
