@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeeWager — Make Every Round Count</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #1A4A2E;
+    --green-mid: #2d7a4f;
+    --sand: #F5EDD6;
+    --sand-dark: #EDE0C0;
+    --gold: #B8860B;
+    --gold-light: #DAA520;
+    --chalk: #FAFAF8;
+    --slate: #3D3D3D;
+    --slate-mid: #666;
+    --slate-light: #999;
+    --red: #c0392b;
+    --radius: 14px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--sand);
+    color: var(--slate);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(245,237,214,.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--sand-dark);
+    padding: 0 1.5rem;
+    height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-logo {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 18px; font-weight: 700;
+    color: var(--green); letter-spacing: -.02em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-logo span { font-size: 20px; }
+  .nav-cta {
+    background: var(--green); color: #fff;
+    padding: 7px 18px; border-radius: 20px;
+    font-size: 13px; font-weight: 500;
+    text-decoration: none; transition: background .15s;
+    border: none; cursor: pointer;
+  }
+  .nav-cta:hover { background: #163e26; }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 100px 1.5rem 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(26,74,46,.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--green); color: #fff;
+    padding: 5px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 500; letter-spacing: .04em;
+    text-transform: uppercase; margin-bottom: 28px;
+  }
+  .hero-eyebrow::before { content: '⛳'; font-size: 14px; }
+  .hero h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    font-weight: 700; line-height: 1.08;
+    color: var(--green); letter-spacing: -.03em;
+    margin-bottom: 20px; max-width: 800px;
+  }
+  .hero h1 em {
+    font-style: italic; color: var(--gold);
+    position: relative;
+  }
+  .hero-sub {
+    font-size: clamp(1rem, 2.5vw, 1.2rem);
+    color: var(--slate-mid); max-width: 520px;
+    margin: 0 auto 40px; line-height: 1.7;
+  }
+  .hero-actions {
+    display: flex; gap: 12px; align-items: center;
+    flex-wrap: wrap; justify-content: center;
+    margin-bottom: 60px;
+  }
+  .btn-primary {
+    background: var(--green); color: #fff;
+    padding: 14px 28px; border-radius: 28px;
+    font-size: 15px; font-weight: 600;
+    text-decoration: none; transition: all .15s;
+    border: none; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(26,74,46,.25);
+  }
+  .btn-primary:hover { background: #163e26; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(26,74,46,.3); }
+  .btn-secondary {
+    background: transparent; color: var(--green);
+    padding: 14px 24px; border-radius: 28px;
+    font-size: 15px; font-weight: 500;
+    text-decoration: none; transition: all .15s;
+    border: 1.5px solid var(--green);
+    cursor: pointer;
+  }
+  .btn-secondary:hover { background: rgba(26,74,46,.06); }
+
+  /* LIVE BEAN COUNTER */
+  .bean-counter {
+    background: var(--chalk);
+    border: 1px solid var(--sand-dark);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    display: inline-flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    box-shadow: 0 8px 32px rgba(26,74,46,.08);
+    min-width: 300px;
+  }
+  .bc-label {
+    font-size: 11px; font-weight: 600;
+    color: var(--slate-light); text-transform: uppercase; letter-spacing: .08em;
+  }
+  .bc-players {
+    display: flex; gap: 12px; width: 100%;
+  }
+  .bc-player {
+    flex: 1; background: var(--sand); border-radius: 10px;
+    padding: 10px 12px; text-align: center;
+  }
+  .bc-player.leader { background: var(--green); color: #fff; }
+  .bc-player-name { font-size: 11px; font-weight: 500; opacity: .7; margin-bottom: 4px; }
+  .bc-player.leader .bc-player-name { opacity: .8; color: #fff; }
+  .bc-beans { font-family: Georgia, serif; font-size: 28px; font-weight: 700; line-height: 1; }
+  .bc-player.leader .bc-beans { color: #fff; }
+  .bc-dollar { font-size: 11px; opacity: .6; margin-top: 2px; }
+  .bc-player.leader .bc-dollar { color: rgba(255,255,255,.7); }
+  .bc-event {
+    width: 100%; padding: 8px 12px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    border-radius: 8px; color: #fff;
+    font-size: 12px; font-weight: 500;
+    text-align: center; min-height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity .3s;
+  }
+
+  /* SCROLL CUE */
+  .scroll-cue {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    color: var(--slate-light); font-size: 12px;
+  }
+  .scroll-cue-arrow {
+    width: 20px; height: 20px;
+    border-right: 2px solid var(--slate-light);
+    border-bottom: 2px solid var(--slate-light);
+    transform: rotate(45deg);
+    animation: bounce 1.6s infinite;
+  }
+  @keyframes bounce { 0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(4px)} }
+
+  /* SECTION BASE */
+  section { padding: 80px 1.5rem; }
+  .container { max-width: 960px; margin: 0 auto; }
+  .section-eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--gold);
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: Georgia, serif;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 700; color: var(--green);
+    line-height: 1.15; letter-spacing: -.02em;
+    margin-bottom: 16px;
+  }
+  .section-sub {
+    font-size: 1rem; color: var(--slate-mid);
+    max-width: 540px; line-height: 1.7;
+  }
+
+  /* HOW IT WORKS */
+  .how { background: var(--green); color: #fff; }
+  .how .section-eyebrow { color: rgba(255,255,255,.6); }
+  .how .section-title { color: #fff; }
+  .how .section-sub { color: rgba(255,255,255,.7); }
+  .how-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px; margin-top: 48px;
+  }
+  .how-step {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: var(--radius);
+    padding: 24px 20px;
+  }
+  .how-step-icon { font-size: 28px; margin-bottom: 12px; }
+  .how-step-title { font-family: Georgia, serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: #fff; }
+  .how-step-desc { font-size: 13px; color: rgba(255,255,255,.65); line-height: 1.6; }
+
+  /* BEANS */
+  .beans-section { background: var(--chalk); }
+  .beans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px; margin-top: 36px;
+  }
+  .bean-card {
+    background: var(--sand);
+    border: 1px solid var(--sand-dark);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex; align-items: center;
+    gap: 10px; position: relative;
+  }
+  .bean-card.pro-bean { opacity: .55; }
+  .bean-card.pro-bean::after {
+    content: 'Pro';
+    position: absolute; top: 8px; right: 8px;
+    background: var(--gold); color: #fff;
+    font-size: 9px; font-weight: 700;
+    padding: 2px 6px; border-radius: 10px;
+    letter-spacing: .04em;
+  }
+  .bean-emoji { font-size: 20px; flex-shrink: 0; }
+  .bean-name { font-size: 12px; font-weight: 500; color: var(--slate); flex: 1; }
+  .bean-value {
+    font-family: Georgia, serif;
+    font-size: 15px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .bean-value.pos { color: var(--green); }
+  .bean-value.neg { color: var(--red); }
+  .bean-note { font-size: 10px; color: var(--slate-light); }
+
+  /* PRICING */
+  .pricing-section { background: var(--sand); }
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px; margin-top: 48px;
+  }
+  .price-card {
+    background: var(--chalk);
+    border: 1px solid var(--sand-dark);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    position: relative;
+  }
+  .price-card.featured {
+    background: var(--green); color: #fff;
+    border-color: var(--green);
+    transform: scale(1.03);
+    box-shadow: 0 12px 40px rgba(26,74,46,.25);
+  }
+  .price-badge {
+    display: inline-block;
+    background: var(--gold); color: #fff;
+    font-size: 10px; font-weight: 700;
+    padding: 3px 10px; border-radius: 12px;
+    letter-spacing: .04em; text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .price-plan {
+    font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--slate-light); margin-bottom: 6px;
+  }
+  .price-card.featured .price-plan { color: rgba(255,255,255,.6); }
+  .price-amount {
+    font-family: Georgia, serif;
+    font-size: 2.8rem; font-weight: 700;
+    color: var(--green); line-height: 1;
+    letter-spacing: -.03em;
+  }
+  .price-card.featured .price-amount { color: #fff; }
+  .price-period {
+    font-size: 13px; color: var(--slate-mid);
+    margin-bottom: 20px; margin-top: 4px;
+  }
+  .price-card.featured .price-period { color: rgba(255,255,255,.65); }
+  .price-saving {
+    display: inline-block;
+    background: var(--gold); color: #fff;
+    font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 12px;
+    margin-bottom: 20px;
+  }
+  .price-features { list-style: none; }
+  .price-features li {
+    font-size: 13px; color: var(--slate-mid);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(0,0,0,.05);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .price-card.featured .price-features li { color: rgba(255,255,255,.75); border-color: rgba(255,255,255,.1); }
+  .price-features li:last-child { border-bottom: none; }
+  .price-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .price-card.featured .price-features li::before { color: #a8d5b5; }
+  .price-cta {
+    display: block; width: 100%;
+    margin-top: 24px; padding: 13px;
+    border-radius: 10px; font-size: 14px; font-weight: 600;
+    text-align: center; text-decoration: none;
+    cursor: pointer; border: none; transition: all .15s;
+  }
+  .price-cta-free { background: var(--sand); color: var(--green); border: 1.5px solid var(--sand-dark); }
+  .price-cta-free:hover { background: var(--sand-dark); }
+  .price-cta-pro { background: #fff; color: var(--green); }
+  .price-cta-pro:hover { background: rgba(255,255,255,.9); }
+  .price-cta-lt { background: var(--green); color: #fff; }
+  .price-cta-lt:hover { background: #163e26; }
+
+  /* UPGRADE JOURNEY */
+  .journey-section { background: var(--chalk); }
+  .journey-steps {
+    display: flex; flex-direction: column; gap: 0;
+    margin-top: 48px; position: relative;
+  }
+  .journey-steps::before {
+    content: '';
+    position: absolute; left: 20px; top: 24px; bottom: 24px;
+    width: 2px; background: var(--sand-dark);
+  }
+  .journey-step {
+    display: flex; gap: 24px; align-items: flex-start;
+    padding: 20px 0; position: relative;
+  }
+  .js-num {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--sand); border: 2px solid var(--sand-dark);
+    display: flex; align-items: center; justify-content: center;
+    font-family: Georgia, serif; font-size: 15px; font-weight: 700;
+    color: var(--green); flex-shrink: 0; z-index: 1;
+  }
+  .journey-step.highlight .js-num {
+    background: var(--gold); border-color: var(--gold); color: #fff;
+  }
+  .journey-step.key .js-num {
+    background: var(--green); border-color: var(--green); color: #fff;
+  }
+  .js-body { padding-top: 8px; }
+  .js-title { font-size: 15px; font-weight: 600; color: var(--slate); margin-bottom: 4px; }
+  .js-desc { font-size: 13px; color: var(--slate-mid); line-height: 1.6; max-width: 560px; }
+
+  /* COURSE PARTNER */
+  .partner-section { background: var(--green); color: #fff; }
+  .partner-section .section-eyebrow { color: rgba(255,255,255,.55); }
+  .partner-section .section-title { color: #fff; }
+  .partner-section .section-sub { color: rgba(255,255,255,.7); }
+  .partner-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px; margin-top: 48px;
+  }
+  .partner-card {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: var(--radius); padding: 22px 20px;
+  }
+  .partner-card-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .partner-card-desc { font-size: 13px; color: rgba(255,255,255,.65); line-height: 1.6; }
+  .payout-table {
+    width: 100%; border-collapse: collapse; margin-top: 32px;
+    background: rgba(255,255,255,.06); border-radius: var(--radius); overflow: hidden;
+  }
+  .payout-table th {
+    background: rgba(255,255,255,.1); padding: 10px 16px;
+    text-align: left; font-size: 11px; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.6);
+  }
+  .payout-table td {
+    padding: 12px 16px; font-size: 13px; color: rgba(255,255,255,.8);
+    border-top: 1px solid rgba(255,255,255,.08);
+  }
+  .payout-table td strong { color: #fff; }
+  .payout-amt { font-family: Georgia, serif; font-size: 16px; font-weight: 700; color: var(--gold-light) !important; }
+
+  /* CTA FOOTER */
+  .cta-section {
+    background: var(--sand); text-align: center; padding: 100px 1.5rem;
+  }
+  .cta-section .section-title { max-width: 600px; margin: 0 auto 16px; }
+  .cta-section .section-sub { margin: 0 auto 40px; }
+
+  /* FOOTER */
+  footer {
+    background: var(--green); color: rgba(255,255,255,.5);
+    text-align: center; padding: 24px 1.5rem;
+    font-size: 12px;
+  }
+  footer strong { color: rgba(255,255,255,.8); }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .partner-grid { grid-template-columns: 1fr; }
+    .price-card.featured { transform: scale(1); }
+    .hero-actions { flex-direction: column; width: 100%; }
+    .btn-primary, .btn-secondary { width: 100%; text-align: center; }
+  }
+
+  /* REDUCED MOTION */
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-cue-arrow { animation: none; }
+    .btn-primary:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo"><span>⛳</span> TeeWager</div>
+  <a href="/app" class="nav-cta">Open app — free</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">The golf group wager tracker</div>
+  <h1>Make every<br><em>round count.</em></h1>
+  <p class="hero-sub">Set a bean value, track who earns what hole by hole, and settle up at the bar with one tap. No math, no arguments, no IOUs.</p>
+  <div class="hero-actions">
+    <a href="/app" class="btn-primary">Play free — open app</a>
+    <a href="#how" class="btn-secondary">See how it works</a>
+  </div>
+
+  <!-- Live bean counter -->
+  <div class="bean-counter" id="bean-counter" aria-label="Live example of TeeWager in action">
+    <div class="bc-label">Beans are the currency — wagers are what you earn them from — Hole 7 · Par 3 · KP hole</div>
+    <div class="bc-players">
+      <div class="bc-player leader" id="p1">
+        <div class="bc-player-name">Mike</div>
+        <div class="bc-beans" id="p1-beans">4</div>
+        <div class="bc-dollar" id="p1-dollar">+$4.00</div>
+      </div>
+      <div class="bc-player" id="p2">
+        <div class="bc-player-name">Dave</div>
+        <div class="bc-beans" id="p2-beans">2</div>
+        <div class="bc-dollar" id="p2-dollar">+$2.00</div>
+      </div>
+      <div class="bc-player" id="p3">
+        <div class="bc-player-name">Carl</div>
+        <div class="bc-beans" id="p3-beans">1</div>
+        <div class="bc-dollar" id="p3-dollar">+$1.00</div>
+      </div>
+    </div>
+    <div class="bc-event" id="bc-event">$1.00 per bean · 3 players</div>
+  </div>
+
+  <div style="height:32px"></div>
+  <div class="scroll-cue" aria-hidden="true">
+    <div class="scroll-cue-arrow"></div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="container">
+    <div class="section-eyebrow">How it works</div>
+    <h2 class="section-title">Golf's friendliest wager,<br>finally tracked properly.</h2>
+    <p class="section-sub">A "bean" is your group's wagering currency. Set the value before you tee off — every achievement earns or costs beans. Settle up at the 19th hole.</p>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="how-step-icon">💵</div>
+        <div class="how-step-title">Set the value</div>
+        <div class="how-step-desc">Choose a dollar amount per bean before the round — $0.25, $1, $5. Your call, your stakes.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-step-icon">🫘</div>
+        <div class="how-step-title">Earn beans on every wager</div>
+        <div class="how-step-desc">Tap to award beans as each wager is won — birdie, KP, long drive, sandy par, and more. The player who wins the wager earns the beans.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-step-icon">🏌️</div>
+        <div class="how-step-title">Play 18 holes</div>
+        <div class="how-step-desc">Track every hole. The leaderboard updates in real time so everyone knows who's winning.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-step-icon">🍺</div>
+        <div class="how-step-title">Settle up</div>
+        <div class="how-step-desc">One tap shows exactly who pays who and how much. Share the card to the group chat.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BEANS -->
+<section class="beans-section">
+  <div class="container">
+    <div class="section-eyebrow">What you wager on</div>
+    <h2 class="section-title">Every great shot earns beans.</h2>
+    <p class="section-sub">5 wagers are included free — earn or lose beans on each one. Unlock all 13 with Pro — including the ones that make the group go absolutely wild. A bean is the currency you win from each one.</p>
+    <div class="beans-grid">
+      <div class="bean-card">
+        <div class="bean-emoji">🐦</div>
+        <div><div class="bean-name">Birdie</div><div class="bean-note">First of round = 2 beans</div></div>
+        <div class="bean-value pos">+1</div>
+      </div>
+      <div class="bean-card">
+        <div class="bean-emoji">🦅</div>
+        <div><div class="bean-name">Eagle</div></div>
+        <div class="bean-value pos">+4</div>
+      </div>
+      <div class="bean-card">
+        <div class="bean-emoji">💪</div>
+        <div><div class="bean-name">Long drive</div><div class="bean-note">Par 4 & 5 holes</div></div>
+        <div class="bean-value pos">+1</div>
+      </div>
+      <div class="bean-card">
+        <div class="bean-emoji">📍</div>
+        <div><div class="bean-name">KP</div><div class="bean-note">Par 3 holes</div></div>
+        <div class="bean-value pos">+1</div>
+      </div>
+      <div class="bean-card">
+        <div class="bean-emoji">😬</div>
+        <div><div class="bean-name">3-putt</div><div class="bean-note">First of round = 2 beans</div></div>
+        <div class="bean-value neg">−1</div>
+      </div>
+      <div class="bean-card pro-bean">
+        <div class="bean-emoji">🕳️</div>
+        <div><div class="bean-name">Hole in one</div></div>
+        <div class="bean-value pos">+20</div>
+      </div>
+      <div class="bean-card pro-bean">
+        <div class="bean-emoji">🦅</div>
+        <div><div class="bean-name">Double eagle</div><div class="bean-note">Par 5 only</div></div>
+        <div class="bean-value pos">+40</div>
+      </div>
+      <div class="bean-card pro-bean">
+        <div class="bean-emoji">🏖️</div>
+        <div><div class="bean-name">Sandy birdie</div></div>
+        <div class="bean-value pos">+2</div>
+      </div>
+      <div class="bean-card pro-bean">
+        <div class="bean-emoji">⛱️</div>
+        <div><div class="bean-name">Sandy par</div></div>
+        <div class="bean-value pos">+1</div>
+      </div>
+      <div class="bean-card pro-bean">
+        <div class="bean-emoji">🌲</div>
+        <div><div class="bean-name">2-tree par</div><div class="bean-note">Par after hitting 2 trees</div></div>
+        <div class="bean-value pos">+2</div>
+      </div>
+      <div class="bean-card pro-bean">
+        <div class="bean-emoji">🏌️</div>
+        <div><div class="bean-name">Tee sticks up</div><div class="bean-note">Tee flips and sticks back in</div></div>
+        <div class="bean-value pos">+1</div>
+      </div>
+      <div class="bean-card pro-bean">
+        <div class="bean-emoji">🚩</div>
+        <div><div class="bean-name">Flag length putt</div></div>
+        <div class="bean-value pos">+1</div>
+      </div>
+      <div class="bean-card pro-bean">
+        <div class="bean-emoji">🤦</div>
+        <div><div class="bean-name">4-putt</div></div>
+        <div class="bean-value neg">−2</div>
+      </div>
+      <div class="bean-card pro-bean" style="border:1.5px dashed var(--gold);opacity:1;">
+        <div class="bean-emoji">✏️</div>
+        <div><div class="bean-name">Your custom bean</div><div class="bean-note">Name it, value it, own it</div></div>
+        <div class="bean-value" style="color:var(--gold)">+?</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing-section" id="pricing">
+  <div class="container">
+    <div class="section-eyebrow">Pricing</div>
+    <h2 class="section-title">Start free. Go Pro when<br>the wagers get serious.</h2>
+    <p class="section-sub">Free forever for casual groups. Upgrade when you want the full experience — or when someone makes a hole in one and you can't log it.</p>
+    <div class="pricing-grid">
+      <!-- FREE -->
+      <div class="price-card">
+        <div class="price-plan">Free</div>
+        <div class="price-amount">$0</div>
+        <div class="price-period">forever, no card needed</div>
+        <ul class="price-features">
+          <li>5 wagers: Birdie, Eagle, Long drive, KP, 3-putt</li>
+          <li>Up to 4 players</li>
+          <li>Live leaderboard</li>
+          <li>Settle up calculator</li>
+          <li>Real course scorecard data</li>
+          <li>One free Pro round after round 1</li>
+        </ul>
+        <a href="/app" class="price-cta price-cta-free">Play free</a>
+      </div>
+      <!-- ANNUAL (FEATURED) -->
+      <div class="price-card featured">
+        <div class="price-badge">Most popular</div>
+        <div class="price-plan">Pro — Annual</div>
+        <div class="price-amount">$29.90</div>
+        <div class="price-period">per year</div>
+        <div class="price-saving">2 months free vs monthly</div>
+        <ul class="price-features">
+          <li>All 13 wagers unlocked</li>
+          <li>Custom wager creator</li>
+          <li>Up to 5 players</li>
+          <li>Screenshot share card</li>
+          <li>Side wagers + settle up</li>
+          <li>Hole-by-hole breakdown</li>
+          <li>Lifetime stats (bragging rights)</li>
+          <li>Impromptu bean — add anytime</li>
+        </ul>
+        <a href="/app" class="price-cta price-cta-pro">Start Pro — $29.90/yr</a>
+      </div>
+      <!-- LIFETIME -->
+      <div class="price-card">
+        <div class="price-plan">Lifetime</div>
+        <div class="price-amount">$49.99</div>
+        <div class="price-period">one time · pay once, play forever</div>
+        <ul class="price-features">
+          <li>Everything in Pro</li>
+          <li>No recurring charges ever</li>
+          <li>Break-even vs monthly: 17 rounds</li>
+          <li>Early adopter pricing — locked in forever</li>
+          <li>Future features included</li>
+        </ul>
+        <a href="/app" class="price-cta price-cta-lt">Buy lifetime — $49.99</a>
+        <div style="font-size:11px;color:var(--slate-light);text-align:center;margin-top:10px">Also available: $2.99/mo monthly plan</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- UPGRADE JOURNEY -->
+<section class="journey-section">
+  <div class="container">
+    <div class="section-eyebrow">How the upgrade works</div>
+    <h2 class="section-title">Try it free.<br>Upgrade when you're hooked.</h2>
+    <p class="section-sub">No countdown timers. No credit card upfront. Just a genuinely useful free app that gets better when you want it to.</p>
+    <div class="journey-steps">
+      <div class="journey-step">
+        <div class="js-num">1</div>
+        <div class="js-body">
+          <div class="js-title">Download free and play round 1</div>
+          <div class="js-desc">5 wagers, four players, full leaderboard and settle up. A complete game, free forever.</div>
+        </div>
+      </div>
+      <div class="journey-step highlight">
+        <div class="js-num">2</div>
+        <div class="js-body">
+          <div class="js-title">Get one free Pro round — no card needed</div>
+          <div class="js-desc">After round 1, we unlock the full Pro experience for your next round. All 13 beans, share card, side wagers. No strings.</div>
+        </div>
+      </div>
+      <div class="journey-step key">
+        <div class="js-num">3</div>
+        <div class="js-body">
+          <div class="js-title">The "what app is that?" moment</div>
+          <div class="js-desc">Someone in your group makes a 2-tree par and it logs automatically. You share the settle-up card to the group chat. The whole foursome wants it.</div>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="js-num">4</div>
+        <div class="js-body">
+          <div class="js-title">Round 3 reverts to free — upgrade anytime</div>
+          <div class="js-desc">Pro features lock again after the trial round. Upgrade when you're ready — or enjoy the free tier indefinitely. No pressure, ever.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COURSE PARTNER -->
+<section class="partner-section">
+  <div class="container">
+    <div class="section-eyebrow">For golf courses</div>
+    <h2 class="section-title">A revenue stream that<br>hangs on your wall.</h2>
+    <p class="section-sub">Partner with TeeWager. We provide a branded placard with a unique QR code. Your golfers download the app. You earn 15% of every Pro subscription they sign up for — monthly, annual, and lifetime.</p>
+    <div class="partner-grid">
+      <div class="partner-card">
+        <div class="partner-card-title">Zero cost, zero effort</div>
+        <div class="partner-card-desc">Hang the placard in your bar, pro shop, or cart staging area. That's the entire job. We handle everything else.</div>
+      </div>
+      <div class="partner-card">
+        <div class="partner-card-title">Passive income, every month</div>
+        <div class="partner-card-desc">Every time one of your golfers upgrades to Pro, you earn a cut. Monthly subscribers keep paying you every month.</div>
+      </div>
+      <div class="partner-card">
+        <div class="partner-card-title">Monthly reporting</div>
+        <div class="partner-card-desc">We send you a simple report: downloads, Pro conversions, and exactly how much you've earned. Transparent and automatic.</div>
+      </div>
+      <div class="partner-card">
+        <div class="partner-card-title">Your course, front and center</div>
+        <div class="partner-card-desc">Your course name appears on the TeeWager download page when a golfer scans your QR code. Built-in promotion.</div>
+      </div>
+    </div>
+    <table class="payout-table">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>User pays</th>
+          <th>Your course earns</th>
+          <th>When</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Monthly</strong></td>
+          <td>$2.99/mo</td>
+          <td class="payout-amt">$0.37/mo</td>
+          <td>Every month sub is active</td>
+        </tr>
+        <tr>
+          <td><strong>Annual</strong></td>
+          <td>$29.90/yr</td>
+          <td class="payout-amt">$3.83 upfront</td>
+          <td>Once per year at renewal</td>
+        </tr>
+        <tr>
+          <td><strong>Lifetime</strong></td>
+          <td>$49.99 once</td>
+          <td class="payout-amt">$6.33 once</td>
+          <td>One time per subscriber</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="text-align:center;margin-top:32px">
+      <a href="mailto:partners@teewager.com" class="btn-primary" style="display:inline-block;text-decoration:none">Become a partner course</a>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="container">
+    <div class="section-eyebrow">Ready to play?</div>
+    <h2 class="section-title">Your group's next round<br>just got a lot more interesting.</h2>
+    <p class="section-sub">Open free in your browser. Set up a round in under a minute. The first hole is already more fun.</p>
+    <a href="/app" class="btn-primary" style="font-size:16px;padding:16px 36px;display:inline-block;text-decoration:none">Open TeeWager — free</a>
+  </div>
+</section>
+
+<footer>
+  <strong>TeeWager</strong> &nbsp;·&nbsp; Make every round count &nbsp;·&nbsp;
+  <a href="mailto:hello@teewager.com" style="color:rgba(255,255,255,.5)">hello@teewager.com</a>
+</footer>
+
+<script>
+// Live bean counter animation
+const events = [
+  { desc: '🐦 Mike — Birdie on Hole 7 (+1 bean)', player: 0, delta: 1 },
+  { desc: '📍 Dave — KP on Hole 7 (+1 bean)', player: 1, delta: 1 },
+  { desc: '😬 Carl — 3-putt on Hole 7 (−1 bean)', player: 2, delta: -1 },
+  { desc: '💪 Mike — Long drive Hole 8 (+1 bean)', player: 0, delta: 1 },
+  { desc: '🐦 Dave — Birdie Hole 9 (+1 bean)', player: 1, delta: 1 },
+  { desc: '🏖️ Carl — Sandy par Hole 9 (+1 bean) 🔒 Pro', player: 2, delta: 1 },
+  { desc: '🦅 Mike — Eagle Hole 10 (+4 beans!)', player: 0, delta: 4 },
+  { desc: '😬 Dave — 3-putt Hole 10 (−1 bean)', player: 1, delta: -1 },
+];
+
+let beans = [4, 2, 1];
+const names = ['p1', 'p2', 'p3'];
+let ei = 0;
+
+function updateCounter() {
+  const ev = events[ei % events.length];
+  beans[ev.player] = Math.max(0, beans[ev.player] + ev.delta);
+
+  const evEl = document.getElementById('bc-event');
+  evEl.style.opacity = '0';
+  setTimeout(() => {
+    evEl.textContent = ev.desc;
+    evEl.style.opacity = '1';
+  }, 300);
+
+  names.forEach((id, i) => {
+    document.getElementById(id + '-beans').textContent = beans[i];
+    document.getElementById(id + '-dollar').textContent = (beans[i] >= 0 ? '+' : '') + '$' + beans[i].toFixed(2);
+  });
+
+  const maxBeans = Math.max(...beans);
+  names.forEach((id, i) => {
+    document.getElementById(id).classList.toggle('leader', beans[i] === maxBeans);
+  });
+
+  ei++;
+}
+
+setInterval(updateCounter, 2800);
+updateCounter();
+</script>
+</body>
+</html>

@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   proBanner:   { backgroundColor: colors.green },
   text:        { flex: 1, color: colors.white, fontWeight: '700', fontSize: 13, textAlign: 'center' },
   menuBtn:     { width: 32, alignItems: 'center' },
-  menuIcon:    { fontSize: 18, color: 'rgba(255,255,255,0.85)' },
+  menuIcon:    { fontSize: 20, color: colors.white },
 
   overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 32 },
   menu:        { backgroundColor: colors.white, borderRadius: radius.md, width: '100%', maxWidth: 320, overflow: 'hidden' },

@@ -27,7 +27,7 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
         {user ? (
           <Text style={[styles.avatarText, { fontSize: size * 0.36 }]}>{initials(displayName)}</Text>
         ) : (
-          <Text style={[styles.avatarIcon, { fontSize: size * 0.45 }]}>👤</Text>
+          <Text style={[styles.avatarText, { fontSize: size * 0.42 }]}>?</Text>
         )}
       </TouchableOpacity>
 
@@ -63,7 +63,7 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
 }
 
 const styles = StyleSheet.create({
-  avatarBtn:   { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center' },
+  avatarBtn:   { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)', justifyContent: 'center', alignItems: 'center' },
   avatarText:  { color: colors.white, fontWeight: '800', fontSize: 13 },
   avatarIcon:  { fontSize: 16 },
 
