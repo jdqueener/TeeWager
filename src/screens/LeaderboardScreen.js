@@ -53,17 +53,21 @@ export default function LeaderboardScreen() {
 
 const styles = StyleSheet.create({
   root:     { flex: 1, backgroundColor: colors.background },
-  content:  { padding: spacing.md, paddingBottom: 80 },
-  potCard:  { backgroundColor: colors.green, borderRadius: radius.md, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.md },
-  potLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  potValue: { color: colors.white, fontSize: 40, fontWeight: '900', marginTop: 4 },
-  potSub:   { color: 'rgba(255,255,255,0.65)', fontSize: 13, marginTop: 4 },
-  row:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm },
-  rowFirst: { borderColor: colors.gold, borderWidth: 2 },
-  medal:    { fontSize: 22, width: 32, textAlign: 'center' },
-  name:     { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
-  right:    { alignItems: 'flex-end' },
-  beans:    { fontSize: 15, fontWeight: '700', color: colors.green },
-  dollars:  { fontSize: 13, color: colors.textMid },
-  neg:      { color: colors.red },
+  content:  { padding: spacing.md, paddingBottom: 100 },
+
+  potCard:  { backgroundColor: colors.green, borderRadius: radius.md, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.md, shadowColor: colors.green, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  potLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
+  potValue: { color: colors.white, fontSize: 48, fontWeight: '900', marginTop: 4, letterSpacing: -1 },
+  potSub:   { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 },
+
+  row:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  rowFirst: { borderColor: colors.gold, borderWidth: 2, shadowColor: colors.gold, shadowOpacity: 0.15, shadowRadius: 6, elevation: 2 },
+  rowLast:  { opacity: 0.85 },
+
+  medal:   { fontSize: 24, width: 34, textAlign: 'center' },
+  name:    { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
+  right:   { alignItems: 'flex-end' },
+  beans:   { fontSize: 16, fontWeight: '800', color: colors.green },
+  dollars: { fontSize: 13, fontWeight: '600', color: colors.textMid, marginTop: 1 },
+  neg:     { color: colors.red },
 });

@@ -97,15 +97,25 @@ export default function SettleUpScreen() {
         {/* Payments */}
         <Text style={styles.sectionLabel}>Payments</Text>
         {payments.length === 0 ? (
-          <Text style={styles.allSquare}>🎉 All square — no payments needed!</Text>
+          <View style={styles.allSquareCard}>
+            <Text style={styles.allSquareEmoji}>🎉</Text>
+            <Text style={styles.allSquare}>All square!</Text>
+            <Text style={styles.allSquareSub}>No payments needed this round.</Text>
+          </View>
         ) : payments.map((p, i) => (
           <View key={i} style={styles.paymentCard}>
-            <Text style={styles.paymentText}>
-              <Text style={styles.bold}>{players[p.from]}</Text>
-              {' pays '}
-              <Text style={styles.bold}>{players[p.to]}</Text>
-            </Text>
-            <Text style={styles.paymentAmt}>${p.amt.toFixed(2)}</Text>
+            <View style={styles.paymentPlayer}>
+              <Text style={styles.paymentName}>{players[p.from]}</Text>
+              <Text style={styles.paymentRole}>pays</Text>
+            </View>
+            <View style={styles.paymentArrowWrap}>
+              <Text style={styles.paymentAmt}>${p.amt.toFixed(2)}</Text>
+              <Text style={styles.paymentArrow}>→</Text>
+            </View>
+            <View style={[styles.paymentPlayer, { alignItems: 'flex-end' }]}>
+              <Text style={styles.paymentName}>{players[p.to]}</Text>
+              <Text style={styles.paymentRole}>receives</Text>
+            </View>
           </View>
         ))}
 
@@ -154,29 +164,48 @@ export default function SettleUpScreen() {
 
 const styles = StyleSheet.create({
   root:         { flex: 1, backgroundColor: colors.background },
-  content:      { padding: spacing.md, paddingBottom: 80 },
+  content:      { padding: spacing.md, paddingBottom: 100 },
   heading:      { fontSize: 26, fontWeight: '900', color: colors.textDark, marginBottom: spacing.md },
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.md, marginBottom: spacing.xs },
-  row:          { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.xs },
-  name:         { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textDark },
-  val:          { fontSize: 14, fontWeight: '600', color: colors.green, marginLeft: spacing.sm },
-  neg:          { color: colors.red },
-  paymentCard:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.xs },
-  paymentText:  { fontSize: 15, color: colors.textDark },
-  paymentAmt:   { fontSize: 18, fontWeight: '800', color: colors.green },
-  bold:         { fontWeight: '700' },
-  allSquare:    { fontSize: 16, color: colors.green, textAlign: 'center', padding: spacing.md },
-  btn:          { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', marginTop: spacing.sm },
-  btnSecondary: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.green },
+  sectionLabel: { fontSize: 12, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: spacing.md, marginBottom: spacing.xs },
+
+  // Bean totals
+  row:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.xs },
+  name:   { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textDark },
+  val:    { fontSize: 14, fontWeight: '700', color: colors.green, marginLeft: spacing.sm },
+  neg:    { color: colors.red },
+
+  // Payment cards
+  paymentCard:      { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  paymentPlayer:    { flex: 1 },
+  paymentName:      { fontSize: 16, fontWeight: '800', color: colors.textDark },
+  paymentRole:      { fontSize: 11, color: colors.textLight, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 2 },
+  paymentArrowWrap: { alignItems: 'center', paddingHorizontal: spacing.sm },
+  paymentAmt:       { fontSize: 22, fontWeight: '900', color: colors.green },
+  paymentArrow:     { fontSize: 20, color: colors.green, fontWeight: '900', marginTop: 2 },
+
+  // All square
+  allSquareCard:  { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.sm },
+  allSquareEmoji: { fontSize: 36, marginBottom: spacing.xs },
+  allSquare:      { fontSize: 18, fontWeight: '800', color: colors.green },
+  allSquareSub:   { fontSize: 14, color: colors.textLight, marginTop: 4 },
+
+  // Wagers
+  bold:        { fontWeight: '700' },
+
+  // Buttons
+  btn:          { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 15, alignItems: 'center', marginTop: spacing.sm, shadowColor: colors.green, shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  btnSecondary: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.green, shadowOpacity: 0, elevation: 0 },
   btnSaved:     { borderColor: colors.textLight },
   btnText:      { color: colors.white, fontWeight: '800', fontSize: 16 },
   btnSecText:   { color: colors.green, fontWeight: '700', fontSize: 15 },
-  confirmOverlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  confirmCard:         { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg, width: '100%', maxWidth: 340 },
-  confirmTitle:        { fontSize: 18, fontWeight: '800', color: colors.textDark, marginBottom: spacing.xs },
-  confirmSub:          { fontSize: 14, color: colors.textMid, marginBottom: spacing.lg },
-  confirmDestructive:  { backgroundColor: colors.red, borderRadius: radius.pill, paddingVertical: 12, alignItems: 'center', marginBottom: spacing.sm },
+
+  // Confirm modal
+  confirmOverlay:         { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  confirmCard:            { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg, width: '100%', maxWidth: 340 },
+  confirmTitle:           { fontSize: 18, fontWeight: '800', color: colors.textDark, marginBottom: spacing.xs },
+  confirmSub:             { fontSize: 14, color: colors.textMid, marginBottom: spacing.lg },
+  confirmDestructive:     { backgroundColor: colors.red, borderRadius: radius.pill, paddingVertical: 12, alignItems: 'center', marginBottom: spacing.sm },
   confirmDestructiveText: { color: colors.white, fontWeight: '700', fontSize: 15 },
-  confirmCancel:       { paddingVertical: 12, alignItems: 'center' },
-  confirmCancelText:   { color: colors.textMid, fontSize: 15 },
+  confirmCancel:          { paddingVertical: 12, alignItems: 'center' },
+  confirmCancelText:      { color: colors.textMid, fontSize: 15 },
 });

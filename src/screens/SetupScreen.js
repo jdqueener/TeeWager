@@ -234,12 +234,14 @@ export default function SetupScreen() {
     <View style={styles.root}>
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.headerRow}>
-          <View style={{ width: 36 }} />
-          <Text style={styles.heading}>⛳ TeeWager</Text>
-          <AccountMenu onSignIn={() => setAuthVisible(true)} />
+        <View style={styles.hero}>
+          <View style={styles.heroRow}>
+            <View style={{ width: 36 }} />
+            <Text style={styles.heroTitle}>⛳ TeeWager</Text>
+            <AccountMenu size={32} onSignIn={() => setAuthVisible(true)} />
+          </View>
+          <Text style={styles.heroSub}>Set up your round</Text>
         </View>
-        <Text style={styles.sub}>Set up your round</Text>
 
         <Modal visible={authVisible} animationType="slide" onRequestClose={dismissAuth}>
           <AuthScreen onSkip={dismissAuth} />
@@ -439,12 +441,14 @@ export default function SetupScreen() {
           const locked = !bean.free && !pro;
           const on = enabledBeans.has(bean.id);
           return (
-            <View key={bean.id} style={styles.beanRow}>
+            <View key={bean.id} style={[styles.beanRow, { borderLeftColor: locked ? colors.gold : colors.green }]}>
+              <View style={[styles.beanDot, { backgroundColor: locked ? colors.gold : colors.green }]} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.beanName}>
-                  {locked && !pro ? '🔒 ' : ''}{bean.name}
+                  {bean.name}
+                  {locked && <Text style={styles.beanProBadge}> PRO</Text>}
                   <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
-                    {' — '}{beanLabel(bean.v)}
+                    {'  '}{beanLabel(bean.v)}
                   </Text>
                 </Text>
                 {bean.desc ? <Text style={styles.beanDesc}>{bean.desc}</Text> : null}
@@ -531,11 +535,15 @@ export default function SetupScreen() {
 
 const styles = StyleSheet.create({
   root:    { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md, paddingBottom: 60 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg },
-  heading: { fontSize: 30, fontWeight: '900', color: colors.green, textAlign: 'center' },
-  sub:     { fontSize: 16, color: colors.textMid, textAlign: 'center', marginBottom: spacing.lg },
-  label:   { fontSize: 13, fontWeight: '700', color: colors.textMid, marginTop: spacing.md, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
+  content: { padding: spacing.md, paddingBottom: 80 },
+
+  // Hero header
+  hero:      { backgroundColor: colors.green, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg },
+  heroRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs },
+  heroTitle: { fontSize: 26, fontWeight: '900', color: colors.white, textAlign: 'center' },
+  heroSub:   { fontSize: 14, color: 'rgba(255,255,255,0.75)', textAlign: 'center' },
+
+  label:   { fontSize: 12, fontWeight: '700', color: colors.textMid, marginTop: spacing.md, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.6 },
   row:     { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
 
   // Course search
@@ -543,7 +551,7 @@ const styles = StyleSheet.create({
   searchBtn:       { backgroundColor: colors.green, borderRadius: radius.sm, paddingHorizontal: spacing.md, justifyContent: 'center', alignItems: 'center', minWidth: 72 },
   searchBtnText:   { color: colors.white, fontWeight: '700', fontSize: 14 },
   courseAltRow:    { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
-  altBtn:          { flex: 1, paddingVertical: 9, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
+  altBtn:          { flex: 1, paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
   altBtnText:      { fontSize: 13, color: colors.textMid, fontWeight: '600' },
   courseError:     { fontSize: 13, color: colors.red, marginTop: spacing.xs, marginBottom: spacing.xs },
   recentLabel:     { fontSize: 12, color: colors.textLight, fontWeight: '600', marginTop: spacing.sm, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.4 },
@@ -556,44 +564,52 @@ const styles = StyleSheet.create({
   courseChipClearText: { color: 'rgba(255,255,255,0.8)', fontSize: 16, fontWeight: '700' },
 
   // Tee selector
-  teeBtn:         { flex: 1, paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
-  teeBtnText:     { fontWeight: '600', color: colors.textDark, fontSize: 13 },
+  teeBtn:           { flex: 1, paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
+  teeBtnText:       { fontWeight: '600', color: colors.textDark, fontSize: 13 },
   teeBtnTextActive: { color: colors.white },
 
   // Manual entry
-  manualGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.sm },
-  manualCell:  { width: '18%', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, padding: spacing.xs, alignItems: 'center' },
+  manualGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.sm },
+  manualCell:    { width: '18%', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, padding: spacing.xs, alignItems: 'center' },
   manualHoleNum: { fontSize: 11, color: colors.textLight, fontWeight: '700', marginBottom: 2 },
   manualParRow:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  manualPar:   { fontSize: 16, fontWeight: '800', color: colors.textDark, minWidth: 18, textAlign: 'center' },
-  manualAdj:   { fontSize: 18, color: colors.green, fontWeight: '700', paddingHorizontal: 2 },
+  manualPar:     { fontSize: 16, fontWeight: '800', color: colors.textDark, minWidth: 18, textAlign: 'center' },
+  manualAdj:     { fontSize: 18, color: colors.green, fontWeight: '700', paddingHorizontal: 2 },
 
-  countBtn: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
-  countBtnActive: { backgroundColor: colors.green, borderColor: colors.green },
-  countBtnLocked: { opacity: 0.5 },
-  countBtnText: { fontWeight: '600', color: colors.textDark },
+  countBtn:           { flex: 1, paddingVertical: 11, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
+  countBtnActive:     { backgroundColor: colors.green, borderColor: colors.green },
+  countBtnLocked:     { opacity: 0.45 },
+  countBtnText:       { fontWeight: '600', color: colors.textDark, fontSize: 14 },
   countBtnTextActive: { color: colors.white },
+
   playerInputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
-  input:   { backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, padding: spacing.md, fontSize: 16, color: colors.textDark, marginBottom: spacing.sm },
-  pickerBtn: { backgroundColor: colors.green, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center', alignItems: 'center' },
-  pickerBtnText: { color: colors.white, fontSize: 18, fontWeight: '700' },
-  beanRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.xs },
-  beanName: { fontSize: 15, fontWeight: '600', color: colors.textDark },
-  beanValue: { color: colors.green },
-  neg:      { color: colors.red },
-  beanDesc: { fontSize: 12, color: colors.textLight, marginTop: 2 },
-  startBtn: { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center', marginTop: spacing.lg },
-  startText: { color: colors.white, fontWeight: '800', fontSize: 17 },
-  modalOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  pickerSheet:    { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: '60%', paddingBottom: 30 },
-  pickerHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  pickerTitle:    { fontSize: 17, fontWeight: '700', color: colors.textDark },
-  pickerClose:    { fontSize: 16, color: colors.green, fontWeight: '600' },
-  pickerItem:     { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  pickerAvatar:   { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center' },
+  input:          { backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, padding: spacing.md, fontSize: 16, color: colors.textDark, marginBottom: spacing.sm },
+  pickerBtn:      { backgroundColor: colors.green, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center', alignItems: 'center' },
+  pickerBtnText:  { color: colors.white, fontSize: 18, fontWeight: '700' },
+
+  // Bean rows
+  beanRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, borderLeftWidth: 4, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.xs, gap: spacing.sm },
+  beanDot:      { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  beanName:     { fontSize: 15, fontWeight: '700', color: colors.textDark },
+  beanProBadge: { fontSize: 10, fontWeight: '800', color: colors.gold, letterSpacing: 0.5 },
+  beanValue:    { fontSize: 13, fontWeight: '500', color: colors.green },
+  neg:          { color: colors.red },
+  beanDesc:     { fontSize: 12, color: colors.textLight, marginTop: 2 },
+
+  startBtn:  { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 18, alignItems: 'center', marginTop: spacing.lg, shadowColor: colors.green, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  startText: { color: colors.white, fontWeight: '800', fontSize: 17, letterSpacing: 0.3 },
+
+  modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  pickerSheet:      { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: '60%', paddingBottom: 30 },
+  pickerHeader:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border },
+  pickerTitle:      { fontSize: 17, fontWeight: '700', color: colors.textDark },
+  pickerClose:      { fontSize: 16, color: colors.green, fontWeight: '600' },
+  pickerItem:       { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border },
+  pickerAvatar:     { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center' },
   pickerAvatarText: { color: colors.white, fontWeight: '700', fontSize: 14 },
-  pickerItemText: { fontSize: 16, color: colors.textDark, fontWeight: '500' },
-  pickerEmpty:    { padding: spacing.lg, textAlign: 'center', color: colors.textLight, fontSize: 15, lineHeight: 24 },
+  pickerItemText:   { fontSize: 16, color: colors.textDark, fontWeight: '500' },
+  pickerEmpty:      { padding: spacing.lg, textAlign: 'center', color: colors.textLight, fontSize: 15, lineHeight: 24 },
+
   promptOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   promptCard:     { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg, width: '100%', maxWidth: 340 },
   promptTitle:    { fontSize: 18, fontWeight: '800', color: colors.textDark, marginBottom: spacing.xs },
