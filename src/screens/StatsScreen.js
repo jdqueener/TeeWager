@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform, Modal, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
@@ -6,9 +6,10 @@ import { loadStats, saveStats } from '../utils/storage';
 import { colors, spacing, radius } from '../utils/theme';
 import Avatar from '../components/Avatar';
 import PaywallModal from '../components/PaywallModal';
+import ProBanner from '../components/ProBanner';
 
 export default function StatsScreen() {
-  const { pro, setPro } = useGame();
+  const { pro, setPro, dispatch } = useGame();
   const [stats, setStats] = useState({});
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [resetVisible, setResetVisible] = useState(false);
@@ -37,14 +38,17 @@ export default function StatsScreen() {
 
   if (!pro) {
     return (
-      <View style={styles.lockScreen}>
-        <Text style={styles.lockEmoji}>🏆</Text>
-        <Text style={styles.lockTitle}>Lifetime Stats</Text>
-        <Text style={styles.lockSub}>Track beans won across all rounds. The ultimate bragging rights.</Text>
-        <TouchableOpacity style={styles.unlockBtn} onPress={() => setPaywallVisible(true)}>
-          <Text style={styles.unlockText}>Unlock Pro</Text>
-        </TouchableOpacity>
-        <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
+      <View style={styles.root}>
+        <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
+        <View style={styles.lockScreen}>
+          <Text style={styles.lockEmoji}>🏆</Text>
+          <Text style={styles.lockTitle}>Lifetime Stats</Text>
+          <Text style={styles.lockSub}>Track beans won across all rounds. The ultimate bragging rights.</Text>
+          <TouchableOpacity style={styles.unlockBtn} onPress={() => setPaywallVisible(true)}>
+            <Text style={styles.unlockText}>Unlock Pro</Text>
+          </TouchableOpacity>
+          <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
+        </View>
       </View>
     );
   }
@@ -53,6 +57,7 @@ export default function StatsScreen() {
 
   return (
     <View style={styles.root}>
+      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headingRow}>
           <Text style={styles.heading}>Lifetime Stats</Text>
@@ -156,7 +161,7 @@ const styles = StyleSheet.create({
   statRow:      { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: colors.border, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
   bestDate:     { fontSize: 12, color: colors.textLight, textAlign: 'center', paddingBottom: spacing.sm },
 
-  lockScreen:   { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  lockScreen:   { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, marginTop: -40 },
   lockEmoji:    { fontSize: 48, marginBottom: spacing.md },
   lockTitle:    { fontSize: 22, fontWeight: '800', color: colors.textDark, textAlign: 'center' },
   lockSub:      { fontSize: 15, color: colors.textMid, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.lg },
