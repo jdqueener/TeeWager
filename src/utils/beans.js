@@ -10,7 +10,7 @@ export const BEAN_DEFS = [
   { id: 'holeInOne', name: 'Hole in One',v:20, pf: null,  fb: false, free: false, desc: '' },
   { id: 'dblEagle',  name: 'Double Eagle',v:40,pf: [5],   fb: false, free: false, desc: '' },
   { id: 'sandyBird', name: 'Sandy Birdie',v:2, pf: null,  fb: false, free: false, desc: 'Birdie after sand' },
-  { id: 'sandyPar',  name: 'Sandy Par',  v: 1, pf: null,  fb: false, free: false, desc: 'Par after sand' },
+  { id: 'sandyPar',  name: 'Sandy Par',  v: 1, pf: null,  fb: false, free: true,  desc: 'Par after sand' },
   { id: 'twoTreePar',name: '2-Tree Par', v: 2, pf: null,  fb: false, free: false, desc: 'Par after 2 trees' },
   { id: 'teeStick',  name: 'Tee Sticks Up',v:1,pf: null,  fb: false, free: false, desc: 'Tee flips back in' },
   { id: 'flagLength',name: 'Flag Length +',v:1,pf: null,  fb: false, free: false, desc: 'Long putt made' },
