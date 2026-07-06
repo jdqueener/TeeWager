@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx expo export --platform web",
+  "buildCommand": "npx expo export --platform web && node -e \"const fs=require('fs');fs.copyFileSync('public/landing.html','dist/landing.html');\"",
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/app", "destination": "/index.html" },
