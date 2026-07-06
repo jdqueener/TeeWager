@@ -1,9 +1,11 @@
 {
   "buildCommand": "npx expo export --platform web && node -e \"const fs=require('fs');fs.copyFileSync('public/landing.html','dist/landing.html');\"",
   "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/app", "destination": "/index.html" },
-    { "source": "/app/(.*)", "destination": "/index.html" },
-    { "source": "/", "destination": "/landing.html" }
+  "routes": [
+    { "src": "^/$", "dest": "/landing.html" },
+    { "src": "^/app$", "dest": "/index.html" },
+    { "src": "^/app/(.*)$", "dest": "/index.html" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
