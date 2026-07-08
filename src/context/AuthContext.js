@@ -32,7 +32,11 @@ export function AuthProvider({ children }) {
   }, [session]);
 
   async function signUp(email, password, displayName) {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: 'https://teewager.vercel.app/app' },
+    });
     if (error) throw error;
     if (data.user) {
       await supabase.from('profiles').upsert({
