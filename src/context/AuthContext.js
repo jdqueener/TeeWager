@@ -35,7 +35,7 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: 'https://teewager.vercel.app/app' },
+      options: { emailRedirectTo: 'https://www.teewager.io/app' },
     });
     if (error) throw error;
     if (data.user) {
