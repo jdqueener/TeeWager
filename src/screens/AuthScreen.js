@@ -7,9 +7,9 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, radius } from '../utils/theme';
 
-export default function AuthScreen({ onSkip }) {
+export default function AuthScreen({ onSkip, initialMode }) {
   const { signUp, signIn } = useAuth();
-  const [mode, setMode] = useState('signin');
+  const [mode, setMode] = useState(initialMode === 'signup' ? 'signup' : 'signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

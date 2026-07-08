@@ -49,6 +49,12 @@
     display: flex; align-items: center; gap: 8px;
   }
   .nav-logo span { font-size: 20px; }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .nav-signin {
+    font-size: 13px; font-weight: 500; color: var(--green);
+    text-decoration: none; padding: 7px 4px;
+  }
+  .nav-signin:hover { text-decoration: underline; }
   .nav-cta {
     background: var(--green); color: #fff;
     padding: 7px 18px; border-radius: 20px;
@@ -433,7 +439,10 @@
 <!-- NAV -->
 <nav>
   <div class="nav-logo"><span>⛳</span> TeeWager</div>
-  <a href="/app" class="nav-cta">Open app — free</a>
+  <div class="nav-right">
+    <a href="/app?mode=signin" class="nav-signin">Sign in</a>
+    <a href="/app?mode=signup" class="nav-cta">Create account — free</a>
+  </div>
 </nav>
 
 <!-- HERO -->
@@ -442,8 +451,9 @@
   <h1>Make every<br><em>round count.</em></h1>
   <p class="hero-sub">Set a bean value, track who earns what hole by hole, and settle up at the bar with one tap. No math, no arguments, no IOUs.</p>
   <div class="hero-actions">
-    <a href="/app" class="btn-primary">Play free — open app</a>
-    <a href="#how" class="btn-secondary">See how it works</a>
+    <a href="/app?mode=signup" class="btn-primary">Create account — start free</a>
+    <a href="/app?mode=signin" class="btn-secondary">Sign in</a>
+    <a href="#how" class="btn-secondary" style="border-color:transparent;color:var(--slate-mid)">See how it works</a>
   </div>
 
   <!-- Live bean counter -->
@@ -825,6 +835,21 @@ updateCounter();
 if (window.location.hash && window.location.hash.includes('access_token')) {
   window.location.replace('/app' + window.location.hash);
 }
+
+// If user already has an active session, skip the landing page
+(function() {
+  try {
+    const key = 'sb-zzhilgpznznwxvzgpzwt-auth-token';
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const token = JSON.parse(raw);
+      const exp = token?.expires_at ?? token?.session?.expires_at;
+      if (exp && Date.now() / 1000 < exp) {
+        window.location.replace('/app');
+      }
+    }
+  } catch (e) {}
+})();
 </script>
 </body>
 </html>

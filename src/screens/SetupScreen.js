@@ -37,7 +37,13 @@ export default function SetupScreen() {
   );
   const { user } = useAuth();
   const [paywallVisible, setPaywallVisible] = useState(false);
-  const [authVisible, setAuthVisible] = useState(false);
+
+  // Read ?mode= from URL on web to auto-open auth in correct tab
+  const urlMode = Platform.OS === 'web'
+    ? (new URLSearchParams(window.location.search)).get('mode') ?? null
+    : null;
+  const [authVisible, setAuthVisible] = useState(urlMode === 'signin' || urlMode === 'signup');
+  const [authInitialMode, setAuthInitialMode] = useState(urlMode === 'signup' ? 'signup' : 'signin');
   const [savedPlayers, setSavedPlayers] = useState([]);
   const [pickerIdx, setPickerIdx] = useState(null);
   const [savePrompt, setSavePrompt] = useState(null);
@@ -224,13 +230,13 @@ export default function SetupScreen() {
           <View style={styles.heroRow}>
             <View style={{ width: 36 }} />
             <Text style={styles.heroTitle}>⛳ TeeWager</Text>
-            <AccountMenu size={32} onSignIn={() => setAuthVisible(true)} />
+            <AccountMenu size={32} onSignIn={() => { setAuthInitialMode('signin'); setAuthVisible(true); }} />
           </View>
           <Text style={styles.heroSub}>Set up your round</Text>
         </View>
 
         <Modal visible={authVisible} animationType="slide" onRequestClose={() => setAuthVisible(false)}>
-          <AuthScreen onSkip={() => setAuthVisible(false)} />
+          <AuthScreen onSkip={() => setAuthVisible(false)} initialMode={authInitialMode} />
         </Modal>
 
         {/* Course */}
