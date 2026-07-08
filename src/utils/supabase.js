@@ -5,7 +5,7 @@ if (Platform.OS !== 'web') {
   require('react-native-url-polyfill/auto');
 }
 
-const SUPABASE_URL      = 'https://zzhilgpznzwxvzgpzwt.supabase.co';
+const SUPABASE_URL      = 'https://zzhilgpznznwxvzgpzwt.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6aGlsZ3B6bnpud3h2emdwend0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NDI5MzEsImV4cCI6MjA5ODQxODkzMX0.2QfdhOb7QI-0fEvVpgYcIF2AhpO0usL2fhfZQFuCnxM';
 
 async function getStorage() {
