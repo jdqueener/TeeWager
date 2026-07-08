@@ -820,6 +820,11 @@ function updateCounter() {
 
 setInterval(updateCounter, 2800);
 updateCounter();
+
+// If Supabase auth tokens land on this page, forward to the app
+if (window.location.hash && window.location.hash.includes('access_token')) {
+  window.location.replace('/app' + window.location.hash);
+}
 </script>
 </body>
 </html>
