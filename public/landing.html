@@ -254,8 +254,14 @@
   .pricing-section { background: var(--sand); }
   .pricing-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px; margin-top: 48px;
+  }
+  @media (max-width: 900px) {
+    .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .pricing-grid { grid-template-columns: 1fr; }
   }
   .price-card {
     background: var(--chalk);
@@ -603,9 +609,26 @@
         </ul>
         <a href="/app" class="price-cta price-cta-free">Play free</a>
       </div>
+      <!-- MONTHLY -->
+      <div class="price-card">
+        <div class="price-plan">Pro — Monthly</div>
+        <div class="price-amount">$2.99</div>
+        <div class="price-period">per month</div>
+        <ul class="price-features">
+          <li>All 13 wagers unlocked</li>
+          <li>Custom wager creator</li>
+          <li>Up to 5 players</li>
+          <li>Screenshot share card</li>
+          <li>Side wagers + settle up</li>
+          <li>Hole-by-hole breakdown</li>
+          <li>Lifetime stats (bragging rights)</li>
+          <li>Impromptu bean — add anytime</li>
+        </ul>
+        <a href="/app" class="price-cta price-cta-lt">Start monthly — $2.99/mo</a>
+      </div>
       <!-- ANNUAL (FEATURED) -->
       <div class="price-card featured">
-        <div class="price-badge">Most popular</div>
+        <div class="price-badge">Best value</div>
         <div class="price-plan">Pro — Annual</div>
         <div class="price-amount">$29.90</div>
         <div class="price-period">per year</div>
@@ -635,7 +658,6 @@
           <li>Future features included</li>
         </ul>
         <a href="/app" class="price-cta price-cta-lt">Buy lifetime — $49.99</a>
-        <div style="font-size:11px;color:var(--slate-light);text-align:center;margin-top:10px">Also available: $2.99/mo monthly plan</div>
       </div>
     </div>
   </div>
