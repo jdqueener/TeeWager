@@ -4,14 +4,32 @@ import { colors, spacing, radius } from '../utils/theme';
 import AccountMenu from './AccountMenu';
 import AuthScreen from '../screens/AuthScreen';
 import PostRoundScreen from '../screens/PostRoundScreen';
+import { useGame } from '../context/GameContext';
 import {
   incrementRoundsPlayed, isTrialUsed, setTrialUsed, setProPlan,
 } from '../utils/storage';
+
+function computeSummary(state) {
+  const { players, scores, beanValue } = state;
+  if (!players?.length || !scores?.length) return null;
+  const totals = players.map((name, i) => {
+    let beans = 0;
+    for (const hole of (scores[i] || [])) {
+      if (!hole) continue;
+      for (const v of Object.values(hole)) beans += (v || 0);
+    }
+    return { name, beans };
+  });
+  const max = Math.max(...totals.map(t => t.beans));
+  const winner = totals.find(t => t.beans === max) || totals[0];
+  return { players: totals, winner, beanValue: beanValue || 1 };
+}
 
 // Flip to false when Stripe is live and the paywall should be enforced
 const IS_BETA = true;
 
 export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
+  const { state } = useGame();
   const [menuVisible, setMenuVisible] = useState(false);
   const [authVisible, setAuthVisible] = useState(false);
   const [postRoundVisible, setPostRoundVisible] = useState(false);
@@ -80,6 +98,7 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
       <PostRoundScreen
         visible={postRoundVisible}
         view={postRoundView}
+        summary={computeSummary(state)}
         onAcceptTrial={handleAcceptTrial}
         onSkip={handlePostRoundSkip}
       />

@@ -1,57 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import {
+  Modal, View, Text, TextInput, TouchableOpacity,
+  StyleSheet, Platform, ActivityIndicator,
+} from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
 
-// ── Stripe config ────────────────────────────────────────────────────────────
-// 1. Create a Payment Link in your Stripe Dashboard (Products → Payment Links).
-// 2. Set the "After payment" redirect URL to: teewager://pro-success
-//    (or https://teewager.app/pro-success for web builds)
-// 3. Paste the Payment Link URL here.
-const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/REPLACE_WITH_YOUR_PAYMENT_LINK';
-// ─────────────────────────────────────────────────────────────────────────────
+const STRIPE_MONTHLY  = 'https://buy.stripe.com/REPLACE_MONTHLY';
+const STRIPE_ANNUAL   = 'https://buy.stripe.com/REPLACE_ANNUAL';
+const STRIPE_LIFETIME = 'https://buy.stripe.com/REPLACE_LIFETIME';
 
 const PRO_FEATURES = [
-  '5 players (vs 4 free)',
-  'All 13 built-in beans',
+  'All 13 beans unlocked',
+  'Up to 5 players',
   'Custom bean creator',
-  'Impromptu bean button mid-round',
-  'Side wagers with settle-up',
-  'Screenshot share card',
   'Hole-by-hole breakdown tab',
+  'Screenshot share card',
   'Lifetime stats tracker',
 ];
 
-export default function PaywallModal({ visible, onClose, onUnlock }) {
-  const [view, setView] = useState('main'); // 'main' | 'restore'
-  const [email, setEmail] = useState('');
-  const [restoreStatus, setRestoreStatus] = useState(''); // '' | 'loading' | 'success' | 'notfound'
+function openStripe(url) {
+  if (Platform.OS === 'web') {
+    window.location.href = url;
+  }
+}
 
-  // Listen for the deep-link redirect from Stripe
+export default function PaywallModal({ visible, onClose, onUnlock }) {
+  const [view, setView] = useState('main');
+  const [email, setEmail] = useState('');
+  const [restoreStatus, setRestoreStatus] = useState('');
+
   useEffect(() => {
     const sub = Linking.addEventListener('url', ({ url }) => {
-      if (url.includes('pro-success')) {
-        handleUnlock();
-      }
+      if (url.includes('pro-success')) handleUnlock();
     });
     return () => sub.remove();
   }, []);
 
-  async function handlePurchase() {
+  async function handlePurchase(url) {
     if (Platform.OS === 'web') {
-      // On web, open in the same tab; Stripe redirects to the success URL
-      window.location.href = STRIPE_PAYMENT_LINK;
+      window.location.href = url;
     } else {
-      const result = await WebBrowser.openAuthSessionAsync(
-        STRIPE_PAYMENT_LINK,
-        'teewager://pro-success'
-      );
-      // openAuthSessionAsync resolves when the browser closes or redirects to our scheme
-      if (result.type === 'success' && result.url?.includes('pro-success')) {
-        handleUnlock();
-      }
+      const result = await WebBrowser.openAuthSessionAsync(url, 'teewager://pro-success');
+      if (result.type === 'success' && result.url?.includes('pro-success')) handleUnlock();
     }
   }
 
@@ -64,68 +57,79 @@ export default function PaywallModal({ visible, onClose, onUnlock }) {
   async function handleRestore() {
     if (!email.trim()) return;
     setRestoreStatus('loading');
-    // Without a backend, we optimistically trust the user that they paid.
-    // Replace the setTimeout below with an actual API call once you have a
-    // verification endpoint (e.g. a Cloudflare Worker that checks Stripe
-    // customer records by email and returns { pro: true/false }).
     await new Promise(r => setTimeout(r, 1200));
     setRestoreStatus('success');
     await storePro(true);
-    setTimeout(() => {
-      onUnlock();
-      onClose();
-      setView('main');
-      setRestoreStatus('');
-      setEmail('');
-    }, 800);
+    setTimeout(() => { onUnlock(); onClose(); setView('main'); setRestoreStatus(''); setEmail(''); }, 800);
   }
 
   function resetAndClose() {
-    setView('main');
-    setRestoreStatus('');
-    setEmail('');
-    onClose();
+    setView('main'); setRestoreStatus(''); setEmail(''); onClose();
   }
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={resetAndClose}>
       <View style={styles.overlay}>
-        <View style={styles.card}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={resetAndClose} />
+        <View style={styles.sheet}>
+          <View style={styles.pill} />
+
           {view === 'main' ? (
             <>
-              <Text style={styles.emoji}>⛳</Text>
               <Text style={styles.title}>TeeWager Pro</Text>
-              <Text style={styles.price}>$2.99 / month</Text>
+              <Text style={styles.body}>Unlock all 13 beans, breakdown tab, share cards, and lifetime stats.</Text>
 
-              <ScrollView style={styles.featureList} showsVerticalScrollIndicator={false}>
+              <View style={styles.featureList}>
                 {PRO_FEATURES.map(f => (
                   <View key={f} style={styles.featureRow}>
-                    <Text style={styles.check}>✓</Text>
+                    <View style={styles.checkCircle}><Text style={styles.checkMark}>✓</Text></View>
                     <Text style={styles.featureText}>{f}</Text>
                   </View>
                 ))}
-              </ScrollView>
+              </View>
 
-              <TouchableOpacity style={styles.buyBtn} onPress={handlePurchase} activeOpacity={0.85}>
-                <Text style={styles.buyText}>Unlock Pro — $2.99/mo</Text>
+              {/* Monthly */}
+              <TouchableOpacity style={styles.tierCard} onPress={() => handlePurchase(STRIPE_MONTHLY)} activeOpacity={0.85}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.tierName}>Monthly</Text>
+                  <Text style={styles.tierSub}>Try it, cancel anytime</Text>
+                </View>
+                <Text style={styles.tierPrice}>$2.99<Text style={styles.tierPer}>/mo</Text></Text>
+              </TouchableOpacity>
+
+              {/* Annual — featured */}
+              <TouchableOpacity style={[styles.tierCard, styles.tierCardFeatured]} onPress={() => handlePurchase(STRIPE_ANNUAL)} activeOpacity={0.85}>
+                <View style={styles.featuredBadge}><Text style={styles.featuredBadgeText}>BEST VALUE</Text></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.tierName, { color: colors.white }]}>Annual</Text>
+                  <Text style={[styles.tierSub, { color: 'rgba(255,255,255,0.65)' }]}>2 months free vs monthly</Text>
+                </View>
+                <Text style={[styles.tierPrice, { color: colors.white }]}>$29.90<Text style={styles.tierPer}>/yr</Text></Text>
+              </TouchableOpacity>
+
+              {/* Lifetime */}
+              <TouchableOpacity style={styles.tierCard} onPress={() => handlePurchase(STRIPE_LIFETIME)} activeOpacity={0.85}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.tierName}>Lifetime</Text>
+                  <Text style={styles.tierSub}>Pay once, play forever</Text>
+                </View>
+                <Text style={styles.tierPrice}>$49.99<Text style={styles.tierPer}> once</Text></Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => setView('restore')} style={styles.restoreBtn}>
                 <Text style={styles.restoreText}>Restore purchase</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={resetAndClose}>
-                <Text style={styles.closeText}>Not now</Text>
+              <TouchableOpacity style={styles.skipBtn} onPress={resetAndClose}>
+                <Text style={styles.skipText}>Not now</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={styles.emoji}>📧</Text>
               <Text style={styles.title}>Restore Purchase</Text>
-              <Text style={styles.restoreSub}>
+              <Text style={styles.body}>
                 Enter the email address you used when you purchased TeeWager Pro.
               </Text>
-
               <TextInput
                 style={styles.emailInput}
                 placeholder="you@example.com"
@@ -137,24 +141,22 @@ export default function PaywallModal({ visible, onClose, onUnlock }) {
                 onChangeText={setEmail}
                 editable={restoreStatus !== 'loading'}
               />
-
               {restoreStatus === 'loading' ? (
                 <ActivityIndicator color={colors.green} style={{ marginVertical: spacing.md }} />
               ) : restoreStatus === 'success' ? (
                 <Text style={styles.successText}>✓ Pro unlocked!</Text>
               ) : (
                 <TouchableOpacity
-                  style={[styles.buyBtn, !email.trim() && styles.buyBtnDisabled]}
+                  style={[styles.primaryBtn, !email.trim() && { opacity: 0.4 }]}
                   onPress={handleRestore}
                   disabled={!email.trim()}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.buyText}>Restore</Text>
+                  <Text style={styles.primaryBtnText}>Restore</Text>
                 </TouchableOpacity>
               )}
-
-              <TouchableOpacity onPress={() => { setView('main'); setRestoreStatus(''); setEmail(''); }}>
-                <Text style={styles.closeText}>← Back</Text>
+              <TouchableOpacity style={styles.skipBtn} onPress={() => { setView('main'); setRestoreStatus(''); setEmail(''); }}>
+                <Text style={styles.skipText}>← Back</Text>
               </TouchableOpacity>
             </>
           )}
@@ -165,22 +167,36 @@ export default function PaywallModal({ visible, onClose, onUnlock }) {
 }
 
 const styles = StyleSheet.create({
-  overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  card:        { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, paddingBottom: 44 },
-  emoji:       { fontSize: 40, textAlign: 'center', marginBottom: spacing.sm },
-  title:       { fontSize: 24, fontWeight: '800', textAlign: 'center', color: colors.textDark },
-  price:       { fontSize: 16, textAlign: 'center', color: colors.gold, fontWeight: '600', marginBottom: spacing.md },
-  featureList: { maxHeight: 200, marginBottom: spacing.md },
-  featureRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-  check:       { color: colors.green, fontWeight: '800', fontSize: 16, marginRight: spacing.sm },
-  featureText: { fontSize: 15, color: colors.textDark, flex: 1 },
-  buyBtn:      { backgroundColor: colors.gold, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', marginBottom: spacing.md },
-  buyBtnDisabled: { opacity: 0.4 },
-  buyText:     { color: colors.white, fontWeight: '800', fontSize: 16 },
-  restoreBtn:  { alignItems: 'center', marginBottom: spacing.sm },
-  restoreText: { color: colors.textMid, fontSize: 14, textDecorationLine: 'underline' },
-  closeText:   { textAlign: 'center', color: colors.textLight, fontSize: 14, marginTop: spacing.xs },
-  restoreSub:  { fontSize: 14, color: colors.textMid, textAlign: 'center', marginVertical: spacing.md, lineHeight: 20 },
-  emailInput:  { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.sm, padding: spacing.md, fontSize: 16, color: colors.textDark, marginBottom: spacing.md },
-  successText: { fontSize: 18, color: colors.green, fontWeight: '800', textAlign: 'center', marginVertical: spacing.md },
+  overlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  sheet:      { backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: 48, gap: spacing.sm },
+  pill:       { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.xs },
+
+  title:      { fontSize: 22, fontWeight: '900', color: colors.textDark, textAlign: 'center' },
+  body:       { fontSize: 14, color: colors.textMid, textAlign: 'center', lineHeight: 21 },
+
+  featureList:  { gap: 6, marginBottom: spacing.xs },
+  featureRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  checkCircle:  { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.green, alignItems: 'center', justifyContent: 'center', marginTop: 1, flexShrink: 0 },
+  checkMark:    { fontSize: 11, color: colors.white, fontWeight: '900' },
+  featureText:  { fontSize: 14, color: colors.textDark, flex: 1, lineHeight: 20 },
+
+  tierCard:         { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, position: 'relative', overflow: 'hidden' },
+  tierCardFeatured: { backgroundColor: colors.green, borderColor: colors.green },
+  tierName:         { fontSize: 15, fontWeight: '800', color: colors.textDark },
+  tierSub:          { fontSize: 12, color: colors.textLight, marginTop: 2 },
+  tierPrice:        { fontSize: 20, fontWeight: '900', color: colors.textDark },
+  tierPer:          { fontSize: 12, fontWeight: '400' },
+  featuredBadge:    { position: 'absolute', top: 0, right: 0, backgroundColor: colors.gold, paddingHorizontal: 10, paddingVertical: 3, borderBottomLeftRadius: radius.sm },
+  featuredBadgeText:{ fontSize: 9, fontWeight: '800', color: colors.white, letterSpacing: 0.5 },
+
+  primaryBtn:      { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center' },
+  primaryBtnText:  { color: colors.white, fontWeight: '800', fontSize: 16 },
+
+  restoreBtn:   { alignItems: 'center' },
+  restoreText:  { color: colors.textMid, fontSize: 14, textDecorationLine: 'underline' },
+  skipBtn:      { alignItems: 'center', paddingVertical: spacing.xs },
+  skipText:     { color: colors.textLight, fontSize: 14 },
+
+  emailInput:   { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.sm, padding: spacing.md, fontSize: 16, color: colors.textDark },
+  successText:  { fontSize: 18, color: colors.green, fontWeight: '800', textAlign: 'center', marginVertical: spacing.md },
 });
