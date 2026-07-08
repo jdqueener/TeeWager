@@ -8,6 +8,10 @@ import SetupScreen    from './src/screens/SetupScreen';
 import RoundNavigator from './src/screens/RoundNavigator';
 import { View, ActivityIndicator } from 'react-native';
 import { colors } from './src/utils/theme';
+import { captureReferral } from './src/utils/referral';
+
+// Capture ?ref= partner code as early as possible
+captureReferral();
 
 function AppContent() {
   const { state, loading } = useGame();

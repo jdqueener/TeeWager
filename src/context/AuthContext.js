@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase';
+import { getReferral, clearReferral } from '../utils/referral';
 
 const AuthContext = createContext(null);
 
@@ -39,11 +40,14 @@ export function AuthProvider({ children }) {
     });
     if (error) throw error;
     if (data.user) {
+      const ref = getReferral();
       await supabase.from('profiles').upsert({
         id: data.user.id,
         display_name: displayName,
         email,
+        ...(ref ? { referred_by: ref } : {}),
       });
+      if (ref) clearReferral();
     }
     return data;
   }

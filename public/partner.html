@@ -269,6 +269,18 @@
 
   <form id="partner-form" action="https://formspree.io/f/REPLACE_FORM_ID" method="POST">
 
+    <!-- Hidden referral code field — auto-populated from ?ref= URL param -->
+    <input type="hidden" id="referral-code" name="referral_code" value="" />
+
+    <!-- Referral confirmation banner (shown only when ?ref= is present) -->
+    <div id="ref-banner" style="display:none;background:var(--green);color:#fff;border-radius:12px;padding:14px 20px;margin-bottom:32px;display:none;align-items:center;gap:12px;">
+      <span style="font-size:20px">✓</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;">Your partner code is active</div>
+        <div style="font-size:13px;opacity:.8;">Code: <span id="ref-display"></span> — your QR code is linked and ready to go.</div>
+      </div>
+    </div>
+
     <!-- 1. COURSE INFO -->
     <div class="form-section">
       <div class="form-section-title">Your course</div>
@@ -606,6 +618,17 @@
 </footer>
 
 <script>
+// Capture ?ref= partner code from URL
+(function() {
+  const ref = new URLSearchParams(window.location.search).get('ref');
+  if (ref) {
+    document.getElementById('referral-code').value = ref;
+    document.getElementById('ref-display').textContent = ref;
+    const banner = document.getElementById('ref-banner');
+    banner.style.display = 'flex';
+  }
+})();
+
 function showPayout(type) {
   document.getElementById('ach-fields').style.display = type === 'ach' ? 'grid' : 'none';
   document.getElementById('check-fields').style.display = type === 'check' ? 'grid' : 'none';
