@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeeWager — Partner Course Program</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #1A4A2E;
+    --green-mid: #2d7a4f;
+    --sand: #F5EDD6;
+    --sand-dark: #EDE0C0;
+    --gold: #B8860B;
+    --gold-light: #DAA520;
+    --chalk: #FAFAF8;
+    --slate: #3D3D3D;
+    --slate-mid: #666;
+    --slate-light: #999;
+    --red: #c0392b;
+    --radius: 14px;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--chalk);
+    color: var(--slate);
+    line-height: 1.6;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(245,237,214,.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--sand-dark);
+    padding: 0 1.5rem;
+    height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-logo {
+    font-family: Georgia, serif; font-size: 18px; font-weight: 700;
+    color: var(--green); letter-spacing: -.02em;
+    display: flex; align-items: center; gap: 8px;
+    text-decoration: none;
+  }
+  .nav-logo span { font-size: 20px; }
+  .nav-back {
+    font-size: 13px; font-weight: 500; color: var(--green);
+    text-decoration: none; display: flex; align-items: center; gap: 6px;
+  }
+  .nav-back:hover { text-decoration: underline; }
+
+  /* HERO */
+  .hero {
+    background: var(--green);
+    padding: 120px 1.5rem 80px;
+    text-align: center;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.12); color: rgba(255,255,255,.85);
+    padding: 5px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 500; letter-spacing: .04em;
+    text-transform: uppercase; margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-family: Georgia, serif;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 700; color: #fff;
+    line-height: 1.1; letter-spacing: -.03em;
+    margin-bottom: 16px;
+  }
+  .hero-sub {
+    font-size: 1.05rem; color: rgba(255,255,255,.75);
+    max-width: 560px; margin: 0 auto 40px; line-height: 1.7;
+  }
+  .hero-stats {
+    display: flex; justify-content: center; gap: 48px;
+    flex-wrap: wrap;
+  }
+  .hero-stat-val {
+    font-family: Georgia, serif; font-size: 2rem; font-weight: 700;
+    color: var(--gold-light);
+  }
+  .hero-stat-label { font-size: 13px; color: rgba(255,255,255,.6); margin-top: 2px; }
+
+  /* MAIN LAYOUT */
+  .page-body { max-width: 780px; margin: 0 auto; padding: 60px 1.5rem 100px; }
+
+  /* SECTION HEADINGS */
+  .form-section { margin-bottom: 48px; }
+  .form-section-title {
+    font-family: Georgia, serif; font-size: 1.3rem; font-weight: 700;
+    color: var(--green); margin-bottom: 6px;
+    padding-bottom: 10px; border-bottom: 2px solid var(--sand-dark);
+  }
+  .form-section-sub { font-size: 13px; color: var(--slate-mid); margin-bottom: 24px; margin-top: 6px; }
+
+  /* FORM FIELDS */
+  .field-grid { display: grid; gap: 16px; }
+  .field-grid-2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 560px) { .field-grid-2 { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 13px; font-weight: 600; color: var(--slate); }
+  label span { color: var(--red); margin-left: 2px; }
+  input[type=text], input[type=email], input[type=tel],
+  input[type=number], select, textarea {
+    padding: 11px 14px;
+    border: 1.5px solid var(--sand-dark);
+    border-radius: 10px;
+    font-size: 15px; color: var(--slate);
+    background: #fff;
+    outline: none;
+    transition: border-color .15s;
+    font-family: inherit;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--green); }
+  textarea { resize: vertical; min-height: 90px; }
+  select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23666' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+
+  /* RADIO / CHECKBOX CARDS */
+  .option-cards { display: flex; flex-direction: column; gap: 10px; }
+  .option-card {
+    display: flex; align-items: flex-start; gap: 14px;
+    border: 1.5px solid var(--sand-dark); border-radius: 12px;
+    padding: 16px; cursor: pointer; transition: border-color .15s, background .15s;
+    background: #fff;
+  }
+  .option-card:hover { border-color: var(--green-mid); }
+  .option-card input[type=radio], .option-card input[type=checkbox] {
+    width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0;
+    accent-color: var(--green); cursor: pointer;
+    border: none; background: none; padding: 0;
+  }
+  .option-card-body { flex: 1; }
+  .option-card-title { font-size: 15px; font-weight: 700; color: var(--slate); }
+  .option-card-desc { font-size: 13px; color: var(--slate-mid); margin-top: 2px; line-height: 1.5; }
+
+  /* MATERIAL CARDS */
+  .material-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .material-card {
+    border: 1.5px solid var(--sand-dark); border-radius: 12px;
+    padding: 16px; background: #fff;
+  }
+  .material-icon { font-size: 28px; margin-bottom: 8px; }
+  .material-name { font-size: 14px; font-weight: 700; color: var(--slate); margin-bottom: 4px; }
+  .material-desc { font-size: 12px; color: var(--slate-mid); margin-bottom: 12px; line-height: 1.5; }
+  .material-qty { display: flex; align-items: center; gap: 10px; }
+  .material-qty label { font-size: 12px; color: var(--slate-mid); font-weight: 500; white-space: nowrap; }
+  .material-qty input[type=number] { width: 70px; padding: 7px 10px; font-size: 14px; border-radius: 8px; }
+
+  /* PAYOUT INFO BOX */
+  .info-box {
+    background: var(--sand); border: 1px solid var(--sand-dark);
+    border-radius: 12px; padding: 16px 20px;
+    font-size: 13px; color: var(--slate-mid); line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .info-box strong { color: var(--slate); }
+
+  /* ACH FIELDS */
+  #ach-fields, #check-fields { display: none; margin-top: 16px; }
+
+  /* T&C */
+  .tnc-box {
+    background: #fff; border: 1.5px solid var(--sand-dark);
+    border-radius: 12px; padding: 20px;
+    max-height: 260px; overflow-y: auto;
+    font-size: 13px; color: var(--slate-mid); line-height: 1.7;
+    margin-bottom: 16px;
+  }
+  .tnc-box h3 { font-size: 13px; font-weight: 700; color: var(--slate); margin: 14px 0 4px; }
+  .tnc-box h3:first-child { margin-top: 0; }
+  .tnc-box p { margin-bottom: 8px; }
+
+  .tnc-accept { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
+  .tnc-accept input[type=checkbox] { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; accent-color: var(--green); border: none; background: none; padding: 0; }
+  .tnc-accept-text { font-size: 14px; color: var(--slate); line-height: 1.5; }
+
+  /* SUBMIT */
+  .submit-btn {
+    width: 100%; background: var(--green); color: #fff;
+    border: none; border-radius: 14px;
+    padding: 17px; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: background .15s; margin-top: 24px;
+    font-family: inherit;
+  }
+  .submit-btn:hover { background: #163e26; }
+  .submit-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* SUCCESS */
+  #success-msg {
+    display: none; text-align: center;
+    background: #fff; border: 1.5px solid #c3e6cb;
+    border-radius: 14px; padding: 40px 24px; margin-top: 24px;
+  }
+  #success-msg .s-icon { font-size: 48px; margin-bottom: 12px; }
+  #success-msg h2 { font-family: Georgia, serif; font-size: 1.5rem; color: var(--green); margin-bottom: 8px; }
+  #success-msg p { font-size: 14px; color: var(--slate-mid); max-width: 420px; margin: 0 auto; }
+
+  /* FAQ */
+  .faq-section { background: var(--sand); padding: 80px 1.5rem; }
+  .faq-inner { max-width: 780px; margin: 0 auto; }
+  .faq-title {
+    font-family: Georgia, serif; font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 700; color: var(--green); margin-bottom: 32px;
+  }
+  .faq-item { border-bottom: 1px solid var(--sand-dark); }
+  .faq-q {
+    width: 100%; text-align: left; background: none; border: none;
+    padding: 18px 0; display: flex; justify-content: space-between; align-items: center;
+    font-size: 15px; font-weight: 600; color: var(--slate); cursor: pointer;
+    font-family: inherit; gap: 16px;
+  }
+  .faq-q:hover { color: var(--green); }
+  .faq-arrow { font-size: 18px; color: var(--slate-light); flex-shrink: 0; transition: transform .2s; }
+  .faq-item.open .faq-arrow { transform: rotate(180deg); }
+  .faq-a {
+    font-size: 14px; color: var(--slate-mid); line-height: 1.7;
+    max-height: 0; overflow: hidden; transition: max-height .3s ease, padding .3s;
+    padding-bottom: 0;
+  }
+  .faq-item.open .faq-a { max-height: 400px; padding-bottom: 18px; }
+
+  /* FOOTER */
+  footer {
+    background: var(--green); color: rgba(255,255,255,.5);
+    text-align: center; padding: 24px 1.5rem; font-size: 12px;
+  }
+  footer strong { color: rgba(255,255,255,.8); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo"><span>⛳</span> TeeWager</a>
+  <a href="/" class="nav-back">← Back to main site</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">Partner program</div>
+  <h1>Earn passive income.<br>Zero effort required.</h1>
+  <p class="hero-sub">Hang a placard. Your golfers find TeeWager. You earn 15% of every Pro subscription they sign up for — every month, automatically.</p>
+  <div class="hero-stats">
+    <div>
+      <div class="hero-stat-val">15%</div>
+      <div class="hero-stat-label">of every Pro subscription</div>
+    </div>
+    <div>
+      <div class="hero-stat-val">$0</div>
+      <div class="hero-stat-label">cost to partner</div>
+    </div>
+    <div>
+      <div class="hero-stat-val">Monthly</div>
+      <div class="hero-stat-label">payout, automatic</div>
+    </div>
+  </div>
+</section>
+
+<!-- FORM -->
+<div class="page-body">
+
+  <form id="partner-form" action="https://formspree.io/f/REPLACE_FORM_ID" method="POST">
+
+    <!-- 1. COURSE INFO -->
+    <div class="form-section">
+      <div class="form-section-title">Your course</div>
+      <div class="form-section-sub">Basic information about your golf course.</div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="course-name">Course name <span>*</span></label>
+          <input type="text" id="course-name" name="course_name" required placeholder="Pines Golf Club" />
+        </div>
+        <div class="field-grid field-grid-2">
+          <div class="field">
+            <label for="city">City <span>*</span></label>
+            <input type="text" id="city" name="city" required placeholder="Springfield" />
+          </div>
+          <div class="field">
+            <label for="state">State <span>*</span></label>
+            <select id="state" name="state" required>
+              <option value="">Select state</option>
+              <option>AL</option><option>AK</option><option>AZ</option><option>AR</option>
+              <option>CA</option><option>CO</option><option>CT</option><option>DE</option>
+              <option>FL</option><option>GA</option><option>HI</option><option>ID</option>
+              <option>IL</option><option>IN</option><option>IA</option><option>KS</option>
+              <option>KY</option><option>LA</option><option>ME</option><option>MD</option>
+              <option>MA</option><option>MI</option><option>MN</option><option>MS</option>
+              <option>MO</option><option>MT</option><option>NE</option><option>NV</option>
+              <option>NH</option><option>NJ</option><option>NM</option><option>NY</option>
+              <option>NC</option><option>ND</option><option>OH</option><option>OK</option>
+              <option>OR</option><option>PA</option><option>RI</option><option>SC</option>
+              <option>SD</option><option>TN</option><option>TX</option><option>UT</option>
+              <option>VT</option><option>VA</option><option>WA</option><option>WV</option>
+              <option>WI</option><option>WY</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="address">Mailing address for promotional materials <span>*</span></label>
+          <input type="text" id="address" name="mailing_address" required placeholder="123 Fairway Dr, Springfield, IL 62701" />
+        </div>
+        <div class="field-grid field-grid-2">
+          <div class="field">
+            <label for="course-type">Course type <span>*</span></label>
+            <select id="course-type" name="course_type" required>
+              <option value="">Select type</option>
+              <option>Public</option>
+              <option>Private</option>
+              <option>Semi-private</option>
+              <option>Resort</option>
+              <option>Municipal</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="monthly-rounds">Estimated monthly rounds</label>
+            <input type="number" id="monthly-rounds" name="monthly_rounds" placeholder="500" min="0" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. CONTACT -->
+    <div class="form-section">
+      <div class="form-section-title">Your contact information</div>
+      <div class="form-section-sub">The person we'll communicate with about the partnership.</div>
+      <div class="field-grid">
+        <div class="field-grid field-grid-2">
+          <div class="field">
+            <label for="first-name">First name <span>*</span></label>
+            <input type="text" id="first-name" name="first_name" required placeholder="John" />
+          </div>
+          <div class="field">
+            <label for="last-name">Last name <span>*</span></label>
+            <input type="text" id="last-name" name="last_name" required placeholder="Smith" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="title">Title / role</label>
+          <input type="text" id="title" name="title" placeholder="General Manager" />
+        </div>
+        <div class="field-grid field-grid-2">
+          <div class="field">
+            <label for="email">Email <span>*</span></label>
+            <input type="email" id="email" name="email" required placeholder="john@pinesgolf.com" />
+          </div>
+          <div class="field">
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" name="phone" placeholder="(555) 000-0000" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. PAYOUT -->
+    <div class="form-section">
+      <div class="form-section-title">Payout preference</div>
+      <div class="form-section-sub">How you'd like to receive your monthly earnings. We pay out on the 15th of each month for the prior month's activity.</div>
+
+      <div class="info-box">
+        <strong>Minimum payout threshold: $10.</strong> Earnings below $10 roll forward to the next month. You'll receive a simple earnings report by email each month regardless of payout status.
+      </div>
+
+      <div class="option-cards">
+        <label class="option-card">
+          <input type="radio" name="payout_method" value="ACH" required onchange="showPayout('ach')" />
+          <div class="option-card-body">
+            <div class="option-card-title">ACH direct deposit</div>
+            <div class="option-card-desc">Fastest option — funds deposited directly to your bank account. US bank accounts only.</div>
+          </div>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="payout_method" value="Check" onchange="showPayout('check')" />
+          <div class="option-card-body">
+            <div class="option-card-title">Paper check</div>
+            <div class="option-card-desc">Mailed to your course address. Allow 5–7 business days for delivery.</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- ACH fields -->
+      <div id="ach-fields" class="field-grid">
+        <div class="field-grid field-grid-2">
+          <div class="field">
+            <label for="bank-name">Bank name <span>*</span></label>
+            <input type="text" id="bank-name" name="bank_name" placeholder="First National Bank" />
+          </div>
+          <div class="field">
+            <label for="account-name">Account holder name <span>*</span></label>
+            <input type="text" id="account-name" name="account_holder_name" placeholder="Pines Golf Club LLC" />
+          </div>
+        </div>
+        <div class="field-grid field-grid-2">
+          <div class="field">
+            <label for="routing">Routing number <span>*</span></label>
+            <input type="text" id="routing" name="routing_number" placeholder="021000021" maxlength="9" />
+          </div>
+          <div class="field">
+            <label for="account">Account number <span>*</span></label>
+            <input type="text" id="account" name="account_number" placeholder="••••••••••" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="account-type">Account type <span>*</span></label>
+          <select id="account-type" name="account_type">
+            <option value="">Select</option>
+            <option>Checking</option>
+            <option>Savings</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Check fields -->
+      <div id="check-fields" class="field-grid">
+        <div class="field">
+          <label for="check-payable">Make check payable to <span>*</span></label>
+          <input type="text" id="check-payable" name="check_payable_to" placeholder="Pines Golf Club LLC" />
+        </div>
+        <div class="field">
+          <label for="check-address">Check mailing address <span>*</span></label>
+          <input type="text" id="check-address" name="check_mailing_address" placeholder="Same as course address, or enter alternate" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. PROMOTIONAL MATERIALS -->
+    <div class="form-section">
+      <div class="form-section-title">Starter kit — promotional materials</div>
+      <div class="form-section-sub">We'll mail your starter kit at no cost. Select what you'd like included and how many of each. All materials are TeeWager branded with your unique QR code.</div>
+
+      <div class="material-grid">
+        <div class="material-card">
+          <div class="material-icon">🪧</div>
+          <div class="material-name">Counter placard</div>
+          <div class="material-desc">5×7 standing placard. Ideal for bar counters, pro shop registers, and cart staging areas.</div>
+          <div class="material-qty">
+            <label for="qty-counter">Qty:</label>
+            <input type="number" id="qty-counter" name="qty_counter_placard" value="2" min="0" max="50" />
+          </div>
+        </div>
+
+        <div class="material-card">
+          <div class="material-icon">🏕️</div>
+          <div class="material-name">Table tent placard</div>
+          <div class="material-desc">4×6 folded tent card. Great for dining tables, locker rooms, and waiting areas.</div>
+          <div class="material-qty">
+            <label for="qty-tent">Qty:</label>
+            <input type="number" id="qty-tent" name="qty_table_tent" value="5" min="0" max="100" />
+          </div>
+        </div>
+
+        <div class="material-card">
+          <div class="material-icon">🧲</div>
+          <div class="material-name">Magnetic placard</div>
+          <div class="material-desc">Flexible magnet, 4×6. Attaches to cart frames, refrigerators, metal fixtures.</div>
+          <div class="material-qty">
+            <label for="qty-magnet">Qty:</label>
+            <input type="number" id="qty-magnet" name="qty_magnetic_placard" value="4" min="0" max="50" />
+          </div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:16px">
+        <label for="special-notes">Special placement notes or requests</label>
+        <textarea id="special-notes" name="placement_notes" placeholder="e.g. We have 36 carts and would love more magnets, or we'd like materials for our second location..."></textarea>
+      </div>
+    </div>
+
+    <!-- 5. T&C -->
+    <div class="form-section">
+      <div class="form-section-title">Terms & conditions</div>
+      <div class="form-section-sub">Please read and accept the TeeWager Partner Program agreement before submitting.</div>
+
+      <div class="tnc-box">
+        <h3>1. Program Overview</h3>
+        <p>The TeeWager Partner Course Program ("Program") allows eligible golf courses ("Partner") to earn referral commissions when golfers who access the TeeWager app via a Partner's unique QR code upgrade to a TeeWager Pro subscription. TeeWager ("Company") reserves the right to modify or terminate this Program at any time with 30 days written notice.</p>
+
+        <h3>2. Commission Structure</h3>
+        <p>Partners earn 15% of net revenue collected from each Pro subscription attributed to their unique QR code. Commission is calculated on the net amount received by TeeWager after payment processor fees. Current rates: Monthly Pro ($2.99/mo) → $0.37/mo; Annual Pro ($29.90/yr) → $3.83/yr; Lifetime ($49.99 once) → $6.33 once.</p>
+
+        <h3>3. Attribution</h3>
+        <p>A subscription is attributed to a Partner when a user scans the Partner's unique QR code, installs the app, and purchases a Pro subscription within 90 days of their first scan. Each QR code is unique to the Partner and must not be shared with other venues or parties.</p>
+
+        <h3>4. Payout Schedule</h3>
+        <p>Commissions are paid on or around the 15th of each calendar month for all qualifying activity in the prior calendar month. A minimum balance of $10.00 is required for payout. Balances below this threshold roll forward until the minimum is reached. TeeWager is not responsible for payment delays caused by incorrect banking information provided by the Partner.</p>
+
+        <h3>5. Promotional Materials</h3>
+        <p>TeeWager will provide an initial starter kit of branded promotional materials at no cost to the Partner. Additional materials may be requested at any time and are subject to availability and shipping charges. Promotional materials remain the property of TeeWager and must not be altered or defaced. Partner agrees to display materials in good condition in visible customer-facing areas of the course.</p>
+
+        <h3>6. Partner Obligations</h3>
+        <p>Partner agrees to: (a) display TeeWager promotional materials in at least one customer-facing location; (b) provide accurate banking or mailing information for payouts; (c) notify TeeWager within 14 days of any change in ownership, contact, or banking information; (d) not make representations about TeeWager beyond what is stated on the provided materials.</p>
+
+        <h3>7. No Exclusivity</h3>
+        <p>This agreement is non-exclusive. TeeWager may partner with multiple golf courses in the same geographic area. Partner is free to promote other apps or services alongside TeeWager.</p>
+
+        <h3>8. Termination</h3>
+        <p>Either party may terminate this agreement at any time with 14 days written notice to the other party. Upon termination, any outstanding commissions earned prior to termination will be paid at the next regular payout date. TeeWager reserves the right to immediately terminate any Partner found to be engaging in fraudulent activity, misuse of QR codes, or violation of these terms.</p>
+
+        <h3>9. Limitation of Liability</h3>
+        <p>TeeWager's total liability under this agreement shall not exceed the commissions paid to Partner in the prior three calendar months. TeeWager is not liable for indirect, consequential, or incidental damages of any kind.</p>
+
+        <h3>10. Governing Law</h3>
+        <p>This agreement is governed by the laws of the State of Oregon. Any disputes shall be resolved in the courts of Oregon. This agreement constitutes the entire agreement between the parties with respect to the Partner Program and supersedes all prior agreements.</p>
+      </div>
+
+      <label class="tnc-accept" id="tnc-label">
+        <input type="checkbox" id="tnc-check" name="tnc_accepted" value="yes" required />
+        <span class="tnc-accept-text">I have read and agree to the TeeWager Partner Program Terms &amp; Conditions on behalf of my golf course. I am authorized to enter into this agreement.</span>
+      </label>
+    </div>
+
+    <!-- SUBMIT -->
+    <button type="submit" class="submit-btn" id="submit-btn">Submit partner application →</button>
+
+    <div id="success-msg">
+      <div class="s-icon">🎉</div>
+      <h2>Application received!</h2>
+      <p>We'll review your application and reach out within 2–3 business days with your unique QR code and to confirm your starter kit is on its way. Questions? Email <a href="mailto:partners@teewager.com" style="color:var(--green)">partners@teewager.com</a>.</p>
+    </div>
+
+  </form>
+</div>
+
+<!-- FAQ -->
+<section class="faq-section">
+  <div class="faq-inner">
+    <div class="faq-title">Frequently asked questions</div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How does TeeWager track which golfers came from my course?
+        <span class="faq-arrow">▾</span>
+      </button>
+      <div class="faq-a">Each partner course receives a unique QR code. When a golfer scans it, downloads the app, and upgrades to Pro within 90 days, that subscription is attributed to your course. The QR code is yours — it doesn't expire and you can reorder materials with the same code anytime.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        When and how do I get paid?
+        <span class="faq-arrow">▾</span>
+      </button>
+      <div class="faq-a">Payouts go out on or around the 15th of each month for the prior month's activity. You choose ACH direct deposit (fastest) or a paper check mailed to your address. You'll receive an earnings report by email each month showing exactly how many conversions came from your QR code and what you earned.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What if a monthly subscriber cancels and re-subscribes?
+        <span class="faq-arrow">▾</span>
+      </button>
+      <div class="faq-a">You earn commission for every month a subscriber is active. If they cancel and re-subscribe later, you continue earning as long as the original attribution to your QR code is within the 90-day window. After 90 days, re-subscriptions from returning users are not re-attributed.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Is there any cost or ongoing commitment?
+        <span class="faq-arrow">▾</span>
+      </button>
+      <div class="faq-a">None. The starter kit is free, shipping is on us, and there are no monthly fees or minimums. You can cancel the partnership at any time with 14 days notice. Any commissions earned before cancellation are still paid out at the next regular payout date.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Can I order more promotional materials later?
+        <span class="faq-arrow">▾</span>
+      </button>
+      <div class="faq-a">Yes — email partners@teewager.com anytime to request additional materials. Reorders use the same QR code so attribution is unaffected. We aim to fulfill reorders within 7–10 business days.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Where should I display the materials?
+        <span class="faq-arrow">▾</span>
+      </button>
+      <div class="faq-a">High-traffic golfer areas work best: the bar, pro shop counter, cart staging area, and dining tables. The more visible the QR code, the more scans — and the more you earn. We've seen the best results with magnets on carts combined with a counter placard at the bar.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Do my golfers need to be TeeWager users already?
+        <span class="faq-arrow">▾</span>
+      </button>
+      <div class="faq-a">No — TeeWager is free to download and play. Your golfers don't need an account to start. The QR code takes them straight to the app download page, they play a free round, and if they love it they upgrade to Pro. You earn on the upgrade, not the download.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        I have multiple courses — can they each be partners?
+        <span class="faq-arrow">▾</span>
+      </button>
+      <div class="faq-a">Absolutely. Each location gets its own unique QR code and earns commissions independently. Submit one application per location so we can set up separate payout accounts and send starter kits to each address.</div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <strong>TeeWager</strong> &nbsp;·&nbsp; Partner Program &nbsp;·&nbsp;
+  <a href="mailto:partners@teewager.com" style="color:rgba(255,255,255,.5)">partners@teewager.com</a>
+</footer>
+
+<script>
+function showPayout(type) {
+  document.getElementById('ach-fields').style.display = type === 'ach' ? 'grid' : 'none';
+  document.getElementById('check-fields').style.display = type === 'check' ? 'grid' : 'none';
+}
+
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+
+// Form submission
+document.getElementById('partner-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  const data = new FormData(this);
+  try {
+    const res = await fetch(this.action, {
+      method: 'POST',
+      body: data,
+      headers: { 'Accept': 'application/json' },
+    });
+    if (res.ok) {
+      this.style.display = 'none';
+      document.getElementById('success-msg').style.display = 'block';
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Submit partner application →';
+      alert('Something went wrong. Please email partners@teewager.com directly.');
+    }
+  } catch {
+    btn.disabled = false;
+    btn.textContent = 'Submit partner application →';
+    alert('Network error. Please email partners@teewager.com directly.');
+  }
+});
+</script>
+</body>
+</html>
