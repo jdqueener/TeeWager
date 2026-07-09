@@ -267,7 +267,7 @@
 <!-- FORM -->
 <div class="page-body">
 
-  <form id="partner-form" action="https://formspree.io/f/REPLACE_FORM_ID" method="POST">
+  <form id="partner-form">
 
     <!-- Hidden referral code field — auto-populated from ?ref= URL param -->
     <input type="hidden" id="referral-code" name="referral_code" value="" />
@@ -641,24 +641,65 @@ function toggleFaq(btn) {
   if (!isOpen) item.classList.add('open');
 }
 
-// Form submission
+// Supabase config
+const SUPABASE_URL = 'https://zzhilgpznznwxvzgpzwt.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6aGlsZ3B6bnpud3h2emdwend0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NDI5MzEsImV4cCI6MjA5ODQxODkzMX0.2QfdhOb7QI-0fEvVpgYcIF2AhpO0usL2fhfZQFuCnxM';
+
+// Form submission — inserts directly into Supabase partners table
 document.getElementById('partner-form').addEventListener('submit', async function(e) {
   e.preventDefault();
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.textContent = 'Submitting…';
 
-  const data = new FormData(this);
+  const f = this;
+  const get = name => (f.elements[name] ? f.elements[name].value.trim() : '');
+
+  const payload = {
+    course_name:          get('course_name'),
+    city:                 get('city'),
+    state:                get('state'),
+    mailing_address:      get('mailing_address'),
+    course_type:          get('course_type'),
+    monthly_rounds:       parseInt(get('monthly_rounds')) || null,
+    first_name:           get('first_name'),
+    last_name:            get('last_name'),
+    title:                get('title'),
+    email:                get('email'),
+    phone:                get('phone'),
+    payout_method:        get('payout_method'),
+    bank_name:            get('bank_name') || null,
+    account_holder_name:  get('account_holder_name') || null,
+    routing_number:       get('routing_number') || null,
+    account_number:       get('account_number') || null,
+    account_type:         get('account_type') || null,
+    check_payable_to:     get('check_payable_to') || null,
+    check_mailing_address:get('check_mailing_address') || null,
+    qty_counter_placard:  parseInt(get('qty_counter_placard')) || 0,
+    qty_table_tent:       parseInt(get('qty_table_tent')) || 0,
+    qty_magnetic_placard: parseInt(get('qty_magnetic_placard')) || 0,
+    placement_notes:      get('placement_notes') || null,
+    referral_code:        get('referral_code') || null,
+  };
+
   try {
-    const res = await fetch(this.action, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
       method: 'POST',
-      body: data,
-      headers: { 'Accept': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(payload),
     });
+
     if (res.ok) {
-      this.style.display = 'none';
+      f.style.display = 'none';
       document.getElementById('success-msg').style.display = 'block';
     } else {
+      const err = await res.json().catch(() => ({}));
+      console.error('Supabase error', err);
       btn.disabled = false;
       btn.textContent = 'Submit partner application →';
       alert('Something went wrong. Please email partners@teewager.io directly.');
