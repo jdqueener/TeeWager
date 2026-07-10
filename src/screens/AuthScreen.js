@@ -2,125 +2,112 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
-  StatusBar,
+  StatusBar, Linking,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, radius } from '../utils/theme';
 
-export default function AuthScreen({ onSkip, initialMode }) {
+// Replace with real Stripe links when ready
+const STRIPE_ANNUAL  = 'https://buy.stripe.com/REPLACE_ANNUAL';
+const STRIPE_MONTHLY = 'https://buy.stripe.com/REPLACE_MONTHLY';
+
+const FREE_FEATURES = [
+  { label: 'Up to 4 players per round', pro: false },
+  { label: 'All standard bean types', pro: false },
+  { label: 'Live scorecard & leaderboard', pro: false },
+  { label: 'Round history', pro: false },
+];
+
+const PRO_EXTRAS = [
+  { label: '5th player slot', pro: true },
+  { label: 'Pro-only bean types (Nassau, Skins…)', pro: true },
+  { label: 'Unlimited round history', pro: true },
+  { label: 'Priority support', pro: true },
+];
+
+function Check({ pro }) {
+  return (
+    <View style={[styles.check, pro && styles.checkPro]}>
+      <Text style={styles.checkMark}>✓</Text>
+    </View>
+  );
+}
+
+// ─── Step 1: Auth form ────────────────────────────────────────────────────────
+function AuthForm({ onSkip, initialMode, onSignedUp }) {
   const { signUp, signIn } = useAuth();
   const [mode, setMode] = useState(initialMode === 'signup' ? 'signup' : 'signin');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName]         = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [error, setBusy_error]  = useState('');
+  const [busy, setBusy]         = useState(false);
+
+  const isSignUp = mode === 'signup';
 
   async function submit() {
-    setError('');
-    if (!email.trim() || !password) { setError('Enter an email and password.'); return; }
-    if (mode === 'signup' && !name.trim()) { setError('Enter a display name.'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    setBusy_error('');
+    if (!email.trim() || !password) { setBusy_error('Enter an email and password.'); return; }
+    if (isSignUp && !name.trim())   { setBusy_error('Enter a display name.'); return; }
+    if (password.length < 6)        { setBusy_error('Password must be at least 6 characters.'); return; }
     setBusy(true);
     try {
-      if (mode === 'signup') {
+      if (isSignUp) {
         await signUp(email.trim(), password, name.trim());
+        onSignedUp(); // go to plan picker
       } else {
         await signIn(email.trim(), password);
+        // sign-in: AuthContext session update closes the modal via parent
       }
     } catch (e) {
-      setError(e.message || 'Something went wrong.');
+      setBusy_error(e.message || 'Something went wrong.');
     } finally {
       setBusy(false);
     }
   }
 
-  const isSignUp = mode === 'signup';
-
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-
-      {/* Hero */}
       <View style={styles.hero}>
         <Text style={styles.heroEmoji}>⛳</Text>
         <Text style={styles.heroTitle}>TeeWager</Text>
         <Text style={styles.heroSub}>Friendly wagers. Every round.</Text>
       </View>
 
-      {/* Form card */}
-      <KeyboardAvoidingView
-        style={styles.cardWrap}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.card}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Mode toggle tabs */}
+      <KeyboardAvoidingView style={styles.cardWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.card} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.tabs}>
-            <TouchableOpacity
-              style={[styles.tab, !isSignUp && styles.tabActive]}
-              onPress={() => { setMode('signin'); setError(''); }}
-            >
+            <TouchableOpacity style={[styles.tab, !isSignUp && styles.tabActive]} onPress={() => { setMode('signin'); setBusy_error(''); }}>
               <Text style={[styles.tabText, !isSignUp && styles.tabTextActive]}>Sign In</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, isSignUp && styles.tabActive]}
-              onPress={() => { setMode('signup'); setError(''); }}
-            >
+            <TouchableOpacity style={[styles.tab, isSignUp && styles.tabActive]} onPress={() => { setMode('signup'); setBusy_error(''); }}>
               <Text style={[styles.tabText, isSignUp && styles.tabTextActive]}>Create Account</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.formTitle}>
-            {isSignUp ? 'Join TeeWager' : 'Welcome back'}
-          </Text>
+          <Text style={styles.formTitle}>{isSignUp ? 'Join TeeWager' : 'Welcome back'}</Text>
 
-          {/* Inputs */}
           {isSignUp && (
             <View style={styles.inputWrap}>
               <Text style={styles.inputIcon}>👤</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Display name"
-                placeholderTextColor={colors.textLight}
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-                returnKeyType="next"
-              />
+              <TextInput style={styles.input} placeholder="Display name" placeholderTextColor={colors.textLight}
+                value={name} onChangeText={setName} autoCapitalize="words" returnKeyType="next" />
             </View>
           )}
 
           <View style={styles.inputWrap}>
             <Text style={styles.inputIcon}>✉️</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Email address"
-              placeholderTextColor={colors.textLight}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              returnKeyType="next"
-            />
+            <TextInput style={styles.input} placeholder="Email address" placeholderTextColor={colors.textLight}
+              value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" returnKeyType="next" />
           </View>
 
           <View style={styles.inputWrap}>
             <Text style={styles.inputIcon}>🔒</Text>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Password"
-              placeholderTextColor={colors.textLight}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              returnKeyType="done"
-              onSubmitEditing={submit}
-            />
+            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Password" placeholderTextColor={colors.textLight}
+              value={password} onChangeText={setPassword} secureTextEntry={!showPassword}
+              returnKeyType="done" onSubmitEditing={submit} />
             <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={styles.eyeBtn}>
               <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
@@ -132,19 +119,10 @@ export default function AuthScreen({ onSkip, initialMode }) {
             </View>
           )}
 
-          <TouchableOpacity
-            style={[styles.submitBtn, busy && styles.submitBtnDisabled]}
-            onPress={submit}
-            disabled={busy}
-            activeOpacity={0.85}
-          >
-            {busy
-              ? <ActivityIndicator color={colors.white} />
-              : <Text style={styles.submitText}>{isSignUp ? 'Create Account' : 'Sign In'}</Text>
-            }
+          <TouchableOpacity style={[styles.submitBtn, busy && styles.submitBtnDisabled]} onPress={submit} disabled={busy} activeOpacity={0.85}>
+            {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.submitText}>{isSignUp ? 'Create Account' : 'Sign In'}</Text>}
           </TouchableOpacity>
 
-          {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>or</Text>
@@ -158,9 +136,7 @@ export default function AuthScreen({ onSkip, initialMode }) {
           )}
 
           {isSignUp && (
-            <Text style={styles.terms}>
-              By creating an account you agree to our Terms of Service and Privacy Policy.
-            </Text>
+            <Text style={styles.terms}>By creating an account you agree to our Terms of Service and Privacy Policy.</Text>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -168,52 +144,230 @@ export default function AuthScreen({ onSkip, initialMode }) {
   );
 }
 
+// ─── Step 2: Plan picker ──────────────────────────────────────────────────────
+function PlanPicker({ onSelectFree, onSelectPro }) {
+  return (
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
+      <View style={[styles.hero, { paddingBottom: 24 }]}>
+        <Text style={styles.heroEmoji}>🎉</Text>
+        <Text style={styles.heroTitle}>Account created!</Text>
+        <Text style={styles.heroSub}>Choose how you want to play</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={[styles.card, { borderTopLeftRadius: 28, borderTopRightRadius: 28, flexGrow: 1 }]} showsVerticalScrollIndicator={false}>
+        <Text style={styles.planHeading}>Pick your plan</Text>
+        <Text style={styles.planSub}>You can upgrade or change anytime.</Text>
+
+        {/* Free card */}
+        <TouchableOpacity style={styles.planCard} onPress={onSelectFree} activeOpacity={0.85}>
+          <View style={styles.planCardHeader}>
+            <Text style={styles.planName}>Free</Text>
+            <Text style={styles.planPrice}>$0 / forever</Text>
+          </View>
+          {FREE_FEATURES.map(f => (
+            <View key={f.label} style={styles.featureRow}>
+              <Check pro={false} />
+              <Text style={styles.featureText}>{f.label}</Text>
+            </View>
+          ))}
+          <View style={[styles.planCta, styles.planCtaFree]}>
+            <Text style={[styles.planCtaText, { color: colors.green }]}>Start free →</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Pro card */}
+        <TouchableOpacity style={[styles.planCard, styles.planCardPro]} onPress={onSelectPro} activeOpacity={0.85}>
+          <View style={styles.proBadge}><Text style={styles.proBadgeText}>BEST VALUE</Text></View>
+          <View style={styles.planCardHeader}>
+            <Text style={[styles.planName, { color: colors.white }]}>Pro</Text>
+            <View>
+              <Text style={[styles.planPrice, { color: 'rgba(255,255,255,0.9)' }]}>$29.90 / year</Text>
+              <Text style={styles.planPriceAlt}>or $2.99/month</Text>
+            </View>
+          </View>
+          <Text style={[styles.planSection, { color: 'rgba(255,255,255,0.7)' }]}>Everything in Free, plus:</Text>
+          {PRO_EXTRAS.map(f => (
+            <View key={f.label} style={styles.featureRow}>
+              <Check pro={true} />
+              <Text style={[styles.featureText, { color: colors.white }]}>{f.label}</Text>
+            </View>
+          ))}
+          <View style={[styles.planCta, styles.planCtaPro]}>
+            <Text style={[styles.planCtaText, { color: colors.green }]}>Unlock Pro →</Text>
+          </View>
+        </TouchableOpacity>
+
+        <Text style={styles.planFootnote}>Pro subscriptions are billed through Stripe. Cancel anytime.</Text>
+      </ScrollView>
+    </View>
+  );
+}
+
+// ─── Step 3: Welcome screen ───────────────────────────────────────────────────
+function WelcomeScreen({ plan, onDone }) {
+  const isPro = plan === 'pro';
+  return (
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
+      <View style={[styles.hero, { paddingBottom: 20 }]}>
+        <Text style={styles.heroEmoji}>{isPro ? '🏆' : '⛳'}</Text>
+        <Text style={styles.heroTitle}>{isPro ? 'Welcome, Pro!' : 'Welcome!'}</Text>
+        <Text style={styles.heroSub}>{isPro ? 'All features unlocked.' : "You're on the free plan."}</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={[styles.card, { borderTopLeftRadius: 28, borderTopRightRadius: 28, flexGrow: 1 }]} showsVerticalScrollIndicator={false}>
+        <Text style={styles.planHeading}>What you have access to</Text>
+
+        {FREE_FEATURES.map(f => (
+          <View key={f.label} style={styles.featureRow}>
+            <Check pro={false} />
+            <Text style={styles.featureText}>{f.label}</Text>
+          </View>
+        ))}
+
+        {isPro && PRO_EXTRAS.map(f => (
+          <View key={f.label} style={styles.featureRow}>
+            <Check pro={true} />
+            <Text style={styles.featureText}>{f.label}</Text>
+          </View>
+        ))}
+
+        {!isPro && (
+          <View style={styles.upgradeNudge}>
+            <Text style={styles.upgradeNudgeTitle}>Want more?</Text>
+            <Text style={styles.upgradeNudgeBody}>
+              Upgrade to Pro for a 5th player, exclusive bean types, and unlimited history — just $29.90/year.
+            </Text>
+            <TouchableOpacity
+              style={styles.upgradeNudgeBtn}
+              onPress={() => Linking.openURL(STRIPE_ANNUAL)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.upgradeNudgeBtnText}>Upgrade to Pro</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <TouchableOpacity style={styles.submitBtn} onPress={onDone} activeOpacity={0.85}>
+          <Text style={styles.submitText}>Start Playing →</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.terms}>You can upgrade anytime from the account menu.</Text>
+      </ScrollView>
+    </View>
+  );
+}
+
+// ─── Main export ──────────────────────────────────────────────────────────────
+export default function AuthScreen({ onSkip, initialMode }) {
+  const [step, setStep] = useState('auth'); // 'auth' | 'plan' | 'welcome'
+  const [plan, setPlan] = useState('free');
+
+  function handleSelectPro() {
+    setPlan('pro');
+    Linking.openURL(STRIPE_ANNUAL);
+    setStep('welcome');
+  }
+
+  function handleSelectFree() {
+    setPlan('free');
+    setStep('welcome');
+  }
+
+  if (step === 'plan') {
+    return <PlanPicker onSelectFree={handleSelectFree} onSelectPro={handleSelectPro} />;
+  }
+
+  if (step === 'welcome') {
+    return <WelcomeScreen plan={plan} onDone={onSkip} />;
+  }
+
+  return (
+    <AuthForm
+      onSkip={onSkip}
+      initialMode={initialMode}
+      onSignedUp={() => setStep('plan')}
+    />
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root:         { flex: 1, backgroundColor: colors.green },
+  root:     { flex: 1, backgroundColor: colors.green },
 
-  // Hero
-  hero:         { alignItems: 'center', paddingTop: 70, paddingBottom: 32, paddingHorizontal: spacing.xl },
-  heroEmoji:    { fontSize: 52, marginBottom: spacing.sm },
-  heroTitle:    { fontSize: 36, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
-  heroSub:      { fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs },
+  hero:     { alignItems: 'center', paddingTop: 70, paddingBottom: 32, paddingHorizontal: spacing.xl },
+  heroEmoji:{ fontSize: 52, marginBottom: spacing.sm },
+  heroTitle:{ fontSize: 36, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
+  heroSub:  { fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs },
 
-  // Card
-  cardWrap:     { flex: 1 },
-  card:         { backgroundColor: colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: spacing.lg, paddingBottom: 44, flexGrow: 1 },
+  cardWrap: { flex: 1 },
+  card:     { backgroundColor: colors.white, padding: spacing.lg, paddingBottom: 44 },
 
-  // Tabs
   tabs:         { flexDirection: 'row', backgroundColor: colors.background, borderRadius: radius.pill, padding: 4, marginBottom: spacing.lg },
   tab:          { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: radius.pill },
   tabActive:    { backgroundColor: colors.white, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   tabText:      { fontSize: 14, fontWeight: '600', color: colors.textLight },
   tabTextActive:{ color: colors.textDark, fontWeight: '700' },
 
-  formTitle:    { fontSize: 22, fontWeight: '800', color: colors.textDark, marginBottom: spacing.md },
+  formTitle: { fontSize: 22, fontWeight: '800', color: colors.textDark, marginBottom: spacing.md },
 
-  // Inputs
-  inputWrap:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, marginBottom: spacing.sm, paddingHorizontal: spacing.sm },
-  inputIcon:    { fontSize: 16, marginRight: spacing.xs, width: 24, textAlign: 'center' },
-  input:        { flex: 1, paddingVertical: 14, fontSize: 16, color: colors.textDark },
-  eyeBtn:       { padding: spacing.sm },
-  eyeIcon:      { fontSize: 16 },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, marginBottom: spacing.sm, paddingHorizontal: spacing.sm },
+  inputIcon: { fontSize: 16, marginRight: spacing.xs, width: 24, textAlign: 'center' },
+  input:     { flex: 1, paddingVertical: 14, fontSize: 16, color: colors.textDark },
+  eyeBtn:    { padding: spacing.sm },
+  eyeIcon:   { fontSize: 16 },
 
-  // Error
-  errorWrap:    { backgroundColor: '#FEF2F2', borderRadius: radius.sm, borderWidth: 1, borderColor: '#FCA5A5', padding: spacing.sm, marginBottom: spacing.sm },
-  errorText:    { fontSize: 13, color: '#DC2626', lineHeight: 18 },
+  errorWrap: { backgroundColor: '#FEF2F2', borderRadius: radius.sm, borderWidth: 1, borderColor: '#FCA5A5', padding: spacing.sm, marginBottom: spacing.sm },
+  errorText: { fontSize: 13, color: '#DC2626', lineHeight: 18 },
 
-  // Submit
-  submitBtn:    { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center', marginTop: spacing.xs },
+  submitBtn:         { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center', marginTop: spacing.xs },
   submitBtnDisabled: { opacity: 0.6 },
-  submitText:   { color: colors.white, fontWeight: '800', fontSize: 16, letterSpacing: 0.3 },
+  submitText:        { color: colors.white, fontWeight: '800', fontSize: 16, letterSpacing: 0.3 },
 
-  // Divider
-  divider:      { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.md },
-  dividerLine:  { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText:  { color: colors.textLight, fontSize: 13, marginHorizontal: spacing.sm },
+  divider:     { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.md },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { color: colors.textLight, fontSize: 13, marginHorizontal: spacing.sm },
 
-  // Skip
-  skipBtn:      { backgroundColor: colors.background, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },
-  skipText:     { color: colors.textMid, fontWeight: '600', fontSize: 15 },
+  skipBtn:  { backgroundColor: colors.background, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },
+  skipText: { color: colors.textMid, fontWeight: '600', fontSize: 15 },
 
-  terms:        { fontSize: 11, color: colors.textLight, textAlign: 'center', marginTop: spacing.md, lineHeight: 16 },
+  terms: { fontSize: 11, color: colors.textLight, textAlign: 'center', marginTop: spacing.md, lineHeight: 16 },
+
+  // Plan picker
+  planHeading: { fontSize: 22, fontWeight: '800', color: colors.textDark, marginBottom: 4 },
+  planSub:     { fontSize: 14, color: colors.textLight, marginBottom: spacing.lg },
+  planSection: { fontSize: 12, fontWeight: '600', color: colors.textMid, marginBottom: spacing.xs, marginTop: spacing.xs },
+
+  planCard:    { borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.md },
+  planCardPro: { backgroundColor: colors.green, borderColor: colors.green },
+
+  planCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
+  planName:       { fontSize: 20, fontWeight: '900', color: colors.textDark },
+  planPrice:      { fontSize: 15, fontWeight: '700', color: colors.textDark, textAlign: 'right' },
+  planPriceAlt:   { fontSize: 12, color: 'rgba(255,255,255,0.6)', textAlign: 'right', marginTop: 2 },
+
+  proBadge:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: spacing.sm },
+  proBadgeText: { fontSize: 10, fontWeight: '800', color: colors.white, letterSpacing: 0.8 },
+
+  featureRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs, gap: spacing.sm },
+  featureText:{ fontSize: 14, color: colors.textDark, flex: 1, lineHeight: 20 },
+
+  check:    { width: 20, height: 20, borderRadius: 10, backgroundColor: '#E8F5EE', justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  checkPro: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  checkMark:{ fontSize: 11, fontWeight: '900', color: colors.green },
+
+  planCta:     { borderRadius: radius.pill, paddingVertical: 13, alignItems: 'center', marginTop: spacing.md },
+  planCtaFree: { backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.green },
+  planCtaPro:  { backgroundColor: colors.white },
+  planCtaText: { fontWeight: '800', fontSize: 15 },
+
+  planFootnote: { fontSize: 11, color: colors.textLight, textAlign: 'center', marginTop: spacing.sm, lineHeight: 16 },
+
+  // Welcome nudge
+  upgradeNudge:      { backgroundColor: '#FFF9E6', borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.gold, padding: spacing.md, marginTop: spacing.lg, marginBottom: spacing.md },
+  upgradeNudgeTitle: { fontSize: 15, fontWeight: '800', color: colors.gold, marginBottom: 4 },
+  upgradeNudgeBody:  { fontSize: 13, color: colors.textMid, lineHeight: 20, marginBottom: spacing.md },
+  upgradeNudgeBtn:   { backgroundColor: colors.gold, borderRadius: radius.pill, paddingVertical: 11, alignItems: 'center' },
+  upgradeNudgeBtnText:{ color: colors.white, fontWeight: '800', fontSize: 14 },
 });
