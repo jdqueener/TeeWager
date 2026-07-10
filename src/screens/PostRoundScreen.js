@@ -4,9 +4,9 @@ import {
 } from 'react-native';
 import { colors, spacing, radius } from '../utils/theme';
 
-const STRIPE_MONTHLY  = 'https://buy.stripe.com/REPLACE_MONTHLY';
-const STRIPE_ANNUAL   = 'https://buy.stripe.com/REPLACE_ANNUAL';
-const STRIPE_LIFETIME = 'https://buy.stripe.com/REPLACE_LIFETIME';
+const STRIPE_MONTHLY  = 'https://buy.stripe.com/test_5kQ7sE8s28av5kSdn4dwc00';
+const STRIPE_ANNUAL   = 'https://buy.stripe.com/test_bJeaEQaAa1M7bJg96Odwc01';
+const STRIPE_LIFETIME = 'https://buy.stripe.com/test_aFa4gs23E0I3cNk0Aidwc02';
 
 const PRO_FEATURES = [
   'All 13 beans — HIO, sandy, 2-tree, flag-length & more',

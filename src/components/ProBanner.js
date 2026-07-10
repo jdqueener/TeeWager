@@ -26,7 +26,7 @@ function computeSummary(state) {
 }
 
 // Flip to false when Stripe is live and the paywall should be enforced
-const IS_BETA = true;
+const IS_BETA = false;
 
 export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
   const { state } = useGame();
