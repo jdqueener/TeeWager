@@ -37,28 +37,30 @@ function Check({ pro }) {
 function AuthForm({ onSkip, initialMode, onSignedUp }) {
   const { signUp, signIn } = useAuth();
   const [mode, setMode] = useState(initialMode === 'signup' ? 'signup' : 'signin');
-  const [name, setName]         = useState('');
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
+  const [fullName, setFullName]         = useState('');
+  const [scoringName, setScoringName]   = useState('');
+  const [email, setEmail]               = useState('');
+  const [password, setPassword]         = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setBusy_error]  = useState('');
-  const [busy, setBusy]         = useState(false);
+  const [error, setBusy_error]          = useState('');
+  const [busy, setBusy]                 = useState(false);
 
   const isSignUp = mode === 'signup';
 
   async function submit() {
     setBusy_error('');
     if (!email.trim() || !password) { setBusy_error('Enter an email and password.'); return; }
-    if (isSignUp && !name.trim())   { setBusy_error('Enter a display name.'); return; }
-    if (password.length < 6)        { setBusy_error('Password must be at least 6 characters.'); return; }
+    if (isSignUp && !fullName.trim()) { setBusy_error('Enter your name.'); return; }
+    if (isSignUp && !scoringName.trim()) { setBusy_error('Enter a scoring name.'); return; }
+    if (password.length < 6)          { setBusy_error('Password must be at least 6 characters.'); return; }
     setBusy(true);
     try {
       if (isSignUp) {
-        await signUp(email.trim(), password, name.trim());
-        onSignedUp(); // go to plan picker
+        await signUp(email.trim(), password, fullName.trim(), scoringName.trim());
+        onSignedUp();
       } else {
         await signIn(email.trim(), password);
-        onSkip(); // close modal after successful sign-in
+        onSkip();
       }
     } catch (e) {
       setBusy_error(e.message || 'Something went wrong.');
@@ -90,11 +92,19 @@ function AuthForm({ onSkip, initialMode, onSignedUp }) {
           <Text style={styles.formTitle}>{isSignUp ? 'Join TeeWager' : 'Welcome back'}</Text>
 
           {isSignUp && (
-            <View style={styles.inputWrap}>
-              <Text style={styles.inputIcon}>👤</Text>
-              <TextInput style={styles.input} placeholder="Display name" placeholderTextColor={colors.textLight}
-                value={name} onChangeText={setName} autoCapitalize="words" returnKeyType="next" />
-            </View>
+            <>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>👤</Text>
+                <TextInput style={styles.input} placeholder="Full name (e.g. John Smith)" placeholderTextColor={colors.textLight}
+                  value={fullName} onChangeText={setFullName} autoCapitalize="words" returnKeyType="next" />
+              </View>
+              <Text style={styles.inputHint}>What should we call you on the scorecard?</Text>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>🏌️</Text>
+                <TextInput style={styles.input} placeholder='Scoring name (e.g. "Ace")' placeholderTextColor={colors.textLight}
+                  value={scoringName} onChangeText={setScoringName} autoCapitalize="words" returnKeyType="next" />
+              </View>
+            </>
           )}
 
           <View style={styles.inputWrap}>
@@ -334,6 +344,7 @@ const styles = StyleSheet.create({
 
   formTitle: { fontSize: 22, fontWeight: '800', color: colors.textDark, marginBottom: spacing.md },
 
+  inputHint: { fontSize: 12, color: colors.textLight, marginBottom: spacing.xs, marginLeft: 4 },
   inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, marginBottom: spacing.sm, paddingHorizontal: spacing.sm },
   inputIcon: { fontSize: 16, marginRight: spacing.xs, width: 24, textAlign: 'center' },
   input:     { flex: 1, paddingVertical: 14, fontSize: 16, color: colors.textDark },

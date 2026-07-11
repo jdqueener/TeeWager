@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
     })();
   }, [session]);
 
-  async function signUp(email, password, displayName) {
+  async function signUp(email, password, fullName, scoringName) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -43,7 +43,9 @@ export function AuthProvider({ children }) {
       const ref = getReferral();
       await supabase.from('profiles').upsert({
         id: data.user.id,
-        display_name: displayName,
+        full_name: fullName,
+        display_name: scoringName,
+        scoring_name: scoringName,
         email,
         ...(ref ? { referred_by: ref } : {}),
       });
