@@ -139,11 +139,6 @@ function AuthForm({ onSkip, initialMode, onSignedUp }) {
             <View style={styles.dividerLine} />
           </View>
 
-          {onSkip && (
-            <TouchableOpacity style={styles.skipBtn} onPress={onSkip} activeOpacity={0.7}>
-              <Text style={styles.skipText}>Continue without an account</Text>
-            </TouchableOpacity>
-          )}
 
           {isSignUp && (
             <Text style={styles.terms}>By creating an account you agree to our Terms of Service and Privacy Policy.</Text>
