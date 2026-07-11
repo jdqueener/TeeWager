@@ -33,26 +33,21 @@ export function AuthProvider({ children }) {
   }, [session]);
 
   async function signUp(email, password, fullName, scoringName) {
+    const ref = getReferral();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: 'https://www.teewager.io/app' },
+      options: {
+        emailRedirectTo: 'https://www.teewager.io/app',
+        data: {
+          full_name: fullName,
+          scoring_name: scoringName,
+          ...(ref ? { referred_by: ref } : {}),
+        },
+      },
     });
     if (error) throw error;
-    const userId = data.user?.id ?? data.session?.user?.id;
-    if (userId) {
-      const ref = getReferral();
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: userId,
-        full_name: fullName,
-        display_name: scoringName,
-        scoring_name: scoringName,
-        email,
-        ...(ref ? { referred_by: ref } : {}),
-      });
-      if (profileError) console.error('Profile upsert failed:', profileError.message);
-      if (ref) clearReferral();
-    }
+    if (ref) clearReferral();
     return data;
   }
 
