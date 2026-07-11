@@ -227,11 +227,7 @@ export default function SetupScreen() {
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <View style={styles.heroRow}>
-            <View style={{ width: 36 }} />
-            <Text style={styles.heroTitle}>⛳ TeeWager</Text>
-            <AccountMenu size={32} onSignIn={() => { setAuthInitialMode('signin'); setAuthVisible(true); }} />
-          </View>
+          <Text style={styles.heroTitle}>⛳ TeeWager</Text>
           <Text style={styles.heroSub}>Set up your round</Text>
         </View>
 
@@ -531,8 +527,7 @@ const styles = StyleSheet.create({
 
   // Hero header
   hero:      { backgroundColor: colors.green, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg },
-  heroRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs },
-  heroTitle: { fontSize: 26, fontWeight: '900', color: colors.white, textAlign: 'center' },
+  heroTitle: { fontSize: 26, fontWeight: '900', color: colors.white, textAlign: 'center', marginBottom: spacing.xs },
   heroSub:   { fontSize: 14, color: 'rgba(255,255,255,0.75)', textAlign: 'center' },
 
   label:   { fontSize: 12, fontWeight: '700', color: colors.textMid, marginTop: spacing.md, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.6 },
