@@ -16,11 +16,11 @@ function initials(name) {
     : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function Row({ label, value }) {
+function Row({ label, value, hint }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value || '—'}</Text>
+      <Text style={[styles.infoValue, !value && styles.infoValueEmpty]}>{value || hint || 'Not set'}</Text>
     </View>
   );
 }
@@ -105,8 +105,13 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
               <View style={styles.bigAvatar}>
                 <Text style={styles.bigAvatarText}>{initials(displayName)}</Text>
               </View>
-              <Text style={styles.bigName}>{displayName}</Text>
-              <Text style={styles.bigEmail}>{user?.email}</Text>
+              <Text style={styles.bigName}>{profile?.full_name || user?.email}</Text>
+              {!!profile?.full_name && <Text style={styles.bigEmail}>{user?.email}</Text>}
+              {!profile?.full_name && (
+                <TouchableOpacity onPress={() => setEditing(true)}>
+                  <Text style={[styles.editLink, { marginTop: 6, fontSize: 13 }]}>+ Add your name</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Profile section */}
@@ -224,20 +229,21 @@ const styles = StyleSheet.create({
 
   content:      { padding: spacing.md, paddingBottom: 48 },
 
-  avatarBlock:  { alignItems: 'center', paddingVertical: spacing.lg },
-  bigAvatar:    { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
-  bigAvatarText:{ color: colors.white, fontWeight: '900', fontSize: 26 },
-  bigName:      { fontSize: 22, fontWeight: '800', color: colors.textDark },
+  avatarBlock:  { alignItems: 'center', paddingVertical: spacing.md },
+  bigAvatar:    { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
+  bigAvatarText:{ color: colors.white, fontWeight: '900', fontSize: 22 },
+  bigName:      { fontSize: 20, fontWeight: '800', color: colors.textDark },
   bigEmail:     { fontSize: 13, color: colors.textLight, marginTop: 2 },
 
-  section:       { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  sectionTitle:  { fontSize: 12, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', letterSpacing: 0.6 },
+  section:       { backgroundColor: colors.white, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 4, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  sectionTitle:  { fontSize: 11, fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', letterSpacing: 0.6 },
   editLink:      { fontSize: 14, fontWeight: '700', color: colors.green },
 
-  infoRow:       { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  infoLabel:     { fontSize: 14, color: colors.textMid },
-  infoValue:     { fontSize: 14, fontWeight: '600', color: colors.textDark, maxWidth: '55%', textAlign: 'right' },
+  infoRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: colors.border },
+  infoLabel:     { fontSize: 14, color: colors.textMid, flex: 1 },
+  infoValue:      { fontSize: 14, fontWeight: '600', color: colors.textDark, flex: 1, textAlign: 'right' },
+  infoValueEmpty: { color: colors.textLight, fontWeight: '400', fontStyle: 'italic' },
 
   fieldLabel:    { fontSize: 12, fontWeight: '700', color: colors.textMid, marginBottom: 4, marginTop: spacing.sm },
   fieldHint:     { fontSize: 11, color: colors.textLight, marginBottom: spacing.xs },
