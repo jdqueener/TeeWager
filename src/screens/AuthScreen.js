@@ -58,7 +58,7 @@ function AuthForm({ onSkip, initialMode, onSignedUp }) {
         onSignedUp(); // go to plan picker
       } else {
         await signIn(email.trim(), password);
-        // sign-in: AuthContext session update closes the modal via parent
+        onSkip(); // close modal after successful sign-in
       }
     } catch (e) {
       setBusy_error(e.message || 'Something went wrong.');
