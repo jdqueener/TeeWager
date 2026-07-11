@@ -6,7 +6,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, radius } from '../utils/theme';
 
-const STRIPE_PORTAL = 'https://billing.stripe.com/p/login/REPLACE_PORTAL';
+const STRIPE_PORTAL = 'https://billing.stripe.com/p/login/test_5kQ7sE8s28av5kSdn4dwc00';
 
 function initials(name) {
   if (!name) return '?';
