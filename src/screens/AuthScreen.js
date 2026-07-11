@@ -133,11 +133,6 @@ function AuthForm({ onSkip, initialMode, onSignedUp }) {
             {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.submitText}>{isSignUp ? 'Create Account' : 'Sign In'}</Text>}
           </TouchableOpacity>
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
 
 
           {isSignUp && (
