@@ -23,11 +23,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!session?.user) { setProfile(null); return; }
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
+      console.log('Profile fetch:', { data, error, userId: session.user.id });
       setProfile(data);
     })();
   }, [session]);
