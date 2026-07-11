@@ -145,7 +145,7 @@ function AuthForm({ onSkip, initialMode, onSignedUp }) {
 }
 
 // ─── Step 2: Plan picker ──────────────────────────────────────────────────────
-function PlanPicker({ onSelectFree, onSelectPro }) {
+function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetime }) {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
@@ -159,46 +159,56 @@ function PlanPicker({ onSelectFree, onSelectPro }) {
         <Text style={styles.planHeading}>Pick your plan</Text>
         <Text style={styles.planSub}>You can upgrade or change anytime.</Text>
 
-        {/* Free card */}
-        <TouchableOpacity style={styles.planCard} onPress={onSelectFree} activeOpacity={0.85}>
+        {/* Monthly — featured */}
+        <TouchableOpacity style={[styles.planCard, styles.planCardPro]} onPress={onSelectPro} activeOpacity={0.85}>
+          <View style={styles.proBadge}><Text style={styles.proBadgeText}>MOST POPULAR</Text></View>
+          <View style={styles.planCardHeader}>
+            <Text style={[styles.planName, { color: colors.white }]}>Pro Monthly</Text>
+            <Text style={[styles.planPrice, { color: colors.white }]}>$2.99<Text style={[styles.planPer, { color: 'rgba(255,255,255,0.75)' }]}>/mo</Text></Text>
+          </View>
+          <Text style={styles.planDesc}>Try Pro with no commitment. All premium features unlocked — cancel anytime. Best way to get started.</Text>
+          <View style={[styles.planCta, styles.planCtaPro]}>
+            <Text style={[styles.planCtaText, { color: colors.green }]}>Start Pro for $2.99 →</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Annual */}
+        <TouchableOpacity style={styles.planCard} onPress={onSelectAnnual} activeOpacity={0.85}>
+          <View style={styles.planCardHeader}>
+            <Text style={styles.planName}>Pro Annual</Text>
+            <Text style={styles.planPrice}>$29.90<Text style={styles.planPer}>/yr</Text></Text>
+          </View>
+          <Text style={[styles.planDesc, { color: colors.textMid }]}>Save 17% vs monthly — just $2.49/month. Great if you play year-round and want the best deal on Pro.</Text>
+          <View style={[styles.planCta, styles.planCtaFree]}>
+            <Text style={[styles.planCtaText, { color: colors.green }]}>Save with Annual →</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Lifetime */}
+        <TouchableOpacity style={styles.planCard} onPress={onSelectLifetime} activeOpacity={0.85}>
+          <View style={styles.planCardHeader}>
+            <Text style={styles.planName}>Pro Lifetime</Text>
+            <Text style={styles.planPrice}>$49.99<Text style={styles.planPer}> once</Text></Text>
+          </View>
+          <Text style={[styles.planDesc, { color: colors.textMid }]}>Pay once, play forever. Covers itself in under 2 years — no recurring charges, ever.</Text>
+          <View style={[styles.planCta, styles.planCtaFree]}>
+            <Text style={[styles.planCtaText, { color: colors.green }]}>Own it forever →</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Free */}
+        <TouchableOpacity style={[styles.planCard, { borderStyle: 'dashed' }]} onPress={onSelectFree} activeOpacity={0.85}>
           <View style={styles.planCardHeader}>
             <Text style={styles.planName}>Free</Text>
-            <Text style={styles.planPrice}>$0 / forever</Text>
+            <Text style={styles.planPrice}>$0</Text>
           </View>
-          {FREE_FEATURES.map(f => (
-            <View key={f.label} style={styles.featureRow}>
-              <Check pro={false} />
-              <Text style={styles.featureText}>{f.label}</Text>
-            </View>
-          ))}
-          <View style={[styles.planCta, styles.planCtaFree]}>
-            <Text style={[styles.planCtaText, { color: colors.green }]}>Start free →</Text>
+          <Text style={[styles.planDesc, { color: colors.textMid }]}>Up to 4 players, core bean types, and round history. A great way to try TeeWager before upgrading.</Text>
+          <View style={[styles.planCta, { backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.pill, paddingVertical: 13, alignItems: 'center', marginTop: spacing.md }]}>
+            <Text style={[styles.planCtaText, { color: colors.textMid }]}>Continue free →</Text>
           </View>
         </TouchableOpacity>
 
-        {/* Pro card */}
-        <TouchableOpacity style={[styles.planCard, styles.planCardPro]} onPress={onSelectPro} activeOpacity={0.85}>
-          <View style={styles.proBadge}><Text style={styles.proBadgeText}>BEST VALUE</Text></View>
-          <View style={styles.planCardHeader}>
-            <Text style={[styles.planName, { color: colors.white }]}>Pro</Text>
-            <View>
-              <Text style={[styles.planPrice, { color: 'rgba(255,255,255,0.9)' }]}>$29.90 / year</Text>
-              <Text style={styles.planPriceAlt}>or $2.99/month</Text>
-            </View>
-          </View>
-          <Text style={[styles.planSection, { color: 'rgba(255,255,255,0.7)' }]}>Everything in Free, plus:</Text>
-          {PRO_EXTRAS.map(f => (
-            <View key={f.label} style={styles.featureRow}>
-              <Check pro={true} />
-              <Text style={[styles.featureText, { color: colors.white }]}>{f.label}</Text>
-            </View>
-          ))}
-          <View style={[styles.planCta, styles.planCtaPro]}>
-            <Text style={[styles.planCtaText, { color: colors.green }]}>Unlock Pro →</Text>
-          </View>
-        </TouchableOpacity>
-
-        <Text style={styles.planFootnote}>Pro subscriptions are billed through Stripe. Cancel anytime.</Text>
+        <Text style={styles.planFootnote}>Pro subscriptions billed through Stripe. Cancel anytime.</Text>
       </ScrollView>
     </View>
   );
@@ -264,9 +274,21 @@ export default function AuthScreen({ onSkip, initialMode }) {
   const [step, setStep] = useState('auth'); // 'auth' | 'plan' | 'welcome'
   const [plan, setPlan] = useState('free');
 
-  function handleSelectPro() {
+  function handleSelectMonthly() {
+    setPlan('pro');
+    Linking.openURL(STRIPE_MONTHLY);
+    setStep('welcome');
+  }
+
+  function handleSelectAnnual() {
     setPlan('pro');
     Linking.openURL(STRIPE_ANNUAL);
+    setStep('welcome');
+  }
+
+  function handleSelectLifetime() {
+    setPlan('pro');
+    Linking.openURL(STRIPE_LIFETIME);
     setStep('welcome');
   }
 
@@ -276,7 +298,7 @@ export default function AuthScreen({ onSkip, initialMode }) {
   }
 
   if (step === 'plan') {
-    return <PlanPicker onSelectFree={handleSelectFree} onSelectPro={handleSelectPro} />;
+    return <PlanPicker onSelectFree={handleSelectFree} onSelectPro={handleSelectMonthly} onSelectAnnual={handleSelectAnnual} onSelectLifetime={handleSelectLifetime} />;
   }
 
   if (step === 'welcome') {
@@ -362,6 +384,8 @@ const styles = StyleSheet.create({
   planCtaPro:  { backgroundColor: colors.white },
   planCtaText: { fontWeight: '800', fontSize: 15 },
 
+  planDesc:     { fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 19, marginBottom: spacing.xs },
+  planPer:      { fontSize: 13, fontWeight: '400' },
   planFootnote: { fontSize: 11, color: colors.textLight, textAlign: 'center', marginTop: spacing.sm, lineHeight: 16 },
 
   // Welcome nudge
