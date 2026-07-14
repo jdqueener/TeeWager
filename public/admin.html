@@ -378,6 +378,18 @@
   <div class="drawer-section">
     <div class="drawer-section-title">Course Info</div>
     <div id="drawer-course-info"></div>
+    <div style="margin-top:12px;">
+      <button type="button" onclick="toggleDrawerQR()" id="drawer-qr-toggle" style="padding:7px 14px;background:#fff;border:1.5px solid #1A4A2E;color:#1A4A2E;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Show QR code</button>
+    </div>
+    <div id="drawer-qr-wrap" style="display:none;margin-top:14px;">
+      <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+        <canvas id="drawer-qr-canvas" style="border-radius:8px;border:1px solid #E0E0D8;"></canvas>
+        <div>
+          <div style="font-size:12px;color:#555;margin-bottom:8px;" id="drawer-qr-url-display"></div>
+          <button type="button" onclick="downloadDrawerQR()" style="padding:7px 14px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">⬇ Download PNG</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="drawer-section">
@@ -668,6 +680,33 @@ function openDrawer(id) {
 
   document.getElementById('drawer-overlay').classList.add('open');
   document.getElementById('drawer').style.display = 'block';
+}
+
+function toggleDrawerQR() {
+  const wrap = document.getElementById('drawer-qr-wrap');
+  const btn  = document.getElementById('drawer-qr-toggle');
+  if (wrap.style.display === 'none') {
+    const refCode = currentDrawerPartner.referral_code;
+    const qrUrl   = `https://www.teewager.io/app?ref=${refCode}`;
+    document.getElementById('drawer-qr-url-display').textContent = qrUrl;
+    QRCode.toCanvas(document.getElementById('drawer-qr-canvas'), qrUrl, {
+      width: 160, margin: 2, color: { dark: '#1A4A2E', light: '#ffffff' }
+    });
+    wrap.style.display = 'block';
+    btn.textContent = 'Hide QR code';
+  } else {
+    wrap.style.display = 'none';
+    btn.textContent = 'Show QR code';
+  }
+}
+
+function downloadDrawerQR() {
+  const canvas  = document.getElementById('drawer-qr-canvas');
+  const refCode = currentDrawerPartner.referral_code;
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = `teewager-qr-${refCode}.png`;
+  a.click();
 }
 
 async function markAsRegistered() {
