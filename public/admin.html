@@ -220,6 +220,7 @@
       <button class="export-btn" onclick="exportCSV()">Export CSV</button>
       <button class="add-partner-btn" onclick="openAddModal()">+ Add Partner</button>
       <button class="import-btn" onclick="openBulkModal()">⬆ Bulk Import</button>
+      <button class="import-btn" onclick="openQRSheetModal()" style="border-color:#B8860B;color:#B8860B;">🖨 Print QR Sheet</button>
     </div>
 
     <div class="table-wrap">
@@ -345,6 +346,27 @@
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeBulkModal()">Cancel</button>
       <button class="modal-submit" id="bulk-submit-btn" onclick="submitBulk()" style="display:none">Import all →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── QR Sheet Modal ── -->
+<div class="modal-overlay" id="qrsheet-modal">
+  <div class="modal" style="max-width:680px;">
+    <h3>Print QR Sheet</h3>
+    <p class="modal-sub">Select which partners to include. Each QR code is matched to its course — verify before printing.</p>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <button type="button" onclick="qrSheetSelectAll(true)" style="padding:6px 14px;border:1.5px solid #E0E0D8;border-radius:6px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;">Select all</button>
+      <button type="button" onclick="qrSheetSelectAll(false)" style="padding:6px 14px;border:1.5px solid #E0E0D8;border-radius:6px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;">Deselect all</button>
+      <span style="font-size:13px;color:#888;margin-left:4px;"><span id="qrsheet-selected-count">0</span> selected</span>
+    </div>
+
+    <div id="qrsheet-list" style="max-height:300px;overflow-y:auto;border:1.5px solid #E0E0D8;border-radius:10px;background:#fff;margin-bottom:16px;"></div>
+
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" onclick="closeQRSheetModal()">Cancel</button>
+      <button type="button" class="modal-submit" onclick="printQRSheet()">🖨 Open print sheet</button>
     </div>
   </div>
 </div>
@@ -1065,6 +1087,72 @@ async function submitBulk() {
   btn.textContent = 'Close';
   btn.disabled = false;
   btn.onclick = closeBulkModal;
+}
+
+// ── QR Sheet ─────────────────────────────────────────────────────────────────
+function openQRSheetModal() {
+  const list = document.getElementById('qrsheet-list');
+  list.innerHTML = allPartners.map(p => `
+    <label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #F0F0EB;cursor:pointer;">
+      <input type="checkbox" class="qrsheet-check" value="${esc(p.id)}" checked
+        onchange="updateQRSheetCount()"
+        style="width:16px;height:16px;accent-color:#1A4A2E;flex-shrink:0;" />
+      <div>
+        <div style="font-size:14px;font-weight:700;">${esc(p.course_name)}</div>
+        <div style="font-size:12px;color:#888;">${esc(p.city||'')}${p.city&&p.state?', ':''}${esc(p.state||'')} &nbsp;·&nbsp; <span style="font-family:monospace;">${esc(p.referral_code||'')}</span></div>
+      </div>
+    </label>`).join('');
+  updateQRSheetCount();
+  document.getElementById('qrsheet-modal').classList.add('open');
+}
+
+function closeQRSheetModal() {
+  document.getElementById('qrsheet-modal').classList.remove('open');
+}
+
+function updateQRSheetCount() {
+  const n = document.querySelectorAll('.qrsheet-check:checked').length;
+  document.getElementById('qrsheet-selected-count').textContent = n;
+}
+
+function qrSheetSelectAll(val) {
+  document.querySelectorAll('.qrsheet-check').forEach(c => c.checked = val);
+  updateQRSheetCount();
+}
+
+function printQRSheet() {
+  const selected = [...document.querySelectorAll('.qrsheet-check:checked')].map(c => c.value);
+  const partners = allPartners.filter(p => selected.includes(p.id));
+  if (!partners.length) { alert('Select at least one partner.'); return; }
+
+  const cards = partners.map(p => {
+    const qrUrl = `https://www.teewager.io/app?ref=${encodeURIComponent(p.referral_code)}`;
+    const imgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=1A4A2E&data=${encodeURIComponent(qrUrl)}`;
+    return `
+      <div style="break-inside:avoid;display:flex;flex-direction:column;align-items:center;border:1px solid #ccc;border-radius:8px;padding:16px;width:200px;text-align:center;">
+        <img src="${imgSrc}" width="160" height="160" style="border-radius:4px;" />
+        <div style="font-size:12px;font-weight:700;color:#1A4A2E;margin-top:8px;line-height:1.3;">${esc(p.course_name)}</div>
+        <div style="font-size:11px;color:#666;margin-top:2px;">${esc(p.city||'')}${p.city&&p.state?', ':''}${esc(p.state||'')}</div>
+        <div style="font-size:10px;color:#999;font-family:monospace;margin-top:4px;">${esc(p.referral_code||'')}</div>
+      </div>`;
+  }).join('');
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html><head><title>TeeWager QR Sheet</title>
+<style>
+  body { font-family: -apple-system, sans-serif; padding: 24px; }
+  h2 { color: #1A4A2E; margin-bottom: 6px; }
+  p { color: #888; font-size: 13px; margin-bottom: 20px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+  @media print { button { display: none; } }
+</style></head><body>
+<h2>⛳ TeeWager — Partner QR Codes</h2>
+<p>Generated ${new Date().toLocaleDateString()} · ${partners.length} course${partners.length!==1?'s':''} · Verify each QR matches its course before printing</p>
+<button onclick="window.print()" style="margin-bottom:20px;padding:10px 24px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨 Print</button>
+<div class="grid">${cards}</div>
+</body></html>`);
+  win.document.close();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
