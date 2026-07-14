@@ -149,7 +149,6 @@
   .import-btn { padding: 10px 18px; background: #fff; color: #1A4A2E; border: 1.5px solid #1A4A2E; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
   .import-btn:hover { background: #F0F4F0; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -292,7 +291,7 @@
       <div class="qr-result">
         <div class="qr-result-title">Partner created — QR code for placard</div>
         <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
-          <canvas id="add-qr-canvas" style="border-radius:8px;border:1px solid #E0E0D8;"></canvas>
+          <img id="add-qr-canvas" style="border-radius:8px;border:1px solid #E0E0D8;width:180px;height:180px;" />
           <div style="flex:1;min-width:180px;">
             <div style="font-size:12px;color:#555;margin-bottom:6px;">Ref code</div>
             <div class="ref-code" id="add-ref-code-display" style="font-size:14px;margin-bottom:12px;"></div>
@@ -383,7 +382,7 @@
     </div>
     <div id="drawer-qr-wrap" style="display:none;margin-top:14px;">
       <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
-        <canvas id="drawer-qr-canvas" style="border-radius:8px;border:1px solid #E0E0D8;"></canvas>
+        <img id="drawer-qr-canvas" style="border-radius:8px;border:1px solid #E0E0D8;width:160px;height:160px;" />
         <div>
           <div style="font-size:12px;color:#555;margin-bottom:8px;" id="drawer-qr-url-display"></div>
           <button type="button" onclick="downloadDrawerQR()" style="padding:7px 14px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">⬇ Download PNG</button>
@@ -689,9 +688,8 @@ function toggleDrawerQR() {
     const refCode = currentDrawerPartner.referral_code;
     const qrUrl   = `https://www.teewager.io/app?ref=${refCode}`;
     document.getElementById('drawer-qr-url-display').textContent = qrUrl;
-    QRCode.toCanvas(document.getElementById('drawer-qr-canvas'), qrUrl, {
-      width: 160, margin: 2, color: { dark: '#1A4A2E', light: '#ffffff' }
-    });
+    document.getElementById('drawer-qr-canvas').src =
+      `https://api.qrserver.com/v1/create-qr-code/?size=160x160&color=1A4A2E&data=${encodeURIComponent(qrUrl)}`;
     wrap.style.display = 'block';
     btn.textContent = 'Hide QR code';
   } else {
@@ -701,11 +699,12 @@ function toggleDrawerQR() {
 }
 
 function downloadDrawerQR() {
-  const canvas  = document.getElementById('drawer-qr-canvas');
   const refCode = currentDrawerPartner.referral_code;
+  const qrUrl   = `https://www.teewager.io/app?ref=${refCode}`;
   const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
+  a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&color=1A4A2E&data=${encodeURIComponent(qrUrl)}`;
   a.download = `teewager-qr-${refCode}.png`;
+  a.target = '_blank';
   a.click();
 }
 
@@ -939,9 +938,8 @@ async function submitAddPartner() {
     document.getElementById('add-ref-code-display').textContent = refCode;
     document.getElementById('add-result').style.display = 'block';
     btn.style.display = 'none';
-    QRCode.toCanvas(document.getElementById('add-qr-canvas'), qrUrl, {
-      width: 180, margin: 2, color: { dark: '#1A4A2E', light: '#ffffff' }
-    });
+    document.getElementById('add-qr-canvas').src =
+      `https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=1A4A2E&data=${encodeURIComponent(qrUrl)}`;
     loadData();
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
@@ -961,11 +959,12 @@ function copyQR() {
 }
 
 function downloadQR() {
-  const canvas = document.getElementById('add-qr-canvas');
   const refCode = document.getElementById('add-ref-code-display').textContent;
+  const url = document.getElementById('add-qr-url').textContent;
   const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
+  a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&color=1A4A2E&data=${encodeURIComponent(url)}`;
   a.download = `teewager-qr-${refCode}.png`;
+  a.target = '_blank';
   a.click();
 }
 
