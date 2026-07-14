@@ -663,7 +663,10 @@ function openAddModal() {
   document.getElementById('add-email').value = '';
   document.getElementById('add-result').style.display = 'none';
   document.getElementById('add-error').style.display = 'none';
-  document.getElementById('add-submit-btn').style.display = 'inline-block';
+  const btn = document.getElementById('add-submit-btn');
+  btn.style.display = 'inline-block';
+  btn.disabled = false;
+  btn.textContent = 'Create partner →';
   document.getElementById('add-modal').classList.add('open');
 }
 
