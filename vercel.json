@@ -1,10 +1,12 @@
 {
-  "buildCommand": "npx expo export --platform web && node -e \"const fs=require('fs');fs.copyFileSync('public/landing.html','dist/landing.html');fs.copyFileSync('public/partner.html','dist/partner.html');fs.copyFileSync('public/admin.html','dist/admin.html');\"",
+  "buildCommand": "npx expo export --platform web && node -e \"const fs=require('fs');fs.copyFileSync('public/landing.html','dist/landing.html');fs.copyFileSync('public/partner.html','dist/partner.html');fs.copyFileSync('public/admin.html','dist/admin.html');fs.copyFileSync('public/portal.html','dist/portal.html');\"",
   "outputDirectory": "dist",
   "routes": [
     { "src": "^/$", "dest": "/landing.html" },
     { "src": "^/partner$", "dest": "/partner.html" },
     { "src": "^/admin$", "dest": "/admin.html" },
+    { "src": "^/portal$", "dest": "/portal.html" },
+    { "src": "^/register$", "dest": "/partner.html" },
     { "src": "^/app$", "dest": "/index.html" },
     { "src": "^/app/(.*)$", "dest": "/index.html" },
     { "handle": "filesystem" },

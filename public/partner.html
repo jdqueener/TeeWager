@@ -272,12 +272,16 @@
     <!-- Hidden referral code field — auto-populated from ?ref= URL param -->
     <input type="hidden" id="referral-code" name="referral_code" value="" />
 
-    <!-- Referral confirmation banner (shown only when ?ref= is present) -->
-    <div id="ref-banner" style="display:none;background:var(--green);color:#fff;border-radius:12px;padding:14px 20px;margin-bottom:32px;display:none;align-items:center;gap:12px;">
-      <span style="font-size:20px">✓</span>
-      <div>
-        <div style="font-size:14px;font-weight:700;">Your partner code is active</div>
-        <div style="font-size:13px;opacity:.8;">Code: <span id="ref-display"></span> — your QR code is linked and ready to go.</div>
+    <!-- 0. PARTNER CODE -->
+    <div class="form-section">
+      <div class="form-section-title">Partner access code</div>
+      <div class="form-section-sub">Enter the code included in your TeeWager mailer to get started.</div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="partner-code">Access code <span>*</span></label>
+          <input type="text" id="partner-code" name="partner_code" required placeholder="TeeWagerRevenue" autocomplete="off" />
+          <div id="partner-code-error" style="display:none;color:var(--red);font-size:13px;margin-top:4px;">Invalid access code. Check your mailer and try again.</div>
+        </div>
       </div>
     </div>
 
@@ -485,7 +489,26 @@
       </div>
     </div>
 
-    <!-- 5. T&C -->
+    <!-- 5. PORTAL PASSWORD -->
+    <div class="form-section">
+      <div class="form-section-title">Create your portal password</div>
+      <div class="form-section-sub">You'll use your email and this password to log into your partner earnings portal at <strong>teewager.io/portal</strong>.</div>
+      <div class="field-grid">
+        <div class="field-grid field-grid-2">
+          <div class="field">
+            <label for="portal-password">Password <span>*</span></label>
+            <input type="password" id="portal-password" name="portal_password" required placeholder="At least 8 characters" autocomplete="new-password" />
+          </div>
+          <div class="field">
+            <label for="portal-password-confirm">Confirm password <span>*</span></label>
+            <input type="password" id="portal-password-confirm" name="portal_password_confirm" required placeholder="Repeat password" autocomplete="new-password" />
+          </div>
+        </div>
+        <div id="password-error" style="display:none;color:var(--red);font-size:13px;margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <!-- 6. T&C -->
     <div class="form-section">
       <div class="form-section-title">Terms & conditions</div>
       <div class="form-section-sub">Please read and accept the TeeWager Partner Program agreement before submitting.</div>
@@ -533,8 +556,10 @@
 
     <div id="success-msg">
       <div class="s-icon">🎉</div>
-      <h2>Application received!</h2>
-      <p>We'll review your application and reach out within 2–3 business days with your unique QR code and to confirm your starter kit is on its way. Questions? Email <a href="mailto:partners@teewager.io" style="color:var(--green)">partners@teewager.io</a>.</p>
+      <h2>You're in!</h2>
+      <p style="margin-bottom:16px">Your application is submitted. We'll confirm your starter kit is on its way within 2–3 business days.</p>
+      <a href="/portal" style="display:inline-block;background:var(--green);color:#fff;padding:13px 28px;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:16px;">Go to my partner portal →</a>
+      <p style="font-size:13px;color:var(--slate-mid)">Log in any time at <strong>teewager.io/portal</strong> with your email and the password you just created.<br>Questions? <a href="mailto:partners@teewager.io" style="color:var(--green)">partners@teewager.io</a></p>
     </div>
 
   </form>
@@ -648,6 +673,35 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Form submission — inserts directly into Supabase partners table
 document.getElementById('partner-form').addEventListener('submit', async function(e) {
   e.preventDefault();
+
+  // Validate partner code
+  const codeInput = document.getElementById('partner-code');
+  const codeError = document.getElementById('partner-code-error');
+  if (codeInput.value.trim().toLowerCase() !== 'teewagerrevenue') {
+    codeError.style.display = 'block';
+    codeInput.focus();
+    return;
+  }
+  codeError.style.display = 'none';
+
+  // Validate passwords
+  const pw  = document.getElementById('portal-password').value;
+  const pw2 = document.getElementById('portal-password-confirm').value;
+  const pwErr = document.getElementById('password-error');
+  if (pw.length < 8) {
+    pwErr.textContent = 'Password must be at least 8 characters.';
+    pwErr.style.display = 'block';
+    document.getElementById('portal-password').focus();
+    return;
+  }
+  if (pw !== pw2) {
+    pwErr.textContent = 'Passwords do not match.';
+    pwErr.style.display = 'block';
+    document.getElementById('portal-password-confirm').focus();
+    return;
+  }
+  pwErr.style.display = 'none';
+
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.textContent = 'Submitting…';
@@ -680,6 +734,7 @@ document.getElementById('partner-form').addEventListener('submit', async functio
     qty_magnetic_placard: parseInt(get('qty_magnetic_placard')) || 0,
     placement_notes:      get('placement_notes') || null,
     referral_code:        get('referral_code') || null,
+    portal_password:      pw,
   };
 
   try {

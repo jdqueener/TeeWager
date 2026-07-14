@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeeWager — Partner Portal</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #1A4A2E; --green-mid: #2d7a4f;
+    --sand: #F5EDD6; --sand-dark: #EDE0C0;
+    --gold-light: #DAA520; --chalk: #FAFAF8;
+    --slate: #3D3D3D; --slate-mid: #666; --slate-light: #999;
+    --red: #c0392b; --radius: 14px;
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--chalk); color: var(--slate); line-height: 1.6; min-height: 100vh; }
+
+  /* NAV */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(245,237,214,.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--sand-dark); padding: 0 1.5rem; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .nav-logo { font-family: Georgia, serif; font-size: 18px; font-weight: 700; color: var(--green); letter-spacing: -.02em; display: flex; align-items: center; gap: 8px; text-decoration: none; }
+  .nav-right { display: flex; align-items: center; gap: 16px; }
+  #nav-course-name { font-size: 14px; font-weight: 600; color: var(--slate-mid); }
+  #sign-out-btn { font-size: 13px; font-weight: 600; color: var(--red); background: none; border: none; cursor: pointer; padding: 0; }
+  #sign-out-btn:hover { text-decoration: underline; }
+
+  /* LOGIN */
+  #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 80px 1.5rem 40px; }
+  .login-card { background: #fff; border: 1.5px solid var(--sand-dark); border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 420px; box-shadow: 0 4px 24px rgba(0,0,0,.07); }
+  .login-logo { font-family: Georgia, serif; font-size: 22px; font-weight: 700; color: var(--green); text-align: center; margin-bottom: 6px; }
+  .login-sub { font-size: 14px; color: var(--slate-mid); text-align: center; margin-bottom: 28px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  label { font-size: 13px; font-weight: 600; color: var(--slate); }
+  input[type=email], input[type=password] { padding: 11px 14px; border: 1.5px solid var(--sand-dark); border-radius: 10px; font-size: 15px; color: var(--slate); background: #fff; outline: none; transition: border-color .15s; font-family: inherit; width: 100%; }
+  input:focus { border-color: var(--green); }
+  .login-btn { width: 100%; background: var(--green); color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer; transition: background .15s; font-family: inherit; margin-top: 8px; }
+  .login-btn:hover { background: #163e26; }
+  .login-btn:disabled { opacity: .5; cursor: not-allowed; }
+  #login-error { display: none; color: var(--red); font-size: 13px; margin-top: 10px; text-align: center; }
+  .login-footer { text-align: center; margin-top: 20px; font-size: 13px; color: var(--slate-mid); }
+  .login-footer a { color: var(--green); font-weight: 600; text-decoration: none; }
+  .login-footer a:hover { text-decoration: underline; }
+
+  /* DASHBOARD */
+  #dashboard-screen { display: none; padding-top: 56px; }
+  .dash-header { background: var(--green); padding: 48px 1.5rem 40px; }
+  .dash-header-inner { max-width: 900px; margin: 0 auto; }
+  .dash-eyebrow { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.6); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+  .dash-title { font-family: Georgia, serif; font-size: clamp(1.6rem,4vw,2.4rem); font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .dash-subtitle { font-size: 14px; color: rgba(255,255,255,.65); }
+
+  .dash-body { max-width: 900px; margin: 0 auto; padding: 32px 1.5rem 80px; }
+
+  /* STAT CARDS */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 32px; }
+  .stat-card { background: #fff; border: 1.5px solid var(--sand-dark); border-radius: 14px; padding: 20px; }
+  .stat-label { font-size: 11px; font-weight: 700; color: var(--slate-light); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .stat-val { font-family: Georgia, serif; font-size: 2rem; font-weight: 700; color: var(--green); line-height: 1; }
+  .stat-sub { font-size: 12px; color: var(--slate-mid); margin-top: 4px; }
+
+  /* TABLE */
+  .section-title { font-family: Georgia, serif; font-size: 1.2rem; font-weight: 700; color: var(--green); margin-bottom: 14px; }
+  .table-wrap { overflow-x: auto; background: #fff; border: 1.5px solid var(--sand-dark); border-radius: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { font-size: 11px; font-weight: 700; color: var(--slate-light); text-transform: uppercase; letter-spacing: .06em; padding: 12px 16px; text-align: left; border-bottom: 1.5px solid var(--sand-dark); background: var(--sand); }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--sand-dark); color: var(--slate); }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .badge-monthly  { background: #D1FAE5; color: #065F46; }
+  .badge-annual   { background: #DBEAFE; color: #1E40AF; }
+  .badge-lifetime { background: #FEF3C7; color: #92400E; }
+
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--slate-mid); font-size: 14px; }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+  /* INFO BOX */
+  .info-box { background: var(--sand); border: 1px solid var(--sand-dark); border-radius: 12px; padding: 16px 20px; font-size: 13px; color: var(--slate-mid); line-height: 1.6; margin-bottom: 28px; }
+  .info-box strong { color: var(--slate); }
+
+  /* PAYOUT STATUS */
+  .payout-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: #fff; border: 1.5px solid var(--sand-dark); border-radius: 14px; padding: 20px 24px; margin-bottom: 32px; }
+  .payout-amount { font-family: Georgia, serif; font-size: 1.8rem; font-weight: 700; color: var(--green); }
+  .payout-label { font-size: 12px; color: var(--slate-mid); margin-top: 2px; }
+  .payout-note { font-size: 13px; color: var(--slate-mid); max-width: 380px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo"><span>⛳</span> TeeWager</a>
+  <div class="nav-right">
+    <span id="nav-course-name"></span>
+    <button id="sign-out-btn" onclick="signOut()" style="display:none">Sign out</button>
+  </div>
+</nav>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">⛳ TeeWager</div>
+    <div class="login-sub">Partner Portal — sign in to view your earnings</div>
+    <div class="field">
+      <label for="login-email">Email</label>
+      <input type="email" id="login-email" placeholder="john@pinesgolf.com" autocomplete="email" />
+    </div>
+    <div class="field">
+      <label for="login-pw">Password</label>
+      <input type="password" id="login-pw" placeholder="Your portal password" autocomplete="current-password" />
+    </div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Sign in →</button>
+    <div id="login-error">Incorrect email or password. Please try again.</div>
+    <div class="login-footer">
+      Not a partner yet? <a href="/partner">Apply here</a> &nbsp;·&nbsp;
+      Need help? <a href="mailto:partners@teewager.io">partners@teewager.io</a>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard-screen">
+  <div class="dash-header">
+    <div class="dash-header-inner">
+      <div class="dash-eyebrow">Partner Portal</div>
+      <div class="dash-title" id="dash-course-name">Your Course</div>
+      <div class="dash-subtitle" id="dash-contact-name"></div>
+    </div>
+  </div>
+
+  <div class="dash-body">
+
+    <!-- Payout status -->
+    <div class="payout-row">
+      <div>
+        <div class="payout-amount" id="pending-payout">$0.00</div>
+        <div class="payout-label">Pending payout (paid on the 15th)</div>
+      </div>
+      <div class="payout-note">
+        Earnings are paid monthly via your chosen method. Minimum payout is $10 — amounts below roll forward to the next month. Questions? <a href="mailto:partners@teewager.io" style="color:var(--green)">partners@teewager.io</a>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total referrals</div>
+        <div class="stat-val" id="stat-referrals">—</div>
+        <div class="stat-sub">app signups from your QR</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pro conversions</div>
+        <div class="stat-val" id="stat-conversions">—</div>
+        <div class="stat-sub">free → Pro upgrades</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total earned</div>
+        <div class="stat-val" id="stat-earned">—</div>
+        <div class="stat-sub">all time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Payout method</div>
+        <div class="stat-val" id="stat-payout-method" style="font-size:1.1rem;margin-top:4px">—</div>
+        <div class="stat-sub">on file</div>
+      </div>
+    </div>
+
+    <!-- Info: stats updated monthly -->
+    <div class="info-box">
+      <strong>Stats update on the 1st of each month.</strong> Referral and earnings data reflects confirmed Pro subscriptions attributed to your partner QR code. New signups may take 24–48 hours to appear.
+    </div>
+
+    <!-- Referral breakdown -->
+    <div class="section-title">Subscription breakdown</div>
+    <div class="table-wrap" style="margin-bottom:32px">
+      <table>
+        <thead>
+          <tr>
+            <th>Plan</th>
+            <th>Subscribers</th>
+            <th>Your rate</th>
+            <th>Monthly contribution</th>
+          </tr>
+        </thead>
+        <tbody id="breakdown-tbody">
+          <tr><td colspan="4" class="empty-state"><div class="empty-icon">📊</div>No subscription data yet. Hang your placard and check back soon!</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Partner details -->
+    <div class="section-title">Your partner details</div>
+    <div class="table-wrap">
+      <table>
+        <tbody id="details-tbody"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL     = 'https://zzhilgpznznwxvzgpzwt.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6aGlsZ3B6bnpud3h2emdwend0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NDI5MzEsImV4cCI6MjA5ODQxODkzMX0.2QfdhOb7QI-0fEvVpgYcIF2AhpO0usL2fhfZQFuCnxM';
+
+let currentPartner = null;
+
+// Restore session
+const saved = sessionStorage.getItem('partner_session');
+if (saved) {
+  try { showDashboard(JSON.parse(saved)); } catch(e) { sessionStorage.removeItem('partner_session'); }
+}
+
+document.getElementById('login-pw').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pw    = document.getElementById('login-pw').value;
+  const btn   = document.getElementById('login-btn');
+  const err   = document.getElementById('login-error');
+
+  if (!email || !pw) { err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/partners?email=eq.${encodeURIComponent(email)}&portal_password=eq.${encodeURIComponent(pw)}&select=*`,
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      err.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Sign in →';
+      return;
+    }
+    const partner = rows[0];
+    sessionStorage.setItem('partner_session', JSON.stringify(partner));
+    showDashboard(partner);
+  } catch {
+    err.textContent = 'Network error. Please try again.';
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Sign in →';
+  }
+}
+
+function showDashboard(partner) {
+  currentPartner = partner;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard-screen').style.display = 'block';
+  document.getElementById('sign-out-btn').style.display = 'inline';
+
+  const courseName = partner.course_name || 'Your Course';
+  document.getElementById('dash-course-name').textContent = courseName;
+  document.getElementById('nav-course-name').textContent = courseName;
+  document.getElementById('dash-contact-name').textContent =
+    [partner.first_name, partner.last_name].filter(Boolean).join(' ') +
+    (partner.title ? ' · ' + partner.title : '');
+
+  // Payout method display
+  document.getElementById('stat-payout-method').textContent =
+    partner.payout_method === 'ACH' ? 'ACH' : (partner.payout_method || '—');
+
+  // Stats — in a real system these would come from a separate analytics table
+  // For now show referral_count from the partner row if present, otherwise 0
+  const refs   = partner.referral_count || 0;
+  const convs  = partner.conversion_count || 0;
+  const earned = partner.total_earned || 0;
+  const pending = partner.pending_payout || 0;
+
+  document.getElementById('stat-referrals').textContent   = refs;
+  document.getElementById('stat-conversions').textContent = convs;
+  document.getElementById('stat-earned').textContent      = '$' + earned.toFixed(2);
+  document.getElementById('pending-payout').textContent   = '$' + pending.toFixed(2);
+
+  // Breakdown table (placeholder until real analytics rows exist)
+  const monthly_count  = partner.monthly_subscribers  || 0;
+  const annual_count   = partner.annual_subscribers   || 0;
+  const lifetime_count = partner.lifetime_subscribers || 0;
+
+  const tbody = document.getElementById('breakdown-tbody');
+  if (monthly_count + annual_count + lifetime_count === 0) {
+    tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">📊</div>No subscription data yet. Hang your placard and check back soon!</div></td></tr>';
+  } else {
+    tbody.innerHTML = [
+      monthly_count  ? `<tr><td><span class="badge badge-monthly">Monthly Pro</span></td><td>${monthly_count}</td><td>$0.37/mo</td><td>$${(monthly_count*0.37).toFixed(2)}/mo</td></tr>` : '',
+      annual_count   ? `<tr><td><span class="badge badge-annual">Annual Pro</span></td><td>${annual_count}</td><td>$3.83/yr</td><td>$${(annual_count*3.83).toFixed(2)}/yr</td></tr>` : '',
+      lifetime_count ? `<tr><td><span class="badge badge-lifetime">Lifetime</span></td><td>${lifetime_count}</td><td>$6.33 once</td><td>$${(lifetime_count*6.33).toFixed(2)} total</td></tr>` : '',
+    ].join('');
+  }
+
+  // Partner details
+  const details = [
+    ['Course', partner.course_name],
+    ['Location', [partner.city, partner.state].filter(Boolean).join(', ')],
+    ['Contact', [partner.first_name, partner.last_name].filter(Boolean).join(' ')],
+    ['Email', partner.email],
+    ['Phone', partner.phone || '—'],
+    ['Payout method', partner.payout_method || '—'],
+    ['Partner status', partner.status || 'pending'],
+    ['Member since', partner.created_at ? new Date(partner.created_at).toLocaleDateString() : '—'],
+  ];
+  document.getElementById('details-tbody').innerHTML = details.map(([k, v]) =>
+    `<tr><td style="font-weight:600;color:var(--slate-mid);width:40%">${k}</td><td>${v || '—'}</td></tr>`
+  ).join('');
+}
+
+function signOut() {
+  sessionStorage.removeItem('partner_session');
+  currentPartner = null;
+  document.getElementById('dashboard-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('sign-out-btn').style.display = 'none';
+  document.getElementById('nav-course-name').textContent = '';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pw').value = '';
+}
+</script>
+</body>
+</html>

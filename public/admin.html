@@ -108,6 +108,44 @@
     th:nth-child(4), td:nth-child(4),
     th:nth-child(5), td:nth-child(5) { display: none; }
   }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 24px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 16px; padding: 32px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
+  .modal h3 { font-size: 18px; font-weight: 900; color: #1A4A2E; margin-bottom: 4px; }
+  .modal-sub { font-size: 13px; color: #888; margin-bottom: 24px; }
+  .modal-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .modal-field label { font-size: 12px; font-weight: 700; color: #555; }
+  .modal-field input, .modal-field select, .modal-field textarea { padding: 10px 12px; border: 1.5px solid #E0E0D8; border-radius: 8px; font-size: 14px; font-family: inherit; outline: none; width: 100%; }
+  .modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus { border-color: #1A4A2E; }
+  .modal-field textarea { resize: vertical; min-height: 120px; font-size: 13px; }
+  .modal-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+  .modal-cancel { padding: 10px 20px; border: 1.5px solid #E0E0D8; border-radius: 8px; background: #fff; font-size: 14px; font-weight: 600; color: #555; cursor: pointer; }
+  .modal-cancel:hover { border-color: #aaa; }
+  .modal-submit { padding: 10px 24px; background: #1A4A2E; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .modal-submit:hover { background: #2D6B44; }
+  .modal-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* QR result */
+  .qr-result { background: #F0F4F0; border-radius: 10px; padding: 16px; margin-top: 16px; }
+  .qr-result-title { font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+  .qr-code-url { font-family: monospace; font-size: 13px; background: #fff; border: 1px solid #E0E0D8; border-radius: 6px; padding: 8px 12px; word-break: break-all; margin-bottom: 10px; }
+  .copy-btn { padding: 6px 14px; background: #1A4A2E; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; margin-right: 8px; }
+  .copy-btn:hover { background: #2D6B44; }
+
+  /* Bulk import preview */
+  .bulk-preview { margin-top: 16px; max-height: 260px; overflow-y: auto; }
+  .bulk-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid #F0F0EB; font-size: 13px; }
+  .bulk-row:last-child { border-bottom: none; }
+  .bulk-row-name { font-weight: 600; }
+  .bulk-row-code { font-family: monospace; font-size: 12px; background: #F0F4F0; padding: 2px 7px; border-radius: 4px; color: #555; }
+  .bulk-row-err { color: #DC2626; font-size: 12px; }
+  .add-partner-btn { padding: 10px 18px; background: #1A4A2E; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .add-partner-btn:hover { background: #2D6B44; }
+  .import-btn { padding: 10px 18px; background: #fff; color: #1A4A2E; border: 1.5px solid #1A4A2E; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .import-btn:hover { background: #F0F4F0; }
 </style>
 </head>
 <body>
@@ -178,6 +216,8 @@
       </select>
       <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
       <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+      <button class="add-partner-btn" onclick="openAddModal()">+ Add Partner</button>
+      <button class="import-btn" onclick="openBulkModal()">⬆ Bulk Import</button>
     </div>
 
     <div class="table-wrap">
@@ -197,6 +237,107 @@
           <tr><td colspan="7" class="loading">Loading…</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Partner Modal ── -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <h3>Add Partner Course</h3>
+    <p class="modal-sub">Pre-creates the course record and generates their unique QR code for the placard mailer.</p>
+
+    <div class="modal-grid-2">
+      <div class="modal-field" style="grid-column:1/-1">
+        <label>Course name *</label>
+        <input type="text" id="add-course-name" placeholder="Pines Golf Club" />
+      </div>
+      <div class="modal-field">
+        <label>City *</label>
+        <input type="text" id="add-city" placeholder="Bend" />
+      </div>
+      <div class="modal-field">
+        <label>State *</label>
+        <select id="add-state">
+          <option value="">Select</option>
+          <option>AL</option><option>AK</option><option>AZ</option><option>AR</option>
+          <option>CA</option><option>CO</option><option>CT</option><option>DE</option>
+          <option>FL</option><option>GA</option><option>HI</option><option>ID</option>
+          <option>IL</option><option>IN</option><option>IA</option><option>KS</option>
+          <option>KY</option><option>LA</option><option>ME</option><option>MD</option>
+          <option>MA</option><option>MI</option><option>MN</option><option>MS</option>
+          <option>MO</option><option>MT</option><option>NE</option><option>NV</option>
+          <option>NH</option><option>NJ</option><option>NM</option><option>NY</option>
+          <option>NC</option><option>ND</option><option>OH</option><option>OK</option>
+          <option>OR</option><option>PA</option><option>RI</option><option>SC</option>
+          <option>SD</option><option>TN</option><option>TX</option><option>UT</option>
+          <option>VT</option><option>VA</option><option>WA</option><option>WV</option>
+          <option>WI</option><option>WY</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Contact name</label>
+        <input type="text" id="add-contact" placeholder="John Smith" />
+      </div>
+      <div class="modal-field">
+        <label>Contact email</label>
+        <input type="email" id="add-email" placeholder="john@pinesgolf.com" />
+      </div>
+    </div>
+
+    <div id="add-result" style="display:none">
+      <div class="qr-result">
+        <div class="qr-result-title">Partner created — QR code URL for placard</div>
+        <div class="qr-code-url" id="add-qr-url"></div>
+        <button class="copy-btn" onclick="copyQR()">Copy URL</button>
+        <span style="font-size:12px;color:#888">Paste into qr.io or goqr.me to generate the placard QR image</span>
+        <div style="margin-top:10px;font-size:12px;color:#555">
+          Ref code: <span class="ref-code" id="add-ref-code-display"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="add-error" style="display:none;color:#DC2626;font-size:13px;margin-top:10px;"></div>
+
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeAddModal()">Close</button>
+      <button class="modal-submit" id="add-submit-btn" onclick="submitAddPartner()">Create partner →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Bulk Import Modal ── -->
+<div class="modal-overlay" id="bulk-modal">
+  <div class="modal">
+    <h3>Bulk Import Partners</h3>
+    <p class="modal-sub">Paste a list of courses — one per line — or upload a CSV. Format: <code>Course Name, City, State</code> (state optional).</p>
+
+    <div class="modal-field">
+      <label>Paste course list</label>
+      <textarea id="bulk-text" placeholder="Pines Golf Club, Bend, OR&#10;Sunriver Resort, Sunriver, OR&#10;Eagle Crest, Redmond, OR"></textarea>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <label style="font-size:13px;font-weight:600;color:#555;cursor:pointer;padding:8px 14px;border:1.5px solid #E0E0D8;border-radius:8px;background:#fff;">
+        📄 Upload CSV
+        <input type="file" accept=".csv,.txt" id="bulk-file" style="display:none" onchange="loadBulkFile()" />
+      </label>
+      <button class="modal-submit" onclick="previewBulk()" style="padding:8px 16px">Preview</button>
+    </div>
+
+    <div id="bulk-preview-wrap" style="display:none">
+      <div style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+        Preview — <span id="bulk-count">0</span> courses
+      </div>
+      <div class="bulk-preview" id="bulk-preview"></div>
+    </div>
+
+    <div id="bulk-progress" style="display:none;font-size:13px;color:#555;margin-top:12px;"></div>
+    <div id="bulk-error" style="display:none;color:#DC2626;font-size:13px;margin-top:10px;"></div>
+
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeBulkModal()">Cancel</button>
+      <button class="modal-submit" id="bulk-submit-btn" onclick="submitBulk()" style="display:none">Import all →</button>
     </div>
   </div>
 </div>
@@ -511,6 +652,207 @@ function exportCSV() {
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = `teewager-partners-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
+}
+
+// ── Add Partner ───────────────────────────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('add-course-name').value = '';
+  document.getElementById('add-city').value = '';
+  document.getElementById('add-state').value = '';
+  document.getElementById('add-contact').value = '';
+  document.getElementById('add-email').value = '';
+  document.getElementById('add-result').style.display = 'none';
+  document.getElementById('add-error').style.display = 'none';
+  document.getElementById('add-submit-btn').style.display = 'inline-block';
+  document.getElementById('add-modal').classList.add('open');
+}
+
+function closeAddModal() {
+  document.getElementById('add-modal').classList.remove('open');
+  loadData();
+}
+
+function generateRefCode(name, state) {
+  const slug = name.toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .join('');
+  const st = (state || '').toUpperCase().slice(0, 2);
+  const suffix = Math.random().toString(36).slice(2, 5).toUpperCase();
+  return [slug, st, suffix].filter(Boolean).join('-');
+}
+
+async function submitAddPartner() {
+  const name  = document.getElementById('add-course-name').value.trim();
+  const city  = document.getElementById('add-city').value.trim();
+  const state = document.getElementById('add-state').value;
+  const contact = document.getElementById('add-contact').value.trim();
+  const email = document.getElementById('add-email').value.trim();
+  const errEl = document.getElementById('add-error');
+
+  if (!name || !city || !state) {
+    errEl.textContent = 'Course name, city, and state are required.';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  const btn = document.getElementById('add-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+
+  const refCode = generateRefCode(name, state);
+  const [firstName, ...rest] = contact.split(' ');
+  const lastName = rest.join(' ');
+
+  const payload = {
+    course_name:   name,
+    city,
+    state,
+    referral_code: refCode,
+    status:        'pending',
+    first_name:    firstName || null,
+    last_name:     lastName  || null,
+    email:         email     || null,
+  };
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    const qrUrl = `https://www.teewager.io/app?ref=${refCode}`;
+    document.getElementById('add-qr-url').textContent = qrUrl;
+    document.getElementById('add-ref-code-display').textContent = refCode;
+    document.getElementById('add-result').style.display = 'block';
+    btn.style.display = 'none';
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Create partner →';
+  }
+}
+
+let lastQRUrl = '';
+function copyQR() {
+  const url = document.getElementById('add-qr-url').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    lastQRUrl = url;
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy URL', 1800);
+  });
+}
+
+// ── Bulk Import ───────────────────────────────────────────────────────────────
+let bulkParsed = [];
+
+function openBulkModal() {
+  document.getElementById('bulk-text').value = '';
+  document.getElementById('bulk-preview-wrap').style.display = 'none';
+  document.getElementById('bulk-submit-btn').style.display = 'none';
+  document.getElementById('bulk-progress').style.display = 'none';
+  document.getElementById('bulk-error').style.display = 'none';
+  bulkParsed = [];
+  document.getElementById('bulk-modal').classList.add('open');
+}
+
+function closeBulkModal() {
+  document.getElementById('bulk-modal').classList.remove('open');
+  loadData();
+}
+
+function loadBulkFile() {
+  const file = document.getElementById('bulk-file').files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('bulk-text').value = e.target.result;
+    previewBulk();
+  };
+  reader.readAsText(file);
+}
+
+function parseBulkLine(line) {
+  const parts = line.split(',').map(s => s.trim()).filter(Boolean);
+  if (!parts.length || !parts[0]) return null;
+  return {
+    course_name: parts[0],
+    city:        parts[1] || '',
+    state:       parts[2] || '',
+    refCode:     generateRefCode(parts[0], parts[2] || ''),
+  };
+}
+
+function previewBulk() {
+  const lines = document.getElementById('bulk-text').value
+    .split('\n').map(l => l.trim()).filter(Boolean);
+
+  bulkParsed = lines.map(parseBulkLine).filter(Boolean);
+
+  document.getElementById('bulk-count').textContent = bulkParsed.length;
+  document.getElementById('bulk-preview').innerHTML = bulkParsed.map(r => `
+    <div class="bulk-row">
+      <div>
+        <span class="bulk-row-name">${esc(r.course_name)}</span>
+        <span style="color:#888;font-size:12px;margin-left:6px">${esc(r.city)}${r.city&&r.state?', ':''}${esc(r.state)}</span>
+      </div>
+      <span class="bulk-row-code">${esc(r.refCode)}</span>
+    </div>`).join('');
+
+  document.getElementById('bulk-preview-wrap').style.display = bulkParsed.length ? 'block' : 'none';
+  document.getElementById('bulk-submit-btn').style.display   = bulkParsed.length ? 'inline-block' : 'none';
+  document.getElementById('bulk-error').style.display = 'none';
+}
+
+async function submitBulk() {
+  if (!bulkParsed.length) return;
+  const btn  = document.getElementById('bulk-submit-btn');
+  const prog = document.getElementById('bulk-progress');
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  prog.style.display = 'block';
+
+  let done = 0, failed = 0;
+  for (const r of bulkParsed) {
+    prog.textContent = `Importing ${done + failed + 1} of ${bulkParsed.length}…`;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          course_name:   r.course_name,
+          city:          r.city,
+          state:         r.state,
+          referral_code: r.refCode,
+          status:        'pending',
+        }),
+      });
+      if (res.ok) done++; else failed++;
+    } catch { failed++; }
+  }
+
+  prog.textContent = `Done — ${done} imported${failed ? ', ' + failed + ' failed' : ''}.`;
+  btn.textContent = 'Close';
+  btn.disabled = false;
+  btn.onclick = closeBulkModal;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
