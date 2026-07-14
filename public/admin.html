@@ -231,7 +231,7 @@
             <th class="sortable" onclick="sort('referral_count')">Referrals ↕</th>
             <th class="sortable" onclick="sort('payout')">Payout ↕</th>
             <th>Status</th>
-            <th class="sortable" onclick="sort('created_at')">Registered ↕</th>
+            <th class="sortable" onclick="sort('created_at')">Added ↕</th>
             <th></th>
           </tr>
         </thead>
@@ -353,7 +353,7 @@
 
   <div class="drawer-section">
     <div class="drawer-section-title">Status</div>
-    <div style="display:flex;align-items:center;gap:8px;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <select class="status-select" id="drawer-status">
         <option value="pending">Pending</option>
         <option value="active">Active</option>
@@ -361,6 +361,7 @@
       </select>
       <button class="save-status-btn" onclick="saveStatus()">Save</button>
     </div>
+    <div id="drawer-reg-status" style="margin-top:10px;font-size:13px;"></div>
   </div>
 
   <div class="drawer-section">
@@ -580,7 +581,10 @@ function renderTable() {
       <td><strong>${r.referral_count}</strong></td>
       <td class="${r.payout > 0 ? 'payout-amount' : 'payout-zero'}">$${r.payout.toFixed(2)}</td>
       <td><span class="badge badge-${r.status||'pending'}">${r.status||'pending'}</span></td>
-      <td>${formatDate(r.created_at)}</td>
+      <td>
+        ${formatDate(r.created_at)}
+        ${r.portal_password ? '<br><span style="font-size:11px;color:#166534;font-weight:700;">✓ Self-registered</span>' : '<br><span style="font-size:11px;color:#888;">Admin added</span>'}
+      </td>
       <td><button class="action-btn" onclick="openDrawer('${r.id}')">View</button></td>
     </tr>
   `).join('');
@@ -639,6 +643,14 @@ function openDrawer(id) {
         </div>`).join('')
     : '<div style="color:#aaa;font-size:13px;">No signups yet.</div>';
 
+  // Registration status
+  const regEl = document.getElementById('drawer-reg-status');
+  if (p.portal_password) {
+    regEl.innerHTML = '<span style="color:#166534;font-weight:700;">✓ Self-registered</span> — partner completed signup form';
+  } else {
+    regEl.innerHTML = '<span style="color:#888;">Admin added</span> — partner has not self-registered &nbsp;<button type="button" onclick="markAsRegistered()" style="padding:4px 12px;background:#1A4A2E;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Mark as registered</button>';
+  }
+
   // Populate edit fields
   document.getElementById('edit-course-name').value  = p.course_name || '';
   document.getElementById('edit-city').value         = p.city || '';
@@ -650,6 +662,28 @@ function openDrawer(id) {
 
   document.getElementById('drawer-overlay').classList.add('open');
   document.getElementById('drawer').style.display = 'block';
+}
+
+async function markAsRegistered() {
+  if (!currentDrawerPartner) return;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify({ portal_password: 'admin-marked' }),
+  });
+  if (r.ok) {
+    currentDrawerPartner.portal_password = 'admin-marked';
+    allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, portal_password: 'admin-marked' } : p);
+    document.getElementById('drawer-reg-status').innerHTML = '<span style="color:#166534;font-weight:700;">✓ Marked as registered</span> — manually confirmed by admin';
+    renderTable();
+  } else {
+    alert('Failed: ' + await r.text());
+  }
 }
 
 async function saveEdit() {
