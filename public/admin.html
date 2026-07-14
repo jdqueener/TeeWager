@@ -250,11 +250,11 @@
     <div class="modal-grid-2">
       <div class="modal-field" style="grid-column:1/-1">
         <label>Course name *</label>
-        <input type="text" id="add-course-name" placeholder="Pines Golf Club" />
+        <input type="text" id="add-course-name" placeholder="Pines Golf Club" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div class="modal-field">
         <label>City *</label>
-        <input type="text" id="add-city" placeholder="Bend" />
+        <input type="text" id="add-city" placeholder="Bend" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div class="modal-field">
         <label>State *</label>
@@ -277,11 +277,11 @@
       </div>
       <div class="modal-field">
         <label>Contact name</label>
-        <input type="text" id="add-contact" placeholder="John Smith" />
+        <input type="text" id="add-contact" placeholder="John Smith" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div class="modal-field">
         <label>Contact email</label>
-        <input type="email" id="add-email" placeholder="john@pinesgolf.com" />
+        <input type="email" id="add-email" placeholder="john@pinesgolf.com" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
     </div>
 
@@ -300,8 +300,8 @@
     <div id="add-error" style="display:none;color:#DC2626;font-size:13px;margin-top:10px;"></div>
 
     <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeAddModal()">Close</button>
-      <button class="modal-submit" id="add-submit-btn" onclick="submitAddPartner()">Create partner →</button>
+      <button type="button" class="modal-cancel" onclick="closeAddModal()">Close</button>
+      <button type="button" class="modal-submit" id="add-submit-btn" onclick="submitAddPartner()">Create partner →</button>
     </div>
   </div>
 </div>
