@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx expo export --platform web && node -e \"const fs=require('fs');fs.copyFileSync('public/landing.html','dist/landing.html');fs.copyFileSync('public/partner.html','dist/partner.html');fs.copyFileSync('public/admin.html','dist/admin.html');fs.copyFileSync('public/portal.html','dist/portal.html');\"",
+  "buildCommand": "npx expo export --platform web && node scripts/copy-public.js",
   "outputDirectory": "dist",
   "routes": [
     { "src": "^/$", "dest": "/landing.html" },
