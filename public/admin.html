@@ -385,6 +385,46 @@
     <div class="drawer-section-title" id="drawer-users-title">App Signups via this Partner</div>
     <div id="drawer-users" class="drawer-users"></div>
   </div>
+
+  <!-- Edit section -->
+  <div class="drawer-section">
+    <div class="drawer-section-title">Edit Course Details</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="modal-field">
+        <label>Course name</label>
+        <input type="text" id="edit-course-name" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="modal-field">
+          <label>City</label>
+          <input type="text" id="edit-city" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+        </div>
+        <div class="modal-field">
+          <label>State</label>
+          <input type="text" id="edit-state" maxlength="2" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Contact name</label>
+        <input type="text" id="edit-contact-name" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div class="modal-field">
+        <label>Contact email</label>
+        <input type="email" id="edit-contact-email" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div class="modal-field">
+        <label>Contact phone</label>
+        <input type="text" id="edit-contact-phone" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div id="edit-msg" style="display:none;font-size:13px;margin-top:4px;"></div>
+      <button type="button" id="edit-save-btn" onclick="saveEdit()" style="padding:10px 20px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;align-self:flex-start;">Save changes</button>
+    </div>
+  </div>
+
+  <!-- Delete -->
+  <div class="drawer-section" style="border-top:1px solid #F0F0EB;padding-top:20px;margin-top:8px;">
+    <button type="button" onclick="deletePartner()" style="width:100%;padding:11px;background:#FEF2F2;color:#DC2626;border:1.5px solid #FCA5A5;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Delete this partner</button>
+  </div>
 </div>
 
 <script>
@@ -597,8 +637,86 @@ function openDrawer(id) {
         </div>`).join('')
     : '<div style="color:#aaa;font-size:13px;">No signups yet.</div>';
 
+  // Populate edit fields
+  document.getElementById('edit-course-name').value  = p.course_name || '';
+  document.getElementById('edit-city').value         = p.city || '';
+  document.getElementById('edit-state').value        = p.state || '';
+  document.getElementById('edit-contact-name').value = [p.first_name, p.last_name].filter(Boolean).join(' ');
+  document.getElementById('edit-contact-email').value= p.email || '';
+  document.getElementById('edit-contact-phone').value= p.phone || '';
+  document.getElementById('edit-msg').style.display  = 'none';
+
   document.getElementById('drawer-overlay').classList.add('open');
   document.getElementById('drawer').style.display = 'block';
+}
+
+async function saveEdit() {
+  if (!currentDrawerPartner) return;
+  const btn = document.getElementById('edit-save-btn');
+  const msg = document.getElementById('edit-msg');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const nameParts = document.getElementById('edit-contact-name').value.trim().split(' ');
+  const fields = {
+    course_name: document.getElementById('edit-course-name').value.trim() || null,
+    city:        document.getElementById('edit-city').value.trim() || null,
+    state:       document.getElementById('edit-state').value.trim().toUpperCase() || null,
+    first_name:  nameParts[0] || null,
+    last_name:   nameParts.slice(1).join(' ') || null,
+    email:       document.getElementById('edit-contact-email').value.trim() || null,
+    phone:       document.getElementById('edit-contact-phone').value.trim() || null,
+  };
+
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(fields),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    Object.assign(currentDrawerPartner, fields);
+    allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, ...fields } : p);
+    renderTable();
+    updateStats();
+    msg.textContent = '✓ Saved!';
+    msg.style.color = '#166534';
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 2000);
+  } catch(e) {
+    msg.textContent = '⚠️ ' + e.message;
+    msg.style.color = '#DC2626';
+    msg.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save changes';
+  }
+}
+
+async function deletePartner() {
+  if (!currentDrawerPartner) return;
+  if (!confirm(`Delete "${currentDrawerPartner.course_name}"? This cannot be undone.`)) return;
+
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
+    method: 'DELETE',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+  });
+  if (r.ok) {
+    allPartners = allPartners.filter(p => p.id !== currentDrawerPartner.id);
+    renderTable();
+    updateStats();
+    closeDrawer();
+  } else {
+    alert('Delete failed: ' + await r.text());
+  }
 }
 
 async function saveStatus() {
