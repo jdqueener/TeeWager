@@ -149,6 +149,7 @@
   .import-btn { padding: 10px 18px; background: #fff; color: #1A4A2E; border: 1.5px solid #1A4A2E; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
   .import-btn:hover { background: #F0F4F0; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -289,12 +290,17 @@
 
     <div id="add-result" style="display:none">
       <div class="qr-result">
-        <div class="qr-result-title">Partner created — QR code URL for placard</div>
-        <div class="qr-code-url" id="add-qr-url"></div>
-        <button class="copy-btn" onclick="copyQR()">Copy URL</button>
-        <span style="font-size:12px;color:#888">Paste into qr.io or goqr.me to generate the placard QR image</span>
-        <div style="margin-top:10px;font-size:12px;color:#555">
-          Ref code: <span class="ref-code" id="add-ref-code-display"></span>
+        <div class="qr-result-title">Partner created — QR code for placard</div>
+        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+          <canvas id="add-qr-canvas" style="border-radius:8px;border:1px solid #E0E0D8;"></canvas>
+          <div style="flex:1;min-width:180px;">
+            <div style="font-size:12px;color:#555;margin-bottom:6px;">Ref code</div>
+            <div class="ref-code" id="add-ref-code-display" style="font-size:14px;margin-bottom:12px;"></div>
+            <div style="font-size:12px;color:#555;margin-bottom:6px;">QR URL</div>
+            <div class="qr-code-url" id="add-qr-url" style="font-size:11px;margin-bottom:12px;"></div>
+            <button type="button" class="copy-btn" onclick="copyQR()" style="margin-bottom:8px;display:block;">Copy URL</button>
+            <button type="button" class="copy-btn" onclick="downloadQR()" style="background:#2D6B44;">⬇ Download QR PNG</button>
+          </div>
         </div>
       </div>
     </div>
@@ -894,6 +900,9 @@ async function submitAddPartner() {
     document.getElementById('add-ref-code-display').textContent = refCode;
     document.getElementById('add-result').style.display = 'block';
     btn.style.display = 'none';
+    QRCode.toCanvas(document.getElementById('add-qr-canvas'), qrUrl, {
+      width: 180, margin: 2, color: { dark: '#1A4A2E', light: '#ffffff' }
+    });
     loadData();
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
@@ -903,15 +912,22 @@ async function submitAddPartner() {
   }
 }
 
-let lastQRUrl = '';
 function copyQR() {
   const url = document.getElementById('add-qr-url').textContent;
   navigator.clipboard.writeText(url).then(() => {
-    lastQRUrl = url;
     const btn = event.target;
     btn.textContent = 'Copied!';
     setTimeout(() => btn.textContent = 'Copy URL', 1800);
   });
+}
+
+function downloadQR() {
+  const canvas = document.getElementById('add-qr-canvas');
+  const refCode = document.getElementById('add-ref-code-display').textContent;
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = `teewager-qr-${refCode}.png`;
+  a.click();
 }
 
 // ── Bulk Import ───────────────────────────────────────────────────────────────
