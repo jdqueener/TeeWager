@@ -737,6 +737,7 @@ async function submitAddPartner() {
     document.getElementById('add-ref-code-display').textContent = refCode;
     document.getElementById('add-result').style.display = 'block';
     btn.style.display = 'none';
+    loadData();
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
