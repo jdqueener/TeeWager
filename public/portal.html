@@ -226,19 +226,22 @@ async function doLogin() {
 
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/partners?email=eq.${encodeURIComponent(email)}&portal_password=eq.${encodeURIComponent(pw)}&select=*`,
-      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+      `${SUPABASE_URL}/functions/v1/partner-login`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ email, password: pw }),
+      }
     );
-    const rows = await res.json();
-    if (!Array.isArray(rows) || rows.length === 0) {
+    if (res.status === 401 || res.status === 400) {
       err.style.display = 'block';
       btn.disabled = false;
       btn.textContent = 'Sign in →';
       return;
     }
-    const partner = rows[0];
-    const { portal_password: _pw, ...safePartner } = partner;
-    sessionStorage.setItem('partner_session', JSON.stringify(safePartner));
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
+    const partner = await res.json();
+    sessionStorage.setItem('partner_session', JSON.stringify(partner));
     showDashboard(partner);
   } catch {
     err.textContent = 'Network error. Please try again.';
