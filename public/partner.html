@@ -759,7 +759,8 @@ document.getElementById('partner-form').addEventListener('submit', async functio
       btn.textContent = 'Submit partner application →';
       alert('Something went wrong. Please email partners@teewager.io directly.');
     }
-  } catch {
+  } catch(e) {
+    console.error('Partner registration error', e);
     btn.disabled = false;
     btn.textContent = 'Submit partner application →';
     alert('Network error. Please email partners@teewager.io directly.');

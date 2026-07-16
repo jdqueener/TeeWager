@@ -237,7 +237,8 @@ async function doLogin() {
       return;
     }
     const partner = rows[0];
-    sessionStorage.setItem('partner_session', JSON.stringify(partner));
+    const { portal_password: _pw, ...safePartner } = partner;
+    sessionStorage.setItem('partner_session', JSON.stringify(safePartner));
     showDashboard(partner);
   } catch {
     err.textContent = 'Network error. Please try again.';
@@ -268,8 +269,8 @@ function showDashboard(partner) {
   // For now show referral_count from the partner row if present, otherwise 0
   const refs   = partner.referral_count || 0;
   const convs  = partner.conversion_count || 0;
-  const earned = partner.total_earned || 0;
-  const pending = partner.pending_payout || 0;
+  const earned = parseFloat(partner.total_earned) || 0;
+  const pending = parseFloat(partner.pending_payout) || 0;
 
   document.getElementById('stat-referrals').textContent   = refs;
   document.getElementById('stat-conversions').textContent = convs;
