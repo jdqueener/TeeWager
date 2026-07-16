@@ -298,7 +298,7 @@
             <div class="ref-code" id="add-ref-code-display" style="font-size:14px;margin-bottom:12px;"></div>
             <div style="font-size:12px;color:#555;margin-bottom:6px;">QR URL</div>
             <div class="qr-code-url" id="add-qr-url" style="font-size:11px;margin-bottom:12px;"></div>
-            <button type="button" class="copy-btn" onclick="copyQR()" style="margin-bottom:8px;display:block;">Copy URL</button>
+            <button type="button" class="copy-btn" onclick="copyQR(this)" style="margin-bottom:8px;display:block;">Copy URL</button>
             <button type="button" class="copy-btn" onclick="downloadQR()" style="background:#2D6B44;">⬇ Download QR PNG</button>
           </div>
         </div>
@@ -686,6 +686,8 @@ function openDrawer(id) {
   const regEl = document.getElementById('drawer-reg-status');
   if (p.portal_password) {
     regEl.innerHTML = '<span style="color:#166534;font-weight:700;">✓ Self-registered</span> — partner completed signup form';
+  } else if (p.status === 'registered') {
+    regEl.innerHTML = '<span style="color:#1A4A2E;font-weight:700;">✓ Admin confirmed</span> — manually marked as registered';
   } else {
     regEl.innerHTML = '<span style="color:#888;">Admin added</span> — partner has not self-registered &nbsp;<button type="button" onclick="markAsRegistered()" style="padding:4px 12px;background:#1A4A2E;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Mark as registered</button>';
   }
@@ -740,7 +742,7 @@ async function markAsRegistered() {
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'Prefer': 'return=minimal',
     },
-    body: JSON.stringify({ portal_password: 'admin-marked' }),
+    body: JSON.stringify({ portal_password: null, status: 'registered' }),
   });
   if (r.ok) {
     currentDrawerPartner.portal_password = 'admin-marked';
@@ -971,10 +973,9 @@ async function submitAddPartner() {
   }
 }
 
-function copyQR() {
+function copyQR(btn) {
   const url = document.getElementById('add-qr-url').textContent;
   navigator.clipboard.writeText(url).then(() => {
-    const btn = event.target;
     btn.textContent = 'Copied!';
     setTimeout(() => btn.textContent = 'Copy URL', 1800);
   });
@@ -1079,8 +1080,8 @@ async function submitBulk() {
           status:        'pending',
         }),
       });
-      if (res.ok) done++; else failed++;
-    } catch { failed++; }
+      if (res.ok) done++; else { console.error('Bulk import row failed', r.course_name, await res.text()); failed++; }
+    } catch(e) { console.error('Bulk import row error', r.course_name, e); failed++; }
   }
 
   prog.textContent = `Done — ${done} imported${failed ? ', ' + failed + ' failed' : ''}.`;
@@ -1126,7 +1127,7 @@ function printQRSheet() {
   if (!partners.length) { alert('Select at least one partner.'); return; }
 
   const cards = partners.map(p => {
-    const qrUrl = `https://www.teewager.io/app?ref=${encodeURIComponent(p.referral_code)}`;
+    const qrUrl = `https://www.teewager.io/app?ref=${p.referral_code}`;
     const imgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=1A4A2E&data=${encodeURIComponent(qrUrl)}`;
     return `
       <div style="break-inside:avoid;display:flex;flex-direction:column;align-items:center;border:1px solid #ccc;border-radius:8px;padding:16px;width:200px;text-align:center;">
