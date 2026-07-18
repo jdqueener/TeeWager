@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel } from '../utils/beans';
@@ -12,6 +12,7 @@ const CELL_W  = 38;
 const LABEL_W = 70;
 
 export default function ScorecardScreen() {
+  const { width: screenWidth } = useWindowDimensions();
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const {
     players, scores, firstBonus, beanValue,
@@ -210,10 +211,11 @@ export default function ScorecardScreen() {
                 {players.map((name, pi) => {
                   const s  = getStroke(pi, hole);
                   const bg = strokeColor(s, par);
-                  // ≤2 players: equal single row. 3+ players: 2-column grid (no orphan centering).
-                  const playerStyle = players.length <= 2
-                    ? [styles.strokePlayer, { flex: 1 }]
-                    : [styles.strokePlayer, { flexBasis: '48%', flexGrow: 0 }];
+                  // Wide screens or ≤2 players: single row. Narrow mobile with 3+: 2-column grid.
+                  const useGrid = players.length >= 3 && screenWidth < 500;
+                  const playerStyle = useGrid
+                    ? [styles.strokePlayer, { flexBasis: '48%', flexGrow: 0 }]
+                    : [styles.strokePlayer, { flex: 1 }];
                   return (
                     <View key={pi} style={playerStyle}>
                       <Text style={styles.strokeName} numberOfLines={1}>{name.split(' ')[0]}</Text>
