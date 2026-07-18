@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions,
+  Alert, Platform,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel } from '../utils/beans';
@@ -431,6 +432,25 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
     }
   }, [outright, allEntered, anyAwarded]);
 
+  function handleAward(pi) {
+    // If strokes are entered and this player is NOT the low ball leader, warn first
+    if (allEntered && !leaders[pi]) {
+      const minStroke = Math.min(...strokes);
+      const leaderName = players[leaders.indexOf(true)]?.split(' ')[0] ?? 'another player';
+      const msg = `${players[pi].split(' ')[0]} has ${strokes[pi]} strokes — ${leaderName} has the low score (${minStroke}). Award Low Ball to ${players[pi].split(' ')[0]} anyway?`;
+      if (Platform.OS === 'web') {
+        if (window.confirm(msg)) onAward(pi);
+      } else {
+        Alert.alert('Override Low Ball?', msg, [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Award Anyway', style: 'destructive', onPress: () => onAward(pi) },
+        ]);
+      }
+      return;
+    }
+    onAward(pi);
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -465,7 +485,7 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
             <TouchableOpacity
               key={pi}
               style={[styles.playerBtn, won && styles.playerBtnActive, leader && styles.playerBtnLeader]}
-              onPress={() => onAward(pi)}
+              onPress={() => won ? onAward(pi) : handleAward(pi)}
               activeOpacity={0.75}
             >
               <Text style={[styles.playerBtnText, (won || leader) && styles.playerBtnTextActive]} numberOfLines={1}>

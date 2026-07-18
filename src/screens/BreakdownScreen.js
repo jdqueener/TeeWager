@@ -28,7 +28,12 @@ export default function BreakdownScreen() {
     }
   }
 
-  const grandTotal = totalBeansForPlayer(selectedPlayer, scores, activeBeans, firstBonus);
+  const grandTotal  = totalBeansForPlayer(selectedPlayer, scores, activeBeans, firstBonus);
+  const allTotals   = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
+  const totalBeans  = allTotals.reduce((a, b) => a + b, 0);
+  const n           = players.length;
+  // True settlement position: beanValue × (myBeans × n − totalBeans)
+  const netDollars  = beanValue * (grandTotal * n - totalBeans);
 
   function beanDesc(event) {
     const { bean, count, isFirst } = event;
@@ -76,8 +81,8 @@ export default function BreakdownScreen() {
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryVal, grandTotal < 0 && styles.neg]}>
-                {grandTotal >= 0 ? '+' : ''}${(grandTotal * beanValue).toFixed(2)}
+              <Text style={[styles.summaryVal, netDollars < 0 && styles.neg]}>
+                {netDollars >= 0 ? '+' : ''}${Math.abs(netDollars).toFixed(2)}
               </Text>
               <Text style={styles.summaryLabel}>net</Text>
             </View>
@@ -110,7 +115,7 @@ export default function BreakdownScreen() {
                   {event.beans >= 0 ? `+${event.beans}` : event.beans}
                   {'\n'}
                   <Text style={styles.eventDollar}>
-                    {event.beans >= 0 ? '+' : ''}${(event.beans * beanValue).toFixed(2)}
+                    {event.beans >= 0 ? '+' : ''}${(event.beans * beanValue * (n - 1)).toFixed(2)}
                   </Text>
                 </Text>
               </View>
