@@ -501,8 +501,11 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
   onAwardRef.current = onAward;
   const timerRef = useRef(null);
 
-  // Auto-award the outright low ball winner, debounced 600 ms so rapid
-  // stroke increments (tapping + repeatedly) don't fire mid-entry.
+  // Auto-award the outright low ball winner, debounced 800 ms.
+  // strokesKey is in deps so ANY stroke change resets the timer —
+  // prevents firing at an intermediate value mid-entry (e.g. JV at 1
+  // before the player finishes tapping to reach their true score of 5).
+  const strokesKey = strokes.join(',');
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (outright && allEntered && !anyAwarded) {
@@ -511,10 +514,10 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
         if (fresh.filter(Boolean).length === 1) {
           onAwardRef.current(fresh.indexOf(true));
         }
-      }, 600);
+      }, 800);
     }
     return () => clearTimeout(timerRef.current);
-  }, [outright, allEntered, anyAwarded]);
+  }, [strokesKey, outright, allEntered, anyAwarded]);
 
   function handleAward(pi) {
     // Warn if the tapped player's stroke is higher than the current minimum
