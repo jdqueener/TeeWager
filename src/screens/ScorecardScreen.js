@@ -105,6 +105,52 @@ export default function ScorecardScreen() {
 
   function getStroke(pi, hi) { return strokes?.[pi]?.[hi] ?? 0; }
 
+  function advanceHole() {
+    if (hole >= lastHole) return;
+    const next = () => dispatch({ type: 'SET_HOLE', hole: hole + 1 });
+
+    const holeStrokes = players.map((_, pi) => getStroke(pi, hole));
+    const allEntered  = holeStrokes.every(s => s > 0);
+    if (!allEntered) { next(); return; }
+
+    const minS      = Math.min(...holeStrokes);
+    const hLeaders  = players.map((_, pi) => holeStrokes[pi] === minS);
+    const outright  = hLeaders.filter(Boolean).length === 1;
+    const winner    = players.findIndex((_, pi) => hasBean(pi, 'lowBall'));
+
+    const confirm = (title, msg) => {
+      if (Platform.OS === 'web') {
+        if (window.confirm(`${title}\n\n${msg}`)) next();
+      } else {
+        Alert.alert(title, msg, [
+          { text: 'Go Back', style: 'cancel' },
+          { text: 'Advance Anyway', onPress: next },
+        ]);
+      }
+    };
+
+    if (winner >= 0 && !hLeaders[winner]) {
+      const leaderName = players[hLeaders.indexOf(true)].split(' ')[0];
+      const winnerName = players[winner].split(' ')[0];
+      confirm(
+        'Low Ball Conflict',
+        `${winnerName} is awarded Low Ball but ${leaderName} has the low score (${minS}). Advance anyway?`
+      );
+      return;
+    }
+
+    if (winner < 0 && outright) {
+      const leaderName = players[hLeaders.indexOf(true)].split(' ')[0];
+      confirm(
+        'Low Ball Not Awarded',
+        `${leaderName} has the low score (${minS}) but Low Ball hasn't been awarded. Advance without awarding?`
+      );
+      return;
+    }
+
+    next();
+  }
+
   function setStroke(pi, hi, val) {
     dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hi, value: Math.max(0, val) });
   }
@@ -183,7 +229,7 @@ export default function ScorecardScreen() {
               </Text>
             </View>
             <TouchableOpacity
-              onPress={() => dispatch({ type: 'SET_HOLE', hole: Math.min(lastHole, hole + 1) })}
+              onPress={advanceHole}
               disabled={hole === lastHole}
               style={styles.navBtn}
             >
