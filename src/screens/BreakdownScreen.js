@@ -14,6 +14,8 @@ export default function BreakdownScreen() {
 
   // Build flat list of bean events for the selected player
   const events = [];
+
+  // Own events (beans this player scored directly)
   for (let h = 0; h < holeCount; h++) {
     const holeScores = scores[selectedPlayer]?.[h] || {};
     for (const bean of activeBeans) {
@@ -24,9 +26,30 @@ export default function BreakdownScreen() {
       const first = firstBonus?.[bean.id];
       const isFirst = bean.fb && first?.playerIdx === selectedPlayer && first?.holeIdx === h;
       const par   = getHolePar(h);
-      events.push({ h, holeNum: holeOffset + h + 1, par, bean, count, beans, isFirst });
+      events.push({ h, holeNum: holeOffset + h + 1, par, bean, count, beans, isFirst, incoming: false });
     }
   }
+
+  // Incoming events: negative beans from other players each pay selectedPlayer
+  for (let h = 0; h < holeCount; h++) {
+    for (const bean of activeBeans) {
+      if (bean.v >= 0) continue; // only negative-value beans transfer to others
+      for (let op = 0; op < players.length; op++) {
+        if (op === selectedPlayer) continue;
+        const count = scores[op]?.[h]?.[bean.id] || 0;
+        if (count === 0) continue;
+        const ev          = getEffectiveValue(bean, op, h, firstBonus); // negative
+        const beansIn     = count * Math.abs(ev);
+        const first       = firstBonus?.[bean.id];
+        const isFirst     = bean.fb && first?.playerIdx === op && first?.holeIdx === h;
+        const par         = getHolePar(h);
+        events.push({ h, holeNum: holeOffset + h + 1, par, bean, count, beans: beansIn, isFirst, incoming: true, from: op });
+      }
+    }
+  }
+
+  // Chronological order
+  events.sort((a, b) => a.h - b.h);
 
   const grandTotal  = totalBeansForPlayer(selectedPlayer, scores, activeBeans, firstBonus);
   const allTotals   = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
@@ -36,11 +59,14 @@ export default function BreakdownScreen() {
   const netDollars  = beanValue * (grandTotal * n - totalBeans);
 
   function beanDesc(event) {
-    const { bean, count, isFirst } = event;
+    const { bean, count, isFirst, incoming, from } = event;
     let label = bean.name;
     if (bean.id === 'lowBall')   label = 'Low Ball (skin)';
     if (bean.id === 'longDrive') label = 'Long Drive';
     if (bean.id === 'kp')        label = 'Closest to Pin';
+    if (incoming) {
+      return `From ${players[from].split(' ')[0]}'s ${label}${isFirst ? ' (first)' : ''}`;
+    }
     if (count > 1 && !bean.fb)   label += ` ×${count}`;
     if (isFirst)                 label += ' — first of round';
     return label;
@@ -88,8 +114,8 @@ export default function BreakdownScreen() {
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryVal}>{events.length}</Text>
-              <Text style={styles.summaryLabel}>{events.length === 1 ? 'event' : 'events'}</Text>
+              <Text style={styles.summaryVal}>{events.filter(e => !e.incoming).length}</Text>
+              <Text style={styles.summaryLabel}>{events.filter(e => !e.incoming).length === 1 ? 'event' : 'events'}</Text>
             </View>
           </View>
         </View>
@@ -115,7 +141,15 @@ export default function BreakdownScreen() {
                   {event.beans >= 0 ? `+${event.beans}` : event.beans}
                   {'\n'}
                   <Text style={styles.eventDollar}>
-                    {event.beans >= 0 ? '+' : ''}${(event.beans * beanValue * (n - 1)).toFixed(2)}
+                    {(() => {
+                      // Incoming: this player receives beans × beanValue from one offender.
+                      // Own negative: total paid to all (n-1) others.
+                      // Own positive: total collected from all (n-1) others.
+                      const dollars = event.incoming
+                        ? event.beans * beanValue
+                        : event.beans * beanValue * (n - 1);
+                      return `${dollars >= 0 ? '+' : ''}$${Math.abs(dollars).toFixed(2)}`;
+                    })()}
                   </Text>
                 </Text>
               </View>
