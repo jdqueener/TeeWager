@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions,
   Alert, Platform,
@@ -425,11 +425,27 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
   const pot = 1 + carryover;
   const allEntered = strokes.length > 0 && strokes.every(s => s > 0);
 
-  // Auto-award the outright low ball winner once all strokes are entered
+  // Keep a ref to the latest leaders/onAward so the debounced timer
+  // reads fresh values when it fires, not stale closure values.
+  const leadersRef = useRef(leaders);
+  leadersRef.current = leaders;
+  const onAwardRef = useRef(onAward);
+  onAwardRef.current = onAward;
+  const timerRef = useRef(null);
+
+  // Auto-award the outright low ball winner, debounced 600 ms so rapid
+  // stroke increments (tapping + repeatedly) don't fire mid-entry.
   useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
     if (outright && allEntered && !anyAwarded) {
-      onAward(leaders.indexOf(true));
+      timerRef.current = setTimeout(() => {
+        const fresh = leadersRef.current;
+        if (fresh.filter(Boolean).length === 1) {
+          onAwardRef.current(fresh.indexOf(true));
+        }
+      }, 600);
     }
+    return () => clearTimeout(timerRef.current);
   }, [outright, allEntered, anyAwarded]);
 
   function handleAward(pi) {
