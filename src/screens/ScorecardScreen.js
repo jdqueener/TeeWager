@@ -266,17 +266,25 @@ export default function ScorecardScreen() {
                   return (
                     <View key={pi} style={playerStyle}>
                       <Text style={styles.strokeName} numberOfLines={1}>{name.split(' ')[0]}</Text>
-                      <View style={styles.strokeCounter}>
-                        <TouchableOpacity style={styles.strokeBtn} onPress={() => setStroke(pi, hole, s - 1)}>
-                          <Text style={styles.strokeBtnText}>−</Text>
-                        </TouchableOpacity>
-                        <View style={[styles.strokeVal, bg && { backgroundColor: bg }]}>
-                          <Text style={[styles.strokeNum, bg && { color: colors.white }]}>{s || '—'}</Text>
+                      {Platform.OS === 'web' ? (
+                        <StrokePicker
+                          value={s}
+                          par={par}
+                          onChange={val => setStroke(pi, hole, val)}
+                        />
+                      ) : (
+                        <View style={styles.strokeCounter}>
+                          <TouchableOpacity style={styles.strokeBtn} onPress={() => setStroke(pi, hole, s - 1)}>
+                            <Text style={styles.strokeBtnText}>−</Text>
+                          </TouchableOpacity>
+                          <View style={[styles.strokeVal, bg && { backgroundColor: bg }]}>
+                            <Text style={[styles.strokeNum, bg && { color: colors.white }]}>{s || '—'}</Text>
+                          </View>
+                          <TouchableOpacity style={styles.strokeBtn} onPress={() => setStroke(pi, hole, s + 1)}>
+                            <Text style={styles.strokeBtnText}>+</Text>
+                          </TouchableOpacity>
                         </View>
-                        <TouchableOpacity style={styles.strokeBtn} onPress={() => setStroke(pi, hole, s + 1)}>
-                          <Text style={styles.strokeBtnText}>+</Text>
-                        </TouchableOpacity>
-                      </View>
+                      )}
                       {s > 0 && (
                         <Text style={[styles.strokeDiff,
                           s - par < 0 && { color: colors.green },
@@ -432,6 +440,43 @@ export default function ScorecardScreen() {
         </View>
       </Modal>
     </View>
+  );
+}
+
+// ── Stroke dropdown (web only) ────────────────────────────────────────────
+function StrokePicker({ value, par, onChange }) {
+  const d   = value ? value - par : null;
+  const bg  = d == null ? null : d <= -2 ? '#B8860B' : d === -1 ? '#2d6a4f' : d === 1 ? '#E67E22' : d >= 2 ? '#c0392b' : null;
+  const fg  = bg ? '#ffffff' : '#1a1a1a';
+  const bdr = bg ? bg : '#cccccc';
+
+  return (
+    <select
+      value={value || ''}
+      onChange={e => onChange(parseInt(e.target.value) || 0)}
+      style={{
+        fontSize: 22,
+        fontWeight: '800',
+        color: fg,
+        backgroundColor: bg || '#f5f5f5',
+        border: `2px solid ${bdr}`,
+        borderRadius: 10,
+        padding: '10px 6px',
+        width: 68,
+        textAlign: 'center',
+        textAlignLast: 'center',
+        cursor: 'pointer',
+        outline: 'none',
+        appearance: 'none',
+        WebkitAppearance: 'none',
+        MozAppearance: 'none',
+      }}
+    >
+      <option value="">—</option>
+      {Array.from({ length: 15 }, (_, i) => i + 1).map(n => (
+        <option key={n} value={n}>{n}</option>
+      ))}
+    </select>
   );
 }
 
