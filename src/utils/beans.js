@@ -6,7 +6,7 @@ export const BEAN_DEFS = [
   { id: 'kp',        name: 'KP',         v: 1, pf: [3],   fb: false, free: true, solo: true, desc: 'Closest to pin' },
   { id: 'birdie',    name: 'Birdie',     v: 1, pf: null,  fb: true,  free: true, desc: 'First birdie earns 2' },
   { id: 'eagle',     name: 'Eagle',      v: 4, pf: null,  fb: false, free: true, desc: '' },
-  { id: 'threePutt', name: '3-Putt',     v:-1, pf: null,  fb: true,  free: true, desc: 'First 3-putt costs 2' },
+  { id: 'threePutt', name: '3-Putt',     v:-1, pf: null,  fb: true,  free: true, desc: 'First costs 2 each; then 1 each' },
   { id: 'holeInOne', name: 'Hole in One',v:20, pf: null,  fb: false, free: false, desc: '' },
   { id: 'dblEagle',  name: 'Double Eagle',v:40,pf: [5],   fb: false, free: false, desc: '' },
   { id: 'sandyBird', name: 'Sandy Birdie',v:2, pf: null,  fb: false, free: false, desc: 'Birdie after sand' },
@@ -14,7 +14,7 @@ export const BEAN_DEFS = [
   { id: 'twoTreePar',name: '2-Tree Par', v: 2, pf: null,  fb: false, free: false, desc: 'Par after 2 trees' },
   { id: 'teeStick',  name: 'Tee Sticks Up',v:1,pf: null,  fb: false, free: false, desc: 'Tee flips back in' },
   { id: 'flagLength',name: 'Flag Length +',v:1,pf: null,  fb: false, free: false, desc: 'Long putt made' },
-  { id: 'fourPutt',  name: '4-Putt',     v:-2, pf: null,  fb: false, free: false, desc: '' },
+  { id: 'fourPutt',  name: '4-Putt',     v:-2, pf: null,  fb: false, free: true,  desc: 'Costs 2 to each player' },
 ];
 
 export function beanLabel(value) {
