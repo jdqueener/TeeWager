@@ -576,8 +576,8 @@ const styles = StyleSheet.create({
   // Stroke counter
   strokesCard:   { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
   strokesLabel:  { fontSize: 11, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: spacing.sm },
-  strokesRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  strokePlayer:  { flexBasis: '45%', flexGrow: 1, alignItems: 'center', gap: 6, paddingVertical: spacing.xs },
+  strokesRow:    { flexDirection: 'row', gap: spacing.sm },
+  strokePlayer:  { flex: 1, alignItems: 'center', gap: 6, paddingVertical: spacing.xs },
   strokeName:    { fontSize: 12, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.3 },
   strokeCounter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   strokeBtn:     { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center', shadowColor: colors.green, shadowOpacity: 0.25, shadowRadius: 3, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
