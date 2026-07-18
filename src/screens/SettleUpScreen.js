@@ -10,11 +10,27 @@ import ShareCard from '../components/ShareCard';
 
 export default function SettleUpScreen() {
   const { state, dispatch, pro, setPro, activeBeans } = useGame();
-  const { players, scores, firstBonus, beanValue, wagers, course } = state;
+  const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18 } = state;
+  const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [saved, setSaved] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
+
+  const needsChipOff = ldCarryover > 0 || kpCarryover > 0;
+
+  function awardChipOff(type, playerIdx) {
+    if (type === 'ld') {
+      dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: lastHole, totalBeans: 1 + ldCarryover });
+    } else {
+      dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: lastHole, totalBeans: 1 + kpCarryover });
+    }
+  }
+
+  function voidCarryovers() {
+    if (ldCarryover > 0) dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
+    if (kpCarryover > 0) dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
+  }
 
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
   const payments   = computeSettleUp(players, beanTotals, beanValue, wagers);
@@ -60,6 +76,46 @@ export default function SettleUpScreen() {
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.heading}>Settle Up</Text>
+
+        {/* Chip-Off */}
+        {needsChipOff && (
+          <>
+            <Text style={styles.sectionLabel}>⛳ Chip-Off Required</Text>
+            <View style={styles.chipOffCard}>
+              <Text style={styles.chipOffTitle}>Unawarded carryover beans — select the chip-off winner</Text>
+
+              {ldCarryover > 0 && (
+                <View style={styles.chipOffRow}>
+                  <Text style={styles.chipOffLabel}>Long Drive · ×{ldCarryover + 1} beans</Text>
+                  <View style={styles.chipOffPlayers}>
+                    {players.map((name, pi) => (
+                      <TouchableOpacity key={pi} style={styles.chipOffBtn} onPress={() => awardChipOff('ld', pi)} activeOpacity={0.75}>
+                        <Text style={styles.chipOffBtnText}>{name.split(' ')[0]}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {kpCarryover > 0 && (
+                <View style={styles.chipOffRow}>
+                  <Text style={styles.chipOffLabel}>KP · ×{kpCarryover + 1} beans</Text>
+                  <View style={styles.chipOffPlayers}>
+                    {players.map((name, pi) => (
+                      <TouchableOpacity key={pi} style={styles.chipOffBtn} onPress={() => awardChipOff('kp', pi)} activeOpacity={0.75}>
+                        <Text style={styles.chipOffBtnText}>{name.split(' ')[0]}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity style={styles.chipOffVoid} onPress={voidCarryovers}>
+                <Text style={styles.chipOffVoidText}>No chip-off — void carryover beans</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         {/* Bean totals */}
         <Text style={styles.sectionLabel}>Bean totals</Text>
@@ -188,6 +244,17 @@ const styles = StyleSheet.create({
   allSquareEmoji: { fontSize: 36, marginBottom: spacing.xs },
   allSquare:      { fontSize: 18, fontWeight: '800', color: colors.green },
   allSquareSub:   { fontSize: 14, color: colors.textLight, marginTop: 4 },
+
+  // Chip-off
+  chipOffCard:     { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.gold, padding: spacing.md, marginBottom: spacing.sm },
+  chipOffTitle:    { fontSize: 14, fontWeight: '700', color: colors.textDark, marginBottom: spacing.sm },
+  chipOffRow:      { marginBottom: spacing.sm },
+  chipOffLabel:    { fontSize: 13, fontWeight: '600', color: colors.textMid, marginBottom: 6 },
+  chipOffPlayers:  { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
+  chipOffBtn:      { flex: 1, minWidth: 64, paddingVertical: 10, borderRadius: radius.sm, backgroundColor: colors.green, alignItems: 'center' },
+  chipOffBtnText:  { color: colors.white, fontWeight: '700', fontSize: 14 },
+  chipOffVoid:     { marginTop: spacing.xs, alignItems: 'center', paddingTop: spacing.sm, borderTopWidth: 0.5, borderTopColor: colors.border },
+  chipOffVoidText: { color: colors.textLight, fontSize: 13, fontWeight: '600' },
 
   // Wagers
   bold:        { fontWeight: '700' },
