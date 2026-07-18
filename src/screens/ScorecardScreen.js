@@ -210,8 +210,12 @@ export default function ScorecardScreen() {
                 {players.map((name, pi) => {
                   const s  = getStroke(pi, hole);
                   const bg = strokeColor(s, par);
+                  // ≤2 players: equal single row. 3+ players: 2-column grid (no orphan centering).
+                  const playerStyle = players.length <= 2
+                    ? [styles.strokePlayer, { flex: 1 }]
+                    : [styles.strokePlayer, { flexBasis: '48%', flexGrow: 0 }];
                   return (
-                    <View key={pi} style={styles.strokePlayer}>
+                    <View key={pi} style={playerStyle}>
                       <Text style={styles.strokeName} numberOfLines={1}>{name.split(' ')[0]}</Text>
                       <View style={styles.strokeCounter}>
                         <TouchableOpacity style={styles.strokeBtn} onPress={() => setStroke(pi, hole, s - 1)}>
@@ -576,8 +580,8 @@ const styles = StyleSheet.create({
   // Stroke counter
   strokesCard:   { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
   strokesLabel:  { fontSize: 11, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: spacing.sm },
-  strokesRow:    { flexDirection: 'row', gap: spacing.sm },
-  strokePlayer:  { flex: 1, alignItems: 'center', gap: 6, paddingVertical: spacing.xs },
+  strokesRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  strokePlayer:  { alignItems: 'center', gap: 6, paddingVertical: spacing.xs },
   strokeName:    { fontSize: 12, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.3 },
   strokeCounter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   strokeBtn:     { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center', shadowColor: colors.green, shadowOpacity: 0.25, shadowRadius: 3, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
