@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions,
 } from 'react-native';
@@ -422,6 +422,15 @@ function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dim
 // ── Low Ball / Skins card ─────────────────────────────────────────────────
 function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onAward, onCarryover, carryover, anyAwarded }) {
   const pot = 1 + carryover;
+  const allEntered = strokes.length > 0 && strokes.every(s => s > 0);
+
+  // Auto-award the outright low ball winner once all strokes are entered
+  useEffect(() => {
+    if (outright && allEntered && !anyAwarded) {
+      onAward(leaders.indexOf(true));
+    }
+  }, [outright, allEntered, anyAwarded]);
+
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -473,7 +482,7 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
         })}
       </View>
 
-      {!anyAwarded && (
+      {!anyAwarded && !outright && strokes.some(s => s > 0) && (
         <TouchableOpacity style={styles.carryoverBtn} onPress={onCarryover}>
           <Text style={styles.carryoverBtnText}>
             Tie — carry over {carryover > 0 ? `(now ×${pot + 1})` : ''}
