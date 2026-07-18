@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions,
-  Alert, Platform,
+  Alert, Platform, Modal,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel } from '../utils/beans';
@@ -27,6 +27,8 @@ export default function ScorecardScreen() {
 
   const [mode, setMode] = useState('hole'); // 'hole' | 'grid'
   const [paywallVisible, setPaywallVisible] = useState(false);
+  // { title, msg, onConfirm } — drives the cross-platform confirm modal
+  const [conflictPrompt, setConflictPrompt] = useState(null);
 
   const hole = currentHole;
   const par  = getHolePar(hole);
@@ -119,13 +121,13 @@ export default function ScorecardScreen() {
     const winner    = players.findIndex((_, pi) => hasBean(pi, 'lowBall'));
 
     const confirm = (title, msg) => {
-      if (Platform.OS === 'web') {
-        if (window.confirm(`${title}\n\n${msg}`)) next();
-      } else {
+      if (Platform.OS !== 'web') {
         Alert.alert(title, msg, [
           { text: 'Go Back', style: 'cancel' },
           { text: 'Advance Anyway', onPress: next },
         ]);
+      } else {
+        setConflictPrompt({ title, msg, onConfirm: next });
       }
     };
 
@@ -313,6 +315,7 @@ export default function ScorecardScreen() {
                     onCarryover={() => dispatch({ type: 'SKINS_CARRYOVER' })}
                     carryover={skinsCarryover}
                     anyAwarded={players.some((_, pi) => hasBean(pi, 'lowBall'))}
+                    onShowConflict={(title, msg, onConfirm) => setConflictPrompt({ title, msg, onConfirm })}
                   />
                 );
               }
@@ -411,6 +414,25 @@ export default function ScorecardScreen() {
       )}
 
       <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
+
+      {/* Cross-platform conflict confirmation modal */}
+      <Modal visible={!!conflictPrompt} transparent animationType="fade">
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>{conflictPrompt?.title}</Text>
+            <Text style={styles.confirmMsg}>{conflictPrompt?.msg}</Text>
+            <TouchableOpacity
+              style={styles.confirmAdvance}
+              onPress={() => { conflictPrompt?.onConfirm(); setConflictPrompt(null); }}
+            >
+              <Text style={styles.confirmAdvanceText}>Advance Anyway</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.confirmBack} onPress={() => setConflictPrompt(null)}>
+              <Text style={styles.confirmBackText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -467,7 +489,7 @@ function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dim
 }
 
 // ── Low Ball / Skins card ─────────────────────────────────────────────────
-function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onAward, onCarryover, carryover, anyAwarded }) {
+function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onAward, onCarryover, carryover, anyAwarded, onShowConflict }) {
   const pot = 1 + carryover;
   const allEntered = strokes.length > 0 && strokes.every(s => s > 0);
 
@@ -495,18 +517,22 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
   }, [outright, allEntered, anyAwarded]);
 
   function handleAward(pi) {
-    // If strokes are entered and this player is NOT the low ball leader, warn first
-    if (allEntered && !leaders[pi]) {
-      const minStroke = Math.min(...strokes);
-      const leaderName = players[leaders.indexOf(true)]?.split(' ')[0] ?? 'another player';
-      const msg = `${players[pi].split(' ')[0]} has ${strokes[pi]} strokes — ${leaderName} has the low score (${minStroke}). Award Low Ball to ${players[pi].split(' ')[0]} anyway?`;
-      if (Platform.OS === 'web') {
-        if (window.confirm(msg)) onAward(pi);
-      } else {
+    // Warn if the tapped player's stroke is higher than the current minimum
+    // among entered strokes — catches wrong taps even mid-entry.
+    const enteredStrokes = strokes.filter(s => s > 0);
+    const minSoFar = enteredStrokes.length > 0 ? Math.min(...enteredStrokes) : null;
+    const tappedStroke = strokes[pi];
+    if (tappedStroke > 0 && minSoFar !== null && tappedStroke > minSoFar) {
+      const currentLeaderIdx = strokes.indexOf(minSoFar);
+      const leaderName = currentLeaderIdx >= 0 ? players[currentLeaderIdx].split(' ')[0] : 'another player';
+      const msg = `${players[pi].split(' ')[0]} has ${tappedStroke} strokes — ${leaderName} currently has the low score (${minSoFar}). Award Low Ball to ${players[pi].split(' ')[0]} anyway?`;
+      if (Platform.OS !== 'web') {
         Alert.alert('Override Low Ball?', msg, [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Award Anyway', style: 'destructive', onPress: () => onAward(pi) },
         ]);
+      } else {
+        onShowConflict('Override Low Ball?', msg, () => onAward(pi));
       }
       return;
     }
@@ -736,4 +762,14 @@ const styles = StyleSheet.create({
   totalScore:         { fontSize: 18, fontWeight: '900', color: colors.textDark, width: 40, textAlign: 'center' },
   totalDiff:          { fontSize: 13, fontWeight: '700', color: colors.textMid, width: 36, textAlign: 'center' },
   totalBeans:         { fontSize: 13, fontWeight: '700', color: colors.green, width: 60, textAlign: 'right' },
+
+  // Conflict confirm modal
+  confirmOverlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  confirmCard:         { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg, width: '100%', maxWidth: 360 },
+  confirmTitle:        { fontSize: 17, fontWeight: '800', color: colors.textDark, marginBottom: spacing.xs },
+  confirmMsg:          { fontSize: 14, color: colors.textMid, marginBottom: spacing.lg, lineHeight: 20 },
+  confirmAdvance:      { backgroundColor: colors.red, borderRadius: radius.pill, paddingVertical: 13, alignItems: 'center', marginBottom: spacing.sm },
+  confirmAdvanceText:  { color: colors.white, fontWeight: '700', fontSize: 15 },
+  confirmBack:         { paddingVertical: 12, alignItems: 'center' },
+  confirmBackText:     { color: colors.textMid, fontSize: 15, fontWeight: '600' },
 });
