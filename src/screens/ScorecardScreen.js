@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions,
   Alert, Platform, Modal,
@@ -141,12 +141,10 @@ export default function ScorecardScreen() {
       return;
     }
 
+    // No one awarded but there's a clear winner — auto-award and advance.
     if (winner < 0 && outright) {
-      const leaderName = players[hLeaders.indexOf(true)].split(' ')[0];
-      confirm(
-        'Low Ball Not Awarded',
-        `${leaderName} has the low score (${minS}) but Low Ball hasn't been awarded. Advance without awarding?`
-      );
+      dispatch({ type: 'SKINS_AWARD', playerIdx: hLeaders.indexOf(true), holeIdx: hole, totalBeans: 1 + skinsCarryover });
+      next();
       return;
     }
 
@@ -493,31 +491,10 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
   const pot = 1 + carryover;
   const allEntered = strokes.length > 0 && strokes.every(s => s > 0);
 
-  // Keep a ref to the latest leaders/onAward so the debounced timer
-  // reads fresh values when it fires, not stale closure values.
-  const leadersRef = useRef(leaders);
-  leadersRef.current = leaders;
-  const onAwardRef = useRef(onAward);
-  onAwardRef.current = onAward;
-  const timerRef = useRef(null);
-
-  // Auto-award the outright low ball winner, debounced 800 ms.
-  // strokesKey is in deps so ANY stroke change resets the timer —
-  // prevents firing at an intermediate value mid-entry (e.g. JV at 1
-  // before the player finishes tapping to reach their true score of 5).
-  const strokesKey = strokes.join(',');
-  useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (outright && allEntered && !anyAwarded) {
-      timerRef.current = setTimeout(() => {
-        const fresh = leadersRef.current;
-        if (fresh.filter(Boolean).length === 1) {
-          onAwardRef.current(fresh.indexOf(true));
-        }
-      }, 800);
-    }
-    return () => clearTimeout(timerRef.current);
-  }, [strokesKey, outright, allEntered, anyAwarded]);
+  // No auto-award during entry — scores fire mid-entry while a player
+  // taps from 0 up to their real score, causing wrong awards.
+  // Instead, the correct player is auto-awarded in advanceHole() when
+  // the user deliberately moves to the next hole and scores are final.
 
   function handleAward(pi) {
     // Warn if the tapped player's stroke is higher than the current minimum
