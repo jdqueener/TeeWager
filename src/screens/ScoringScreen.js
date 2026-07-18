@@ -8,11 +8,17 @@ import ProBanner from '../components/ProBanner';
 
 export default function ScoringScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
-  const { players, scores, firstBonus, currentHole, ldCarryover, kpCarryover, holeCount = 18, holeOffset = 0 } = state;
+  const { players, scores, firstBonus, currentHole, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18, holeOffset = 0 } = state;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const hole = currentHole;
   const lastHole = holeCount - 1;
   const par  = getHolePar(hole);
+
+  // Detect low-ball tie from stroke counts on this hole
+  const holeStrokes = players.map((_, pi) => state.strokes[pi]?.[hole] || 0);
+  const validStrokes = holeStrokes.filter(s => s > 0);
+  const minStroke = validStrokes.length > 0 ? Math.min(...validStrokes) : null;
+  const lowBallTied = minStroke !== null && holeStrokes.filter(s => s === minStroke).length >= 2;
 
   function hasBean(playerIdx, beanId) {
     return (scores[playerIdx]?.[hole]?.[beanId] || 0) > 0;
@@ -81,6 +87,27 @@ export default function ScoringScreen() {
   const visibleBeans = activeBeans.filter(b => isParAllowed(b, par));
   const dimmedBeans  = activeBeans.filter(b => !isParAllowed(b, par));
 
+  function advanceHole() {
+    if (hole >= lastHole) return;
+
+    // Auto-carryover LD if active on this par and no one won it
+    if (visibleBeans.find(b => b.id === 'longDrive') && !players.some((_, pi) => hasBean(pi, 'longDrive'))) {
+      dispatch({ type: 'LD_CARRYOVER' });
+    }
+
+    // Auto-carryover KP if active on this par (par 3) and no one won it
+    if (visibleBeans.find(b => b.id === 'kp') && !players.some((_, pi) => hasBean(pi, 'kp'))) {
+      dispatch({ type: 'KP_CARRYOVER' });
+    }
+
+    // Auto-carryover skins on a tie
+    if (activeBeans.find(b => b.id === 'lowBall') && lowBallTied && !players.some((_, pi) => hasBean(pi, 'lowBall'))) {
+      dispatch({ type: 'SKINS_CARRYOVER' });
+    }
+
+    dispatch({ type: 'SET_HOLE', hole: hole + 1 });
+  }
+
   return (
     <View style={styles.root}>
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} />
@@ -102,7 +129,7 @@ export default function ScoringScreen() {
           </Text>
         </View>
         <TouchableOpacity
-          onPress={() => dispatch({ type: 'SET_HOLE', hole: Math.min(lastHole, hole + 1) })}
+          onPress={advanceHole}
           disabled={hole === lastHole}
           style={styles.navBtn}
         >
@@ -134,13 +161,14 @@ export default function ScoringScreen() {
             pro={pro}
             firstBonus={firstBonus}
             hole={hole}
-            carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : 0}
+            carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : bean.id === 'lowBall' ? skinsCarryover : 0}
             onCarryover={
               bean.id === 'longDrive' ? () => dispatch({ type: 'LD_CARRYOVER' }) :
               bean.id === 'kp'        ? () => dispatch({ type: 'KP_CARRYOVER' }) :
               null
             }
             carryoverLabel={bean.id === 'kp' ? 'No one on the green' : 'No fairway'}
+            isTied={bean.id === 'lowBall' ? lowBallTied : false}
           />
         ))}
 
@@ -169,7 +197,7 @@ export default function ScoringScreen() {
   );
 }
 
-function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dimmed, carryover = 0, onCarryover, carryoverLabel = 'No winner' }) {
+function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dimmed, carryover = 0, onCarryover, carryoverLabel = 'No winner', isTied = false }) {
   const locked = !bean.free && !pro;
   const anySelected = players.some((_, pi) => hasBean(pi));
   const effectiveValue = carryover > 0
@@ -212,12 +240,17 @@ function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dim
         })}
       </View>
 
-      {onCarryover && !anySelected && (
+      {onCarryover && !anySelected && !isTied && (
         <TouchableOpacity style={styles.carryoverBtn} onPress={onCarryover}>
           <Text style={styles.carryoverBtnText}>
             {carryoverLabel} — carry over {carryover > 0 ? `(now ×${carryover + 2})` : ''}
           </Text>
         </TouchableOpacity>
+      )}
+      {isTied && !anySelected && (
+        <View style={styles.tieIndicator}>
+          <Text style={styles.tieBadgeText}>🤝 Tied — carries over automatically</Text>
+        </View>
       )}
     </View>
   );
@@ -256,6 +289,8 @@ const styles = StyleSheet.create({
   checkmark:  { fontSize: 12, color: colors.white, fontWeight: '800' },
 
   neg: { color: colors.red },
+  tieIndicator:  { marginTop: spacing.sm, borderTopWidth: 0.5, borderTopColor: colors.border, paddingTop: spacing.sm, alignItems: 'center' },
+  tieBadgeText:  { color: colors.gold, fontWeight: '700', fontSize: 13 },
   carryoverBadge:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
   carryoverBadgeText: { color: colors.white, fontSize: 12, fontWeight: '700' },
   carryoverBtn:       { marginTop: spacing.sm, borderTopWidth: 0.5, borderTopColor: colors.border, paddingTop: spacing.sm, alignItems: 'center' },
