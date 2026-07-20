@@ -59,6 +59,11 @@
   .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--slate-mid); cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; margin-bottom: 20px; }
   .back-link:hover { color: var(--green); }
   #forgot-success { display: none; color: #065F46; background: #D1FAE5; border-radius: 10px; padding: 12px 16px; font-size: 13px; margin-top: 12px; text-align: center; }
+  /* Reset password screen */
+  #reset-screen { display: none; align-items: center; justify-content: center; min-height: 100vh; padding: 80px 1.5rem 40px; }
+  #reset-screen .login-card { max-width: 420px; }
+  #reset-success { display: none; color: #065F46; background: #D1FAE5; border-radius: 10px; padding: 12px 16px; font-size: 13px; margin-top: 12px; text-align: center; }
+  #reset-error { display: none; color: var(--red); font-size: 13px; margin-top: 10px; text-align: center; }
 
   /* DASHBOARD */
   #dashboard-screen { display: none; padding-top: 56px; }
@@ -141,6 +146,31 @@
       Not a partner yet? <a href="/partner">Apply here</a> &nbsp;·&nbsp;
       Need help? <a href="mailto:partners@teewager.io">partners@teewager.io</a>
     </div>
+  </div>
+</div>
+
+<!-- RESET PASSWORD -->
+<div id="reset-screen">
+  <div class="login-card">
+    <div class="login-logo">⛳ TeeWager</div>
+    <div class="login-sub">Choose a new password for your partner portal.</div>
+    <div class="field">
+      <label for="reset-pw">New password</label>
+      <div class="pw-wrap">
+        <input type="password" id="reset-pw" placeholder="At least 8 characters" autocomplete="new-password" />
+        <button type="button" class="pw-toggle" onclick="togglePw('reset-pw', this)" aria-label="Show password">👁</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="reset-pw2">Confirm new password</label>
+      <div class="pw-wrap">
+        <input type="password" id="reset-pw2" placeholder="Repeat password" autocomplete="new-password" />
+        <button type="button" class="pw-toggle" onclick="togglePw('reset-pw2', this)" aria-label="Show password">👁</button>
+      </div>
+    </div>
+    <button class="login-btn" id="reset-btn" onclick="doReset()">Set new password</button>
+    <div id="reset-error">Something went wrong. The link may have expired.</div>
+    <div id="reset-success">Password updated! <a onclick="showLogin()" style="cursor:pointer;color:var(--green);font-weight:700;">Sign in →</a></div>
   </div>
 </div>
 
@@ -409,10 +439,52 @@ async function doForgot() {
   btn.textContent = 'Send reset link';
 }
 
+async function doReset() {
+  const pw   = document.getElementById('reset-pw').value;
+  const pw2  = document.getElementById('reset-pw2').value;
+  const err  = document.getElementById('reset-error');
+  const ok   = document.getElementById('reset-success');
+  const btn  = document.getElementById('reset-btn');
+  err.style.display = 'none';
+  ok.style.display  = 'none';
+  if (pw.length < 8) { err.textContent = 'Password must be at least 8 characters.'; err.style.display = 'block'; return; }
+  if (pw !== pw2)    { err.textContent = 'Passwords do not match.'; err.style.display = 'block'; return; }
+  const token = new URLSearchParams(window.location.search).get('reset');
+  if (!token) { err.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/partner-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+      body: JSON.stringify({ token, password: pw }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      err.textContent = data.error === 'link expired' ? 'This link has expired. Please request a new one.' : 'Invalid or expired link.';
+      err.style.display = 'block';
+    } else {
+      history.replaceState(null, '', window.location.pathname);
+      ok.style.display = 'block';
+    }
+  } catch {
+    err.textContent = 'Network error. Please try again.';
+    err.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Set new password';
+}
+
 function signInWithGoogle() {
   const redirectTo = encodeURIComponent(window.location.origin + '/portal');
   window.location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`;
 }
+
+// Handle password reset link — ?reset=TOKEN
+(function handleResetParam() {
+  const token = new URLSearchParams(window.location.search).get('reset');
+  if (!token) return;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('reset-screen').style.display = 'flex';
+})();
 
 // Handle OAuth redirect — Supabase appends #access_token=... to the URL
 (async function handleOAuthCallback() {
