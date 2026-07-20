@@ -15,6 +15,7 @@ export const BEAN_DEFS = [
   { id: 'teeStick',  name: 'Tee Sticks Up',v:1,pf: null,  fb: false, free: false, desc: 'Tee flips back in' },
   { id: 'flagLength',name: 'Flag Length +',v:1,pf: null,  fb: false, free: false, desc: 'Long putt made' },
   { id: 'fourPutt',  name: '4-Putt',     v:-2, pf: null,  fb: false, free: true,  desc: 'Costs 2 to each player' },
+  { id: 'chipIn',    name: 'Chip In',    v: 1, pf: null,  fb: false, free: true,  desc: 'Hole out from off the green' },
 ];
 
 export function beanLabel(value) {
