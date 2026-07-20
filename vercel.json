@@ -2,6 +2,8 @@
   "buildCommand": "npx expo export --platform web && node scripts/copy-public.js",
   "outputDirectory": "dist",
   "routes": [
+    { "src": "^/apple-touch-icon.png$", "dest": "/apple-touch-icon.png" },
+    { "src": "^/favicon.ico$", "dest": "/apple-touch-icon.png" },
     { "src": "^/$", "dest": "/landing.html" },
     { "src": "^/partner$", "dest": "/partner.html" },
     { "src": "^/admin$", "dest": "/admin.html" },
