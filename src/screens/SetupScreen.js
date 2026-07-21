@@ -43,8 +43,13 @@ export default function SetupScreen() {
   const urlMode = Platform.OS === 'web'
     ? (new URLSearchParams(window.location.search)).get('mode') ?? null
     : null;
-  const [authVisible, setAuthVisible] = useState(urlMode === 'signin' || urlMode === 'signup');
+  const [authVisible, setAuthVisible] = useState(!user || urlMode === 'signin' || urlMode === 'signup');
   const [authInitialMode, setAuthInitialMode] = useState(urlMode === 'signup' ? 'signup' : 'signin');
+
+  // Show auth screen whenever user signs out
+  useEffect(() => {
+    if (!user) { setAuthInitialMode('signin'); setAuthVisible(true); }
+  }, [user]);
   const [savedPlayers, setSavedPlayers] = useState([]);
   const [pickerIdx, setPickerIdx] = useState(null);
   const [savePrompt, setSavePrompt] = useState(null);
