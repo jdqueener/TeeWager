@@ -497,8 +497,8 @@ function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dim
             </View>
           )}
         </View>
-        <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
-          {beanLabel(effectiveValue)}{bean.solo && !carryover ? ' · 1 winner' : ''}
+        <Text style={[styles.beanValue, bean.awardToOthers && styles.neg]}>
+          {beanLabel(effectiveValue, bean.awardToOthers)}{bean.solo && !carryover ? ' · 1 winner' : ''}
         </Text>
       </View>
       <View style={styles.playerRow}>
@@ -507,7 +507,7 @@ function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dim
           return (
             <TouchableOpacity
               key={pi}
-              style={[styles.playerBtn, selected && (bean.v < 0 ? styles.playerBtnNeg : styles.playerBtnActive)]}
+              style={[styles.playerBtn, selected && (bean.awardToOthers ? styles.playerBtnNeg : styles.playerBtnActive)]}
               onPress={() => onToggle(pi)}
               disabled={dimmed}
               activeOpacity={0.75}

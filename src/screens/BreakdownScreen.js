@@ -19,6 +19,7 @@ export default function BreakdownScreen() {
   for (let h = 0; h < holeCount; h++) {
     const holeScores = scores[selectedPlayer]?.[h] || {};
     for (const bean of activeBeans) {
+      if (bean.awardToOthers) continue; // putter doesn't lose beans; recipients gain them
       const count = holeScores[bean.id] || 0;
       if (count === 0) continue;
       const ev    = getEffectiveValue(bean, selectedPlayer, h, firstBonus);
@@ -33,7 +34,7 @@ export default function BreakdownScreen() {
   // Incoming events: negative beans from other players each pay selectedPlayer
   for (let h = 0; h < holeCount; h++) {
     for (const bean of activeBeans) {
-      if (bean.v >= 0) continue; // only negative-value beans transfer to others
+      if (!bean.awardToOthers) continue; // only awardToOthers beans pay out to other players
       for (let op = 0; op < players.length; op++) {
         if (op === selectedPlayer) continue;
         const count = scores[op]?.[h]?.[bean.id] || 0;
