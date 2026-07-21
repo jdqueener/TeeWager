@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "routes": [
     { "src": "^/apple-touch-icon.png$", "dest": "/apple-touch-icon.png" },
+    { "src": "^/manifest\\.json$", "dest": "/manifest.json" },
     { "src": "^/favicon.ico$", "dest": "/apple-touch-icon.png" },
     { "src": "^/$", "dest": "/landing.html" },
     { "src": "^/partner$", "dest": "/partner.html" },
