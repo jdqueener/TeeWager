@@ -445,7 +445,7 @@ export default function SetupScreen() {
 
         {/* Bean list */}
         <Text style={styles.label}>Beans</Text>
-        {BEAN_DEFS.map(bean => {
+        {BEAN_DEFS.filter(b => !b.impromptu).map(bean => {
           const locked = !bean.free && !pro;
           const on = enabledBeans.has(bean.id);
           return (

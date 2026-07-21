@@ -16,6 +16,7 @@ export const BEAN_DEFS = [
   { id: 'flagLength',name: 'Flag Length +',v:1,pf: null,  fb: false, free: false, desc: 'Long putt made' },
   { id: 'fourPutt',  name: '4-Putt',     v: 2, pf: null,  fb: false, free: true,  awardToOthers: true, desc: 'Awards 2 beans to each other player' },
   { id: 'chipIn',    name: 'Chip In',    v: 1, pf: null,  fb: false, free: true,  desc: 'Hole out from off the green' },
+  { id: 'bonusBean', name: 'Bonus Bean', v: 1, pf: null,  fb: false, free: true,  impromptu: true, desc: 'In-round challenge bean' },
 ];
 
 export function beanLabel(value, awardToOthers = false) {

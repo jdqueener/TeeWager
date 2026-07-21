@@ -8,7 +8,7 @@ import PaywallModal from '../components/PaywallModal';
 
 export default function BreakdownScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
-  const { players, scores, firstBonus, beanValue, holeCount = 18, holeOffset = 0 } = state;
+  const { players, scores, firstBonus, beanValue, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0 } = state;
   const [selectedPlayer, setSelectedPlayer] = useState(0);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -65,6 +65,10 @@ export default function BreakdownScreen() {
     if (bean.id === 'lowBall')   label = 'Low Ball (skin)';
     if (bean.id === 'longDrive') label = 'Long Drive';
     if (bean.id === 'kp')        label = 'Closest to Pin';
+    if (bean.id === 'bonusBean') {
+      const desc = bonusBeanDescs[event.h];
+      label = desc ? `Bonus Bean — ${desc}` : 'Bonus Bean';
+    }
     if (incoming) {
       return `From ${players[from].split(' ')[0]}'s ${label}${isFirst ? ' (first)' : ''}`;
     }

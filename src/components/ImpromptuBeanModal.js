@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, Modal,
+  View, Text, TextInput, TouchableOpacity, ScrollView, Modal,
   StyleSheet, FlatList,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
@@ -9,20 +9,37 @@ import { colors, spacing, radius } from '../utils/theme';
 
 export default function ImpromptuBeanModal({ visible, onClose }) {
   const { state, dispatch, activeBeans, getHolePar } = useGame();
-  const { players, scores, currentHole, firstBonus, holeCount = 18, holeOffset = 0 } = state;
+  const { players, scores, currentHole, firstBonus, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0 } = state;
 
   const [selectedHole, setSelectedHole] = useState(currentHole);
   const [showHolePicker, setShowHolePicker] = useState(false);
+  const [bonusDesc, setBonusDesc] = useState('');
 
-  // Sync to current hole each time modal opens
   useEffect(() => {
-    if (visible) setSelectedHole(currentHole);
+    if (visible) {
+      setSelectedHole(currentHole);
+      setBonusDesc(bonusBeanDescs[currentHole] || '');
+    }
   }, [visible, currentHole]);
+
+  useEffect(() => {
+    setBonusDesc(bonusBeanDescs[selectedHole] || '');
+  }, [selectedHole]);
 
   const par = getHolePar(selectedHole);
 
   function getCount(playerIdx, beanId) {
     return scores[playerIdx]?.[selectedHole]?.[beanId] || 0;
+  }
+
+  function saveBonusDesc(text) {
+    setBonusDesc(text);
+    dispatch({ type: 'SET_BONUS_DESC', holeIdx: selectedHole, desc: text });
+  }
+
+  function adjustBonus(playerIdx, delta) {
+    const bonusBean = activeBeans.find(b => b.id === 'bonusBean');
+    if (bonusBean) adjust(playerIdx, bonusBean, delta);
   }
 
   function adjust(playerIdx, bean, delta) {
@@ -55,6 +72,43 @@ export default function ImpromptuBeanModal({ visible, onClose }) {
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
+
+          {/* Bonus Bean section */}
+          <View style={styles.bonusSection}>
+            <Text style={styles.bonusTitle}>⭐ Bonus Bean</Text>
+            <TextInput
+              style={styles.bonusInput}
+              value={bonusDesc}
+              onChangeText={saveBonusDesc}
+              placeholder="What's the challenge? (e.g. past the oak tree)"
+              placeholderTextColor={colors.textLight}
+              maxLength={60}
+            />
+            <View style={styles.bonusPlayerRow}>
+              {players.map((name, pi) => {
+                const count = getCount(pi, 'bonusBean');
+                return (
+                  <View key={pi} style={styles.bonusPlayerCell}>
+                    <Text style={styles.bonusPlayerName} numberOfLines={1}>{name.split(' ')[0]}</Text>
+                    <View style={styles.counter}>
+                      <TouchableOpacity
+                        style={[styles.adjBtn, count === 0 && styles.adjBtnDisabled]}
+                        onPress={() => adjustBonus(pi, -1)}
+                        disabled={count === 0}
+                      >
+                        <Text style={styles.adjBtnText}>−</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.count}>{count}</Text>
+                      <TouchableOpacity style={styles.adjBtn} onPress={() => adjustBonus(pi, 1)}>
+                        <Text style={styles.adjBtnText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
           {players.map((name, pi) => (
             <View key={pi} style={styles.playerSection}>
               <View style={styles.playerHeader}>
@@ -64,7 +118,7 @@ export default function ImpromptuBeanModal({ visible, onClose }) {
                 <Text style={styles.playerName}>{name}</Text>
               </View>
 
-              {activeBeans.map(bean => {
+              {activeBeans.filter(b => !b.impromptu).map(bean => {
                 const allowed = isParAllowed(bean, par);
                 const count   = getCount(pi, bean.id);
                 const value   = getEffectiveValue(bean, pi, selectedHole, firstBonus);
@@ -168,6 +222,13 @@ const styles = StyleSheet.create({
   adjBtnDisabled:{ backgroundColor: colors.border },
   adjBtnText:    { color: colors.white, fontSize: 18, fontWeight: '700', lineHeight: 22 },
   count:         { fontSize: 18, fontWeight: '800', color: colors.textDark, minWidth: 24, textAlign: 'center' },
+
+  bonusSection:    { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.gold, padding: spacing.md, marginBottom: spacing.lg },
+  bonusTitle:      { fontSize: 15, fontWeight: '800', color: colors.textDark, marginBottom: spacing.sm },
+  bonusInput:      { borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, padding: spacing.sm, fontSize: 14, color: colors.textDark, marginBottom: spacing.sm },
+  bonusPlayerRow:  { flexDirection: 'row', gap: spacing.sm },
+  bonusPlayerCell: { flex: 1, alignItems: 'center', gap: 6 },
+  bonusPlayerName: { fontSize: 12, fontWeight: '700', color: colors.textMid },
 
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   pickerSheet:   { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, paddingBottom: 34 },

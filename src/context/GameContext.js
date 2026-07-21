@@ -34,6 +34,7 @@ const INITIAL_SETUP = {
   ldCarryover: 0,
   kpCarryover: 0,
   skinsCarryover: 0,
+  bonusBeanDescs: {}, // { [holeIdx]: string }
   holeCount: 18,   // 9 or 18
   holeOffset: 0,   // 0 = front nine, 9 = back nine (only relevant for 9-hole rounds)
   course: null, // { id, name, tee, totalPar, holes: [{number,par,yardage,handicap}] }
@@ -181,6 +182,11 @@ function reducer(state, action) {
       return { ...state, wagers };
     }
 
+    case 'SET_BONUS_DESC': {
+      const { holeIdx, desc } = action;
+      return { ...state, bonusBeanDescs: { ...state.bonusBeanDescs, [holeIdx]: desc } };
+    }
+
     case 'RESET':
       return { ...INITIAL_SETUP, customBeans: state.customBeans };
 
@@ -215,7 +221,7 @@ export function GameProvider({ children }) {
   }, [state, loading]);
 
   const allBeans = [...BEAN_DEFS, ...(state.customBeans || [])];
-  const activeBeans = allBeans.filter(b => state.enabledBeans.includes(b.id));
+  const activeBeans = allBeans.filter(b => b.impromptu || state.enabledBeans.includes(b.id));
 
   function getHolePar(holeIdx) {
     const offset = state.holeOffset ?? 0;
