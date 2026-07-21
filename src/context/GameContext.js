@@ -45,13 +45,14 @@ function reducer(state, action) {
       return action.payload;
 
     case 'START_ROUND': {
-      const { players, beanValue, enabledBeans, wagers, course, holeCount = 18, holeOffset = 0 } = action.payload;
+      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0 } = action.payload;
       return {
         ...state,
         phase: 'round',
         players,
         beanValue,
         enabledBeans,
+        customBeans: customBeans || [],
         wagers: wagers || [],
         course: course || null,
         holeCount,

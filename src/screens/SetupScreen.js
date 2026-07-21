@@ -35,6 +35,7 @@ export default function SetupScreen() {
   const [enabledBeans, setEnabledBeans] = useState(
     new Set(BEAN_DEFS.map(b => b.id))
   );
+  const [customBeans, setCustomBeans] = useState([]);
   const { user } = useAuth();
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -173,6 +174,21 @@ export default function SetupScreen() {
     setPickerIdx(null);
   }
 
+  function addCustomBean() {
+    const id = `custom_${Date.now()}`;
+    setCustomBeans(prev => [...prev, { id, name: '', v: 1, fb: false, free: true, custom: true }]);
+    setEnabledBeans(prev => new Set([...prev, id]));
+  }
+
+  function updateCustomBeanName(id, name) {
+    setCustomBeans(prev => prev.map(b => b.id === id ? { ...b, name } : b));
+  }
+
+  function removeCustomBean(id) {
+    setCustomBeans(prev => prev.filter(b => b.id !== id));
+    setEnabledBeans(prev => { const next = new Set(prev); next.delete(id); return next; });
+  }
+
   function toggleBean(id, isFree) {
     if (!isFree && !pro) { setPaywallVisible(true); return; }
     setEnabledBeans(prev => {
@@ -210,9 +226,13 @@ export default function SetupScreen() {
       addRecentCourse({ id: course.id, name: course.name });
     }
 
+    const validCustom = customBeans.filter(b => b.name.trim());
+    const allEnabled = [...enabledBeans].filter(id =>
+      !id.startsWith('custom_') || validCustom.some(b => b.id === id)
+    );
     dispatch({
       type: 'START_ROUND',
-      payload: { players, beanValue: val, enabledBeans: [...enabledBeans], wagers: [], course, holeCount, holeOffset },
+      payload: { players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom, wagers: [], course, holeCount, holeOffset },
     });
   }
 
@@ -451,6 +471,30 @@ export default function SetupScreen() {
           );
         })}
 
+        {customBeans.map(bean => (
+          <View key={bean.id} style={[styles.beanRow, { borderLeftColor: colors.green }]}>
+            <View style={[styles.beanDot, { backgroundColor: colors.green }]} />
+            <View style={{ flex: 1 }}>
+              <TextInput
+                style={styles.customBeanInput}
+                value={bean.name}
+                onChangeText={t => updateCustomBeanName(bean.id, t)}
+                placeholder="Custom bean name…"
+                placeholderTextColor={colors.textLight}
+                maxLength={32}
+              />
+              <Text style={styles.beanDesc}>earns 1 bean</Text>
+            </View>
+            <TouchableOpacity onPress={() => removeCustomBean(bean.id)} style={{ paddingHorizontal: 8 }}>
+              <Text style={{ fontSize: 18, color: colors.textLight }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        <TouchableOpacity style={styles.addCustomBtn} onPress={addCustomBean} activeOpacity={0.7}>
+          <Text style={styles.addCustomText}>+ Add custom bean</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.startBtn} onPress={startRound} activeOpacity={0.85}>
           <Text style={styles.startText}>Start Round →</Text>
         </TouchableOpacity>
@@ -582,6 +626,9 @@ const styles = StyleSheet.create({
   beanValue:    { fontSize: 13, fontWeight: '500', color: colors.green },
   neg:          { color: colors.red },
   beanDesc:     { fontSize: 12, color: colors.textLight, marginTop: 2 },
+  customBeanInput: { fontSize: 15, fontWeight: '700', color: colors.textDark, padding: 0, marginBottom: 2 },
+  addCustomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: spacing.sm, marginBottom: spacing.sm, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.green, borderStyle: 'dashed' },
+  addCustomText: { fontSize: 14, fontWeight: '700', color: colors.green },
 
   startBtn:  { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 18, alignItems: 'center', marginTop: spacing.lg, shadowColor: colors.green, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   startText: { color: colors.white, fontWeight: '800', fontSize: 17, letterSpacing: 0.3 },
