@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
   StatusBar, Linking,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 import { colors, spacing, radius } from '../utils/theme';
 
 // Replace with real Stripe links when ready
@@ -33,9 +34,155 @@ function Check({ pro }) {
   );
 }
 
+// ─── Forgot password screen ───────────────────────────────────────────────────
+function ForgotScreen({ onBack }) {
+  const { forgotPassword } = useAuth();
+  const [email, setEmail] = useState('');
+  const [busy, setBusy]   = useState(false);
+  const [sent, setSent]   = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit() {
+    setError('');
+    if (!email.trim()) { setError('Enter your email address.'); return; }
+    setBusy(true);
+    try {
+      await forgotPassword(email.trim());
+      setSent(true);
+    } catch (e) {
+      setError(e.message || 'Something went wrong.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.hero}>
+        <Text style={styles.heroEmoji}>🔑</Text>
+        <Text style={styles.heroTitle}>Reset Password</Text>
+        <Text style={styles.heroSub}>We'll email you a reset link</Text>
+      </View>
+      <KeyboardAvoidingView style={styles.cardWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.card} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {sent ? (
+            <>
+              <View style={styles.successWrap}>
+                <Text style={styles.successText}>✅ Check your inbox — we sent a reset link to {email}.</Text>
+              </View>
+              <TouchableOpacity style={styles.submitBtn} onPress={onBack} activeOpacity={0.85}>
+                <Text style={styles.submitText}>Back to Sign In</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.formTitle}>Forgot your password?</Text>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>✉️</Text>
+                <TextInput style={styles.input} placeholder="Email address" placeholderTextColor={colors.textLight}
+                  value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address"
+                  returnKeyType="done" onSubmitEditing={submit} />
+              </View>
+              {!!error && (
+                <View style={styles.errorWrap}>
+                  <Text style={styles.errorText}>⚠️ {error}</Text>
+                </View>
+              )}
+              <TouchableOpacity style={[styles.submitBtn, busy && styles.submitBtnDisabled]} onPress={submit} disabled={busy} activeOpacity={0.85}>
+                {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.submitText}>Send Reset Link</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onBack} style={styles.backLink}>
+                <Text style={styles.backLinkText}>← Back to Sign In</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+// ─── Reset password screen (after email link) ─────────────────────────────────
+function ResetScreen({ onDone }) {
+  const { updatePassword } = useAuth();
+  const [password, setPassword]   = useState('');
+  const [confirm, setConfirm]     = useState('');
+  const [showPw, setShowPw]       = useState(false);
+  const [busy, setBusy]           = useState(false);
+  const [error, setError]         = useState('');
+  const [done, setDone]           = useState(false);
+
+  async function submit() {
+    setError('');
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (password !== confirm)  { setError('Passwords do not match.'); return; }
+    setBusy(true);
+    try {
+      await updatePassword(password);
+      setDone(true);
+    } catch (e) {
+      setError(e.message || 'Something went wrong.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.hero}>
+        <Text style={styles.heroEmoji}>🔐</Text>
+        <Text style={styles.heroTitle}>New Password</Text>
+        <Text style={styles.heroSub}>Choose a strong password</Text>
+      </View>
+      <KeyboardAvoidingView style={styles.cardWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.card} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {done ? (
+            <>
+              <View style={styles.successWrap}>
+                <Text style={styles.successText}>✅ Password updated! You're now signed in.</Text>
+              </View>
+              <TouchableOpacity style={styles.submitBtn} onPress={onDone} activeOpacity={0.85}>
+                <Text style={styles.submitText}>Continue →</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.formTitle}>Set a new password</Text>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>🔒</Text>
+                <TextInput style={[styles.input, { flex: 1 }]} placeholder="New password" placeholderTextColor={colors.textLight}
+                  value={password} onChangeText={setPassword} secureTextEntry={!showPw} returnKeyType="next" />
+                <TouchableOpacity onPress={() => setShowPw(p => !p)} style={styles.eyeBtn}>
+                  <Text style={styles.eyeIcon}>{showPw ? '🙈' : '👁️'}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>🔒</Text>
+                <TextInput style={styles.input} placeholder="Confirm new password" placeholderTextColor={colors.textLight}
+                  value={confirm} onChangeText={setConfirm} secureTextEntry={!showPw}
+                  returnKeyType="done" onSubmitEditing={submit} />
+              </View>
+              {!!error && (
+                <View style={styles.errorWrap}>
+                  <Text style={styles.errorText}>⚠️ {error}</Text>
+                </View>
+              )}
+              <TouchableOpacity style={[styles.submitBtn, busy && styles.submitBtnDisabled]} onPress={submit} disabled={busy} activeOpacity={0.85}>
+                {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.submitText}>Update Password</Text>}
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
 // ─── Step 1: Auth form ────────────────────────────────────────────────────────
-function AuthForm({ onSkip, initialMode, onSignedUp }) {
-  const { signUp, signIn } = useAuth();
+function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
+  const { signUp, signIn, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState(initialMode === 'signup' ? 'signup' : 'signin');
   const [fullName, setFullName]         = useState('');
   const [scoringName, setScoringName]   = useState('');
@@ -123,6 +270,12 @@ function AuthForm({ onSkip, initialMode, onSignedUp }) {
             </TouchableOpacity>
           </View>
 
+          {!isSignUp && (
+            <TouchableOpacity onPress={onForgot} style={styles.forgotLink}>
+              <Text style={styles.forgotLinkText}>Forgot password?</Text>
+            </TouchableOpacity>
+          )}
+
           {!!error && (
             <View style={styles.errorWrap}>
               <Text style={styles.errorText}>⚠️ {error}</Text>
@@ -133,7 +286,16 @@ function AuthForm({ onSkip, initialMode, onSignedUp }) {
             {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.submitText}>{isSignUp ? 'Create Account' : 'Sign In'}</Text>}
           </TouchableOpacity>
 
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
+          <TouchableOpacity style={styles.googleBtn} onPress={signInWithGoogle} activeOpacity={0.85}>
+            <Text style={styles.googleBtnIcon}>G</Text>
+            <Text style={styles.googleBtnText}>Continue with Google</Text>
+          </TouchableOpacity>
 
           {isSignUp && (
             <Text style={styles.terms}>By creating an account you agree to our Terms of Service and Privacy Policy.</Text>
@@ -271,8 +433,21 @@ function WelcomeScreen({ plan, onDone }) {
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 export default function AuthScreen({ onSkip, initialMode }) {
-  const [step, setStep] = useState('auth'); // 'auth' | 'plan' | 'welcome'
+  const [step, setStep] = useState('auth'); // 'auth' | 'forgot' | 'reset' | 'plan' | 'welcome'
   const [plan, setPlan] = useState('free');
+
+  // Detect password-reset redirect (?mode=reset in URL)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'reset') {
+        setStep('reset');
+        // Clean the URL
+        const clean = window.location.pathname;
+        window.history.replaceState({}, '', clean);
+      }
+    }
+  }, []);
 
   function handleSelectMonthly() {
     setPlan('pro');
@@ -297,6 +472,9 @@ export default function AuthScreen({ onSkip, initialMode }) {
     setStep('welcome');
   }
 
+  if (step === 'forgot') return <ForgotScreen onBack={() => setStep('auth')} />;
+  if (step === 'reset')  return <ResetScreen onDone={onSkip} />;
+
   if (step === 'plan') {
     return <PlanPicker onSelectFree={handleSelectFree} onSelectPro={handleSelectMonthly} onSelectAnnual={handleSelectAnnual} onSelectLifetime={handleSelectLifetime} />;
   }
@@ -310,6 +488,7 @@ export default function AuthScreen({ onSkip, initialMode }) {
       onSkip={onSkip}
       initialMode={initialMode}
       onSignedUp={() => setStep('plan')}
+      onForgot={() => setStep('forgot')}
     />
   );
 }
@@ -356,6 +535,19 @@ const styles = StyleSheet.create({
   skipText: { color: colors.textMid, fontWeight: '600', fontSize: 15 },
 
   terms: { fontSize: 11, color: colors.textLight, textAlign: 'center', marginTop: spacing.md, lineHeight: 16 },
+
+  forgotLink:     { alignSelf: 'flex-end', marginBottom: spacing.xs, marginTop: -spacing.xs },
+  forgotLinkText: { fontSize: 13, color: colors.green, fontWeight: '600' },
+
+  googleBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.pill, paddingVertical: 14, gap: spacing.sm, backgroundColor: colors.white },
+  googleBtnIcon:  { fontSize: 16, fontWeight: '900', color: '#4285F4', width: 22, textAlign: 'center' },
+  googleBtnText:  { fontSize: 15, fontWeight: '700', color: colors.textDark },
+
+  backLink:      { alignItems: 'center', marginTop: spacing.md },
+  backLinkText:  { fontSize: 14, color: colors.green, fontWeight: '600' },
+
+  successWrap:  { backgroundColor: '#F0FDF4', borderRadius: radius.sm, borderWidth: 1, borderColor: '#86EFAC', padding: spacing.md, marginBottom: spacing.md },
+  successText:  { fontSize: 14, color: '#15803D', lineHeight: 20 },
 
   // Plan picker
   planHeading: { fontSize: 22, fontWeight: '800', color: colors.textDark, marginBottom: 4 },

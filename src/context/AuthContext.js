@@ -61,6 +61,26 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
   }
 
+  async function forgotPassword(email) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://www.teewager.io/app?mode=reset',
+    });
+    if (error) throw error;
+  }
+
+  async function signInWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: 'https://www.teewager.io/app' },
+    });
+    if (error) throw error;
+  }
+
+  async function updatePassword(newPassword) {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  }
+
   async function updateProfile(fields) {
     if (!session?.user) return;
     const { data, error } = await supabase
@@ -78,7 +98,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       session, profile, loading,
       user: session?.user ?? null,
-      signUp, signIn, signOut, updateProfile,
+      signUp, signIn, signOut, updateProfile, forgotPassword, signInWithGoogle, updatePassword,
     }}>
       {children}
     </AuthContext.Provider>
