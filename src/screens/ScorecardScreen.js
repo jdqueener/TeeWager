@@ -35,6 +35,10 @@ export default function ScorecardScreen() {
   const [customPressAmt, setCustomPressAmt] = useState('');
   const [chosenPressAmt, setChosenPressAmt] = useState(null);
 
+  const hole = currentHole;
+  const par  = getHolePar(hole);
+  const lastHole = holeCount - 1;
+
   // Current effective bean value at this hole
   const currentEffValue = getEffectiveBeanValue(beanValue, hole, pressMode, presses, tenthPressed, tenthPressValue);
 
@@ -73,10 +77,6 @@ export default function ScorecardScreen() {
     }
     setPressModalVisible(false);
   }
-
-  const hole = currentHole;
-  const par  = getHolePar(hole);
-  const lastHole = holeCount - 1;
 
   // ── bean helpers (same logic as ScoringScreen) ───────────────────────────
   function hasBean(playerIdx, beanId) {
