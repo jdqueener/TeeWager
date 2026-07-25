@@ -19,6 +19,7 @@ export default function ScorecardScreen() {
     players, scores, firstBonus, beanValue,
     currentHole, ldCarryover, kpCarryover, skinsCarryover = 0,
     holeCount = 18, holeOffset = 0, course,
+    pressMode, presses = [], tenthPressed = false, holePresses = {},
   } = state;
 
   const strokes = state.strokes?.length === players.length
@@ -27,8 +28,38 @@ export default function ScorecardScreen() {
 
   const [mode, setMode] = useState('hole'); // 'hole' | 'grid'
   const [paywallVisible, setPaywallVisible] = useState(false);
-  // { title, msg, onConfirm } — drives the cross-platform confirm modal
   const [conflictPrompt, setConflictPrompt] = useState(null);
+  const [pressModalVisible, setPressModalVisible] = useState(false);
+  const [selectedPressPlayers, setSelectedPressPlayers] = useState([]);
+
+  // Current press multiplier at this hole (anytime/tenth modes)
+  const pressMultiplier = pressMode === 'anytime'
+    ? Math.pow(2, presses.filter(p => p.holeIdx <= hole).length)
+    : (pressMode === 'tenth' && tenthPressed && hole >= 9) ? 2 : 1;
+
+  const showPressBtn = pressMode && (
+    pressMode === 'anytime' ||
+    (pressMode === 'tenth' && hole === 9 && !tenthPressed) ||
+    pressMode === 'perHole'
+  );
+
+  function handlePress() {
+    if (pressMode === 'anytime') {
+      dispatch({ type: 'ADD_PRESS', holeIdx: hole });
+    } else if (pressMode === 'tenth') {
+      dispatch({ type: 'PRESS_TENTH' });
+    } else if (pressMode === 'perHole') {
+      setSelectedPressPlayers(holePresses[hole] ?? players.map((_, i) => i));
+      setPressModalVisible(true);
+    }
+  }
+
+  function confirmHolePress() {
+    if (selectedPressPlayers.length >= 2) {
+      dispatch({ type: 'ADD_HOLE_PRESS', holeIdx: hole, playerIdxs: [...selectedPressPlayers] });
+    }
+    setPressModalVisible(false);
+  }
 
   const hole = currentHole;
   const par  = getHolePar(hole);
@@ -252,6 +283,33 @@ export default function ScorecardScreen() {
             })}
           </View>
 
+          {/* Press bar */}
+          {pressMode && (
+            <View style={styles.pressBar}>
+              <View style={{ flex: 1 }}>
+                {pressMultiplier > 1 && pressMode !== 'perHole' && (
+                  <Text style={styles.pressActive}>🤝 Press active — ×{pressMultiplier} bean value</Text>
+                )}
+                {pressMode === 'perHole' && holePresses[hole] && (
+                  <Text style={styles.pressActive}>
+                    🤝 Press: {holePresses[hole].map(pi => players[pi]?.split(' ')[0]).join(' vs ')}
+                  </Text>
+                )}
+              </View>
+              {showPressBtn && (
+                <TouchableOpacity style={styles.pressBtn} onPress={handlePress} activeOpacity={0.85}>
+                  <Text style={styles.pressBtnText}>
+                    {pressMode === 'anytime'
+                      ? pressMultiplier > 1 ? `Press again →×${pressMultiplier * 2}` : '🤝 Press'
+                      : pressMode === 'tenth'
+                      ? '🤝 Press (back 9)'
+                      : holePresses[hole] ? '🤝 Edit press' : '🤝 Press this hole'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           <ScrollView contentContainerStyle={styles.holeContent}>
             {/* Stroke row */}
             <View style={styles.strokesCard}>
@@ -422,6 +480,66 @@ export default function ScorecardScreen() {
       )}
 
       <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
+
+      {/* Per-hole press player selection */}
+      <Modal visible={pressModalVisible} transparent animationType="slide">
+        <View style={styles.pressModalOverlay}>
+          <View style={styles.pressModalSheet}>
+            <Text style={styles.pressModalTitle}>🤝 Press — Hole {holeOffset + hole + 1}</Text>
+            <Text style={styles.pressModalSub}>Select players in the side bet. Doubles their bean value this hole.</Text>
+
+            <TouchableOpacity
+              style={styles.pressAllBtn}
+              onPress={() => setSelectedPressPlayers(players.map((_, i) => i))}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.pressAllBtnText}>Select all</Text>
+            </TouchableOpacity>
+
+            {players.map((name, pi) => {
+              const sel = selectedPressPlayers.includes(pi);
+              return (
+                <TouchableOpacity
+                  key={pi}
+                  style={[styles.pressPlayerRow, sel && styles.pressPlayerRowActive]}
+                  onPress={() => setSelectedPressPlayers(prev =>
+                    prev.includes(pi) ? prev.filter(i => i !== pi) : [...prev, pi]
+                  )}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.pressPlayerName, sel && { color: colors.white }]}>{name}</Text>
+                  {sel && <Text style={styles.pressPlayerCheck}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+
+            <TouchableOpacity
+              style={[styles.pressConfirmBtn, selectedPressPlayers.length < 2 && styles.pressConfirmBtnDisabled]}
+              onPress={confirmHolePress}
+              disabled={selectedPressPlayers.length < 2}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.pressConfirmText}>
+                {selectedPressPlayers.length < 2 ? 'Select at least 2 players' : `Confirm Press (${selectedPressPlayers.length} players)`}
+              </Text>
+            </TouchableOpacity>
+
+            {holePresses[hole] && (
+              <TouchableOpacity
+                style={styles.pressCancelHoleBtn}
+                onPress={() => { dispatch({ type: 'REMOVE_HOLE_PRESS', holeIdx: hole }); setPressModalVisible(false); }}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.pressCancelHoleText}>Remove press this hole</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity onPress={() => setPressModalVisible(false)} style={styles.pressDismissBtn}>
+              <Text style={styles.pressDismissText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Cross-platform conflict confirmation modal */}
       <Modal visible={!!conflictPrompt} transparent animationType="fade">
@@ -789,6 +907,31 @@ const styles = StyleSheet.create({
   totalScore:         { fontSize: 18, fontWeight: '900', color: colors.textDark, width: 40, textAlign: 'center' },
   totalDiff:          { fontSize: 13, fontWeight: '700', color: colors.textMid, width: 36, textAlign: 'center' },
   totalBeans:         { fontSize: 13, fontWeight: '700', color: colors.green, width: 60, textAlign: 'right' },
+
+  // Press bar
+  pressBar:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF9E6', borderBottomWidth: 0.5, borderBottomColor: colors.gold, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.sm, minHeight: 44 },
+  pressActive:  { fontSize: 13, fontWeight: '700', color: colors.gold },
+  pressBtn:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingVertical: 7, paddingHorizontal: spacing.md },
+  pressBtnText: { fontSize: 12, fontWeight: '800', color: colors.white },
+
+  // Press player-pick modal
+  pressModalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  pressModalSheet:    { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, paddingBottom: 40 },
+  pressModalTitle:    { fontSize: 18, fontWeight: '900', color: colors.textDark, marginBottom: spacing.xs },
+  pressModalSub:      { fontSize: 13, color: colors.textMid, marginBottom: spacing.md, lineHeight: 19 },
+  pressAllBtn:        { borderWidth: 1.5, borderColor: colors.gold, borderRadius: radius.pill, paddingVertical: 10, alignItems: 'center', marginBottom: spacing.sm },
+  pressAllBtnText:    { color: colors.gold, fontWeight: '700', fontSize: 14 },
+  pressPlayerRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, marginBottom: spacing.xs, backgroundColor: colors.background },
+  pressPlayerRowActive:{ backgroundColor: colors.gold, borderColor: colors.gold },
+  pressPlayerName:    { fontSize: 15, fontWeight: '700', color: colors.textDark },
+  pressPlayerCheck:   { fontSize: 16, color: colors.white, fontWeight: '900' },
+  pressConfirmBtn:    { backgroundColor: colors.gold, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', marginTop: spacing.md },
+  pressConfirmBtnDisabled: { backgroundColor: colors.border },
+  pressConfirmText:   { color: colors.white, fontWeight: '800', fontSize: 15 },
+  pressCancelHoleBtn: { paddingVertical: 12, alignItems: 'center' },
+  pressCancelHoleText:{ color: colors.red, fontWeight: '600', fontSize: 14 },
+  pressDismissBtn:    { paddingVertical: 10, alignItems: 'center' },
+  pressDismissText:   { color: colors.textMid, fontWeight: '600', fontSize: 14 },
 
   // Conflict confirm modal
   confirmOverlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },

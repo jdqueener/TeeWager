@@ -35,6 +35,10 @@ const INITIAL_SETUP = {
   kpCarryover: 0,
   skinsCarryover: 0,
   bonusBeanDescs: {}, // { [holeIdx]: string }
+  pressMode: null,    // null | 'anytime' | 'tenth' | 'perHole'
+  presses: [],        // [{holeIdx}] — for 'anytime'
+  tenthPressed: false,
+  holePresses: {},    // { [holeIdx]: number[] } — for 'perHole'
   holeCount: 18,   // 9 or 18
   holeOffset: 0,   // 0 = front nine, 9 = back nine (only relevant for 9-hole rounds)
   course: null, // { id, name, tee, totalPar, holes: [{number,par,yardage,handicap}] }
@@ -46,7 +50,7 @@ function reducer(state, action) {
       return action.payload;
 
     case 'START_ROUND': {
-      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0 } = action.payload;
+      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null } = action.payload;
       return {
         ...state,
         phase: 'round',
@@ -65,6 +69,11 @@ function reducer(state, action) {
         ldCarryover: 0,
         kpCarryover: 0,
         skinsCarryover: 0,
+        bonusBeanDescs: {},
+        pressMode: pressMode || null,
+        presses: [],
+        tenthPressed: false,
+        holePresses: {},
       };
     }
 
@@ -180,6 +189,20 @@ function reducer(state, action) {
         i === action.wagerIdx ? { ...w, winnerId: action.winnerId } : w
       );
       return { ...state, wagers };
+    }
+
+    case 'ADD_PRESS':
+      return { ...state, presses: [...state.presses, { holeIdx: action.holeIdx }] };
+
+    case 'PRESS_TENTH':
+      return { ...state, tenthPressed: true };
+
+    case 'ADD_HOLE_PRESS':
+      return { ...state, holePresses: { ...state.holePresses, [action.holeIdx]: action.playerIdxs } };
+
+    case 'REMOVE_HOLE_PRESS': {
+      const { [action.holeIdx]: _removed, ...restPresses } = state.holePresses;
+      return { ...state, holePresses: restPresses };
     }
 
     case 'SET_BONUS_DESC': {

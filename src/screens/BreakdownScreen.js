@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { getEffectiveValue, totalBeansForPlayer } from '../utils/beans';
+import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer } from '../utils/beans';
 import { colors, spacing, radius } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
 
 export default function BreakdownScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
-  const { players, scores, firstBonus, beanValue, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0 } = state;
+  const { players, scores, firstBonus, beanValue, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0,
+    pressMode, presses = [], tenthPressed = false, holePresses = {} } = state;
   const [selectedPlayer, setSelectedPlayer] = useState(0);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -53,11 +54,23 @@ export default function BreakdownScreen() {
   events.sort((a, b) => a.h - b.h);
 
   const grandTotal  = totalBeansForPlayer(selectedPlayer, scores, activeBeans, firstBonus);
-  const allTotals   = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
-  const totalBeans  = allTotals.reduce((a, b) => a + b, 0);
   const n           = players.length;
-  // True settlement position: beanValue × (myBeans × n − totalBeans)
-  const netDollars  = beanValue * (grandTotal * n - totalBeans);
+
+  // Press-aware net dollars: compute per-hole with effective bean value
+  let netDollars = 0;
+  for (let h = 0; h < holeCount; h++) {
+    const effVal = getEffectiveBeanValue(beanValue, h, pressMode, presses, tenthPressed);
+    const myB = beansAtHoleForPlayer(selectedPlayer, h, scores, activeBeans, firstBonus, n);
+    const totalHB = players.reduce((s, _, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
+    netDollars += effVal * (myB * n - totalHB);
+    if (pressMode === 'perHole' && holePresses[h]?.includes(selectedPlayer)) {
+      const pressed = holePresses[h];
+      const np = pressed.length;
+      const myPB = beansAtHoleForPlayer(selectedPlayer, h, scores, activeBeans, firstBonus, n);
+      const totalPB = pressed.reduce((s, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
+      netDollars += beanValue * (myPB * np - totalPB);
+    }
+  }
 
   function beanDesc(event) {
     const { bean, count, isFirst, incoming, from } = event;
@@ -147,12 +160,12 @@ export default function BreakdownScreen() {
                   {'\n'}
                   <Text style={styles.eventDollar}>
                     {(() => {
-                      // Incoming: this player receives beans × beanValue from one offender.
-                      // Own negative: total paid to all (n-1) others.
-                      // Own positive: total collected from all (n-1) others.
+                      const effVal = getEffectiveBeanValue(beanValue, event.h, pressMode, presses, tenthPressed);
+                      const pressed = pressMode === 'perHole' && holePresses[event.h];
+                      const pressMulti = pressed && pressed.includes(selectedPlayer) ? 2 : 1;
                       const dollars = event.incoming
-                        ? event.beans * beanValue
-                        : event.beans * beanValue * (n - 1);
+                        ? event.beans * effVal * pressMulti
+                        : event.beans * effVal * (n - 1) * pressMulti;
                       return `${dollars >= 0 ? '+' : ''}$${Math.abs(dollars).toFixed(2)}`;
                     })()}
                   </Text>

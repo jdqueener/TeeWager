@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { totalBeansForPlayer, computeSettleUp } from '../utils/beans';
+import { totalBeansForPlayer, computePressSettleUp } from '../utils/beans';
 import { saveStats, loadStats } from '../utils/storage';
 import { colors, spacing, radius } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
@@ -10,7 +10,8 @@ import ShareCard from '../components/ShareCard';
 
 export default function SettleUpScreen() {
   const { state, dispatch, pro, setPro, activeBeans } = useGame();
-  const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18 } = state;
+  const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18,
+    pressMode, presses, tenthPressed, holePresses } = state;
   const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -33,7 +34,8 @@ export default function SettleUpScreen() {
   }
 
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
-  const payments   = computeSettleUp(players, beanTotals, beanValue, wagers);
+  const pressState = { pressMode, presses, tenthPressed, holePresses };
+  const payments   = computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount);
 
   async function saveToStats() {
     if (!pro) { setPaywallVisible(true); return; }

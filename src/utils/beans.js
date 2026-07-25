@@ -60,6 +60,78 @@ export function totalBeansForPlayer(playerIdx, scores, activeBeans, firstBonus) 
   return total;
 }
 
+// Returns effective bean dollar value at a given hole, accounting for press multipliers
+export function getEffectiveBeanValue(beanValue, holeIdx, pressMode, presses, tenthPressed) {
+  if (pressMode === 'anytime') {
+    const count = (presses || []).filter(p => p.holeIdx <= holeIdx).length;
+    return beanValue * Math.pow(2, count);
+  }
+  if (pressMode === 'tenth' && tenthPressed && holeIdx >= 9) {
+    return beanValue * 2;
+  }
+  return beanValue;
+}
+
+// Beans earned by a player on a single hole (respects awardToOthers)
+export function beansAtHoleForPlayer(playerIdx, holeIdx, scores, activeBeans, firstBonus, playerCount) {
+  let total = 0;
+  for (const bean of activeBeans) {
+    if (bean.awardToOthers) {
+      for (let op = 0; op < playerCount; op++) {
+        if (op === playerIdx) continue;
+        const count = scores[op]?.[holeIdx]?.[bean.id] || 0;
+        if (!count) continue;
+        total += count * Math.abs(getEffectiveValue(bean, op, holeIdx, firstBonus));
+      }
+    } else {
+      const count = scores[playerIdx]?.[holeIdx]?.[bean.id] || 0;
+      total += count * getEffectiveValue(bean, playerIdx, holeIdx, firstBonus);
+    }
+  }
+  return total;
+}
+
+// Press-aware settlement: handles all three press modes
+export function computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount = 18) {
+  const { pressMode, presses, tenthPressed, holePresses } = pressState || {};
+  const n = players.length;
+
+  const net = players.map((_, pi) => {
+    let dollars = 0;
+    for (let h = 0; h < holeCount; h++) {
+      const effValue = getEffectiveBeanValue(beanValue, h, pressMode, presses, tenthPressed);
+      const myBeans = beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n);
+      const totalHoleBeans = players.reduce((s, _, qi) =>
+        s + beansAtHoleForPlayer(qi, h, scores, activeBeans, firstBonus, n), 0);
+      dollars += effValue * (myBeans * n - totalHoleBeans);
+
+      // Per-hole press: additional side bet between pressed players only
+      if (pressMode === 'perHole' && holePresses?.[h]?.includes(pi)) {
+        const pressed = holePresses[h];
+        const np = pressed.length;
+        const myPB = beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n);
+        const totalPB = pressed.reduce((s, qi) =>
+          s + beansAtHoleForPlayer(qi, h, scores, activeBeans, firstBonus, n), 0);
+        dollars += beanValue * (myPB * np - totalPB);
+      }
+    }
+    return dollars;
+  });
+
+  (wagers || []).forEach(w => {
+    if (w.winnerId >= 0) {
+      players.forEach((_, pi) => {
+        if (pi !== w.winnerId) {
+          net[w.winnerId] += w.amt;
+          net[pi] -= w.amt;
+        }
+      });
+    }
+  });
+
+  return minimumCashFlow(players, net);
+}
+
 export function computeSettleUp(players, beanTotals, beanValue, wagers = []) {
   // Each bean earned costs every other player $beanValue directly.
   // net[i] = beanValue * (myBeans * N - totalBeans)
@@ -82,7 +154,7 @@ export function computeSettleUp(players, beanTotals, beanValue, wagers = []) {
   return minimumCashFlow(players, adj);
 }
 
-function minimumCashFlow(players, net) {
+export function minimumCashFlow(players, net) {
   const payments = [];
   const bal = net.map((v, i) => ({ i, v: Math.round(v * 100) / 100 }));
 

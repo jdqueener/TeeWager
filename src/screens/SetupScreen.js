@@ -36,6 +36,8 @@ export default function SetupScreen() {
     new Set(BEAN_DEFS.map(b => b.id))
   );
   const [customBeans, setCustomBeans] = useState([]);
+  const [pressEnabled, setPressEnabled] = useState(false);
+  const [pressMode, setPressMode] = useState('anytime');
   const { user } = useAuth();
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -237,7 +239,7 @@ export default function SetupScreen() {
     );
     dispatch({
       type: 'START_ROUND',
-      payload: { players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom, wagers: [], course, holeCount, holeOffset },
+      payload: { players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom, wagers: [], course, holeCount, holeOffset, pressMode: pressEnabled ? pressMode : null },
     });
   }
 
@@ -448,6 +450,36 @@ export default function SetupScreen() {
           placeholderTextColor={colors.textLight}
         />
 
+        {/* Press */}
+        <Text style={styles.label}>Press</Text>
+        <View style={[styles.beanRow, { borderLeftColor: colors.gold }]}>
+          <View style={[styles.beanDot, { backgroundColor: colors.gold }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.beanName}>Enable press</Text>
+            <Text style={styles.beanDesc}>Allow players to double the wager mid-round</Text>
+          </View>
+          <Switch value={pressEnabled} onValueChange={setPressEnabled} trackColor={{ true: colors.gold }} />
+        </View>
+        {pressEnabled && (
+          <View style={styles.pressOptions}>
+            {[
+              { key: 'anytime', label: 'Press anytime', desc: 'Doubles beans from that hole, stays for the rest of the round' },
+              { key: 'tenth', label: 'Before hole 10 only', desc: 'One press available — doubles beans for the back 9' },
+              { key: 'perHole', label: 'Per-hole side bet', desc: 'Pick players each hole — just for that hole (2-player presses allowed)' },
+            ].map(opt => (
+              <TouchableOpacity key={opt.key} style={styles.pressOption} onPress={() => setPressMode(opt.key)} activeOpacity={0.75}>
+                <View style={[styles.pressRadio, pressMode === opt.key && styles.pressRadioActive]}>
+                  {pressMode === opt.key && <View style={styles.pressRadioDot} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.pressOptionLabel, pressMode === opt.key && { color: colors.gold }]}>{opt.label}</Text>
+                  <Text style={styles.pressOptionDesc}>{opt.desc}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {/* Bean list */}
         <Text style={styles.label}>Beans</Text>
         {BEAN_DEFS.filter(b => !b.impromptu).map(bean => {
@@ -634,6 +666,15 @@ const styles = StyleSheet.create({
   customBeanInput: { fontSize: 15, fontWeight: '700', color: colors.textDark, padding: 0, marginBottom: 2 },
   addCustomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: spacing.sm, marginBottom: spacing.sm, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.green, borderStyle: 'dashed' },
   addCustomText: { fontSize: 14, fontWeight: '700', color: colors.green },
+
+  // Press options
+  pressOptions:     { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.gold, padding: spacing.sm, marginBottom: spacing.sm },
+  pressOption:      { flexDirection: 'row', alignItems: 'flex-start', padding: spacing.sm, gap: spacing.sm },
+  pressRadio:       { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center', marginTop: 2, flexShrink: 0 },
+  pressRadioActive: { borderColor: colors.gold },
+  pressRadioDot:    { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold },
+  pressOptionLabel: { fontSize: 14, fontWeight: '700', color: colors.textDark },
+  pressOptionDesc:  { fontSize: 12, color: colors.textLight, marginTop: 2, lineHeight: 17 },
 
   startBtn:  { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 18, alignItems: 'center', marginTop: spacing.lg, shadowColor: colors.green, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   startText: { color: colors.white, fontWeight: '800', fontSize: 17, letterSpacing: 0.3 },
