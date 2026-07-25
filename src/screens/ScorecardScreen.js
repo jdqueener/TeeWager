@@ -4,7 +4,7 @@ import {
   Alert, Platform, Modal,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { isParAllowed, getEffectiveValue, beanLabel } from '../utils/beans';
+import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer } from '../utils/beans';
 import { colors, spacing, radius } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -95,14 +95,7 @@ export default function ScorecardScreen() {
   }
 
   function playerTotalBeans(pi) {
-    let t = 0;
-    activeBeans.forEach(bean => {
-      for (let h = 0; h < holeCount; h++) {
-        const count = scores[pi]?.[h]?.[bean.id] || 0;
-        t += count * getEffectiveValue(bean, pi, h, firstBonus);
-      }
-    });
-    return t;
+    return totalBeansForPlayer(pi, scores, activeBeans, firstBonus);
   }
 
   function getStroke(pi, hi) { return strokes?.[pi]?.[hi] ?? 0; }
@@ -179,8 +172,17 @@ export default function ScorecardScreen() {
   function getHoleBeans(pi, hi) {
     let t = 0;
     activeBeans.forEach(b => {
-      const c = scores[pi]?.[hi]?.[b.id] || 0;
-      if (c > 0) t += c * getEffectiveValue(b, pi, hi, firstBonus);
+      if (b.awardToOthers) {
+        // This player receives beans when other players 3-putt/4-putt
+        players.forEach((_, op) => {
+          if (op === pi) return;
+          const c = scores[op]?.[hi]?.[b.id] || 0;
+          if (c > 0) t += c * Math.abs(getEffectiveValue(b, op, hi, firstBonus));
+        });
+      } else {
+        const c = scores[pi]?.[hi]?.[b.id] || 0;
+        if (c > 0) t += c * getEffectiveValue(b, pi, hi, firstBonus);
+      }
     });
     return t;
   }
