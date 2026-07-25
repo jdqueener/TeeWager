@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions,
-  Alert, Platform, Modal,
+  Alert, Platform, Modal, TextInput,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
