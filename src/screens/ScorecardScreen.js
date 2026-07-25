@@ -50,7 +50,7 @@ export default function ScorecardScreen() {
       setCustomPressAmt('');
       setPressAmountModal({ mode: pressMode });
     } else if (pressMode === 'perHole') {
-      setSelectedPressPlayers(holePresses[hole]?.playerIdxs ?? players.map((_, i) => i));
+      setSelectedPressPlayers(holePresses[hole]?.playerIdxs ?? []);
       setChosenPressAmt(null);
       setCustomPressAmt('');
       setPressModalVisible(true);
@@ -499,7 +499,7 @@ export default function ScorecardScreen() {
         <View style={styles.pressModalOverlay}>
           <View style={styles.pressModalSheet}>
             <Text style={styles.pressModalTitle}>🤝 Press — Hole {holeOffset + hole + 1}</Text>
-            <Text style={styles.pressModalSub}>Select players, then set the new bean value for this hole.</Text>
+            <Text style={styles.pressModalSub}>Select players in the side bet, then set the new bean value for this hole.</Text>
 
             <TouchableOpacity style={styles.pressAllBtn} onPress={() => setSelectedPressPlayers(players.map((_, i) => i))} activeOpacity={0.75}>
               <Text style={styles.pressAllBtnText}>Select all</Text>
