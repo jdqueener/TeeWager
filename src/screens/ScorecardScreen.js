@@ -4,7 +4,7 @@ import {
   Alert, Platform, Modal,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer } from '../utils/beans';
+import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
 import { colors, spacing, radius } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -19,7 +19,7 @@ export default function ScorecardScreen() {
     players, scores, firstBonus, beanValue,
     currentHole, ldCarryover, kpCarryover, skinsCarryover = 0,
     holeCount = 18, holeOffset = 0, course,
-    pressMode, presses = [], tenthPressed = false, holePresses = {},
+    pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {},
   } = state;
 
   const strokes = state.strokes?.length === players.length
@@ -31,11 +31,12 @@ export default function ScorecardScreen() {
   const [conflictPrompt, setConflictPrompt] = useState(null);
   const [pressModalVisible, setPressModalVisible] = useState(false);
   const [selectedPressPlayers, setSelectedPressPlayers] = useState([]);
+  const [pressAmountModal, setPressAmountModal] = useState(null); // { mode: 'anytime'|'tenth' }
+  const [customPressAmt, setCustomPressAmt] = useState('');
+  const [chosenPressAmt, setChosenPressAmt] = useState(null);
 
-  // Current press multiplier at this hole (anytime/tenth modes)
-  const pressMultiplier = pressMode === 'anytime'
-    ? Math.pow(2, presses.filter(p => p.holeIdx <= hole).length)
-    : (pressMode === 'tenth' && tenthPressed && hole >= 9) ? 2 : 1;
+  // Current effective bean value at this hole
+  const currentEffValue = getEffectiveBeanValue(beanValue, hole, pressMode, presses, tenthPressed, tenthPressValue);
 
   const showPressBtn = pressMode && (
     pressMode === 'anytime' ||
@@ -44,19 +45,31 @@ export default function ScorecardScreen() {
   );
 
   function handlePress() {
-    if (pressMode === 'anytime') {
-      dispatch({ type: 'ADD_PRESS', holeIdx: hole });
-    } else if (pressMode === 'tenth') {
-      dispatch({ type: 'PRESS_TENTH' });
+    if (pressMode === 'anytime' || pressMode === 'tenth') {
+      setChosenPressAmt(null);
+      setCustomPressAmt('');
+      setPressAmountModal({ mode: pressMode });
     } else if (pressMode === 'perHole') {
-      setSelectedPressPlayers(holePresses[hole] ?? players.map((_, i) => i));
+      setSelectedPressPlayers(holePresses[hole]?.playerIdxs ?? players.map((_, i) => i));
+      setChosenPressAmt(null);
+      setCustomPressAmt('');
       setPressModalVisible(true);
     }
   }
 
-  function confirmHolePress() {
-    if (selectedPressPlayers.length >= 2) {
-      dispatch({ type: 'ADD_HOLE_PRESS', holeIdx: hole, playerIdxs: [...selectedPressPlayers] });
+  function confirmAmountPress(amount) {
+    if (!amount || amount <= 0) return;
+    if (pressAmountModal?.mode === 'anytime') {
+      dispatch({ type: 'ADD_PRESS', holeIdx: hole, value: amount });
+    } else if (pressAmountModal?.mode === 'tenth') {
+      dispatch({ type: 'PRESS_TENTH', value: amount });
+    }
+    setPressAmountModal(null);
+  }
+
+  function confirmHolePress(amount) {
+    if (selectedPressPlayers.length >= 2 && amount > 0) {
+      dispatch({ type: 'ADD_HOLE_PRESS', holeIdx: hole, playerIdxs: [...selectedPressPlayers], value: amount });
     }
     setPressModalVisible(false);
   }
@@ -287,12 +300,12 @@ export default function ScorecardScreen() {
           {pressMode && (
             <View style={styles.pressBar}>
               <View style={{ flex: 1 }}>
-                {pressMultiplier > 1 && pressMode !== 'perHole' && (
-                  <Text style={styles.pressActive}>🤝 Press active — ×{pressMultiplier} bean value</Text>
+                {currentEffValue > beanValue && pressMode !== 'perHole' && (
+                  <Text style={styles.pressActive}>🤝 Press active — ${currentEffValue.toFixed(2)}/bean</Text>
                 )}
                 {pressMode === 'perHole' && holePresses[hole] && (
                   <Text style={styles.pressActive}>
-                    🤝 Press: {holePresses[hole].map(pi => players[pi]?.split(' ')[0]).join(' vs ')}
+                    🤝 Press ${holePresses[hole].value?.toFixed(2)}/bean: {holePresses[hole].playerIdxs?.map(pi => players[pi]?.split(' ')[0]).join(' vs ')}
                   </Text>
                 )}
               </View>
@@ -300,7 +313,7 @@ export default function ScorecardScreen() {
                 <TouchableOpacity style={styles.pressBtn} onPress={handlePress} activeOpacity={0.85}>
                   <Text style={styles.pressBtnText}>
                     {pressMode === 'anytime'
-                      ? pressMultiplier > 1 ? `Press again →×${pressMultiplier * 2}` : '🤝 Press'
+                      ? currentEffValue > beanValue ? '🤝 Press again' : '🤝 Press'
                       : pressMode === 'tenth'
                       ? '🤝 Press (back 9)'
                       : holePresses[hole] ? '🤝 Edit press' : '🤝 Press this hole'}
@@ -481,60 +494,109 @@ export default function ScorecardScreen() {
 
       <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
 
-      {/* Per-hole press player selection */}
+      {/* Per-hole press: player selection + amount */}
       <Modal visible={pressModalVisible} transparent animationType="slide">
         <View style={styles.pressModalOverlay}>
           <View style={styles.pressModalSheet}>
             <Text style={styles.pressModalTitle}>🤝 Press — Hole {holeOffset + hole + 1}</Text>
-            <Text style={styles.pressModalSub}>Select players in the side bet. Doubles their bean value this hole.</Text>
+            <Text style={styles.pressModalSub}>Select players, then set the new bean value for this hole.</Text>
 
-            <TouchableOpacity
-              style={styles.pressAllBtn}
-              onPress={() => setSelectedPressPlayers(players.map((_, i) => i))}
-              activeOpacity={0.75}
-            >
+            <TouchableOpacity style={styles.pressAllBtn} onPress={() => setSelectedPressPlayers(players.map((_, i) => i))} activeOpacity={0.75}>
               <Text style={styles.pressAllBtnText}>Select all</Text>
             </TouchableOpacity>
 
             {players.map((name, pi) => {
               const sel = selectedPressPlayers.includes(pi);
               return (
-                <TouchableOpacity
-                  key={pi}
-                  style={[styles.pressPlayerRow, sel && styles.pressPlayerRowActive]}
-                  onPress={() => setSelectedPressPlayers(prev =>
-                    prev.includes(pi) ? prev.filter(i => i !== pi) : [...prev, pi]
-                  )}
-                  activeOpacity={0.75}
-                >
+                <TouchableOpacity key={pi} style={[styles.pressPlayerRow, sel && styles.pressPlayerRowActive]}
+                  onPress={() => setSelectedPressPlayers(prev => prev.includes(pi) ? prev.filter(i => i !== pi) : [...prev, pi])}
+                  activeOpacity={0.75}>
                   <Text style={[styles.pressPlayerName, sel && { color: colors.white }]}>{name}</Text>
                   {sel && <Text style={styles.pressPlayerCheck}>✓</Text>}
                 </TouchableOpacity>
               );
             })}
 
+            {selectedPressPlayers.length >= 2 && (
+              <PressAmountPicker
+                beanValue={beanValue}
+                currentValue={holePresses[hole]?.value ?? beanValue * 2}
+                chosen={chosenPressAmt}
+                custom={customPressAmt}
+                onChoose={setChosenPressAmt}
+                onCustomChange={setCustomPressAmt}
+              />
+            )}
+
             <TouchableOpacity
-              style={[styles.pressConfirmBtn, selectedPressPlayers.length < 2 && styles.pressConfirmBtnDisabled]}
-              onPress={confirmHolePress}
-              disabled={selectedPressPlayers.length < 2}
+              style={[styles.pressConfirmBtn, (selectedPressPlayers.length < 2 || !(chosenPressAmt ?? parseFloat(customPressAmt))) && styles.pressConfirmBtnDisabled]}
+              onPress={() => {
+                const amt = chosenPressAmt ?? parseFloat(customPressAmt);
+                confirmHolePress(amt);
+              }}
+              disabled={selectedPressPlayers.length < 2 || !(chosenPressAmt ?? parseFloat(customPressAmt))}
               activeOpacity={0.85}
             >
               <Text style={styles.pressConfirmText}>
-                {selectedPressPlayers.length < 2 ? 'Select at least 2 players' : `Confirm Press (${selectedPressPlayers.length} players)`}
+                {selectedPressPlayers.length < 2 ? 'Select at least 2 players' :
+                 !(chosenPressAmt ?? parseFloat(customPressAmt)) ? 'Choose new amount' :
+                 `Confirm — $${(chosenPressAmt ?? parseFloat(customPressAmt)).toFixed(2)}/bean`}
               </Text>
             </TouchableOpacity>
 
             {holePresses[hole] && (
-              <TouchableOpacity
-                style={styles.pressCancelHoleBtn}
+              <TouchableOpacity style={styles.pressCancelHoleBtn}
                 onPress={() => { dispatch({ type: 'REMOVE_HOLE_PRESS', holeIdx: hole }); setPressModalVisible(false); }}
-                activeOpacity={0.75}
-              >
+                activeOpacity={0.75}>
                 <Text style={styles.pressCancelHoleText}>Remove press this hole</Text>
               </TouchableOpacity>
             )}
-
             <TouchableOpacity onPress={() => setPressModalVisible(false)} style={styles.pressDismissBtn}>
+              <Text style={styles.pressDismissText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Anytime / tenth press: amount picker */}
+      <Modal visible={!!pressAmountModal} transparent animationType="slide">
+        <View style={styles.pressModalOverlay}>
+          <View style={styles.pressModalSheet}>
+            <Text style={styles.pressModalTitle}>
+              {pressAmountModal?.mode === 'tenth' ? '🤝 Press — Back 9' : '🤝 Press'}
+            </Text>
+            <Text style={styles.pressModalSub}>
+              {pressAmountModal?.mode === 'tenth'
+                ? 'Set the new bean value for holes 10–18.'
+                : 'Set the new bean value from this hole forward.'}
+            </Text>
+            <Text style={styles.pressCurrentLabel}>Current: ${currentEffValue.toFixed(2)}/bean</Text>
+
+            <PressAmountPicker
+              beanValue={beanValue}
+              currentValue={currentEffValue * 2}
+              chosen={chosenPressAmt}
+              custom={customPressAmt}
+              onChoose={setChosenPressAmt}
+              onCustomChange={setCustomPressAmt}
+            />
+
+            <TouchableOpacity
+              style={[styles.pressConfirmBtn, !(chosenPressAmt ?? parseFloat(customPressAmt)) && styles.pressConfirmBtnDisabled]}
+              onPress={() => {
+                const amt = chosenPressAmt ?? parseFloat(customPressAmt);
+                confirmAmountPress(amt);
+              }}
+              disabled={!(chosenPressAmt ?? parseFloat(customPressAmt))}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.pressConfirmText}>
+                {!(chosenPressAmt ?? parseFloat(customPressAmt))
+                  ? 'Choose new amount'
+                  : `Confirm — $${(chosenPressAmt ?? parseFloat(customPressAmt)).toFixed(2)}/bean`}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setPressAmountModal(null)} style={styles.pressDismissBtn}>
               <Text style={styles.pressDismissText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -559,6 +621,34 @@ export default function ScorecardScreen() {
           </View>
         </View>
       </Modal>
+    </View>
+  );
+}
+
+// ── Press amount picker ───────────────────────────────────────────────────
+function PressAmountPicker({ beanValue, currentValue, chosen, custom, onChoose, onCustomChange }) {
+  const multiples = [2, 3, 4, 5].map(m => parseFloat((beanValue * m).toFixed(2)));
+  const unique = [...new Set(multiples)].filter(v => v !== beanValue);
+
+  return (
+    <View style={styles.pressAmtWrap}>
+      <Text style={styles.pressAmtLabel}>New $ per bean</Text>
+      <View style={styles.pressAmtRow}>
+        {unique.map(v => (
+          <TouchableOpacity key={v} style={[styles.pressAmtBtn, chosen === v && styles.pressAmtBtnActive]}
+            onPress={() => { onChoose(v); onCustomChange(''); }} activeOpacity={0.75}>
+            <Text style={[styles.pressAmtBtnText, chosen === v && { color: colors.white }]}>${v.toFixed(2)}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <TextInput
+        style={[styles.pressAmtInput, !chosen && custom && { borderColor: colors.gold }]}
+        placeholder="Custom amount…"
+        placeholderTextColor={colors.textLight}
+        keyboardType="decimal-pad"
+        value={custom}
+        onChangeText={t => { onCustomChange(t); onChoose(null); }}
+      />
     </View>
   );
 }
@@ -932,6 +1022,14 @@ const styles = StyleSheet.create({
   pressCancelHoleText:{ color: colors.red, fontWeight: '600', fontSize: 14 },
   pressDismissBtn:    { paddingVertical: 10, alignItems: 'center' },
   pressDismissText:   { color: colors.textMid, fontWeight: '600', fontSize: 14 },
+  pressCurrentLabel:  { fontSize: 13, color: colors.textMid, fontWeight: '600', marginBottom: spacing.sm },
+  pressAmtWrap:       { marginTop: spacing.md },
+  pressAmtLabel:      { fontSize: 12, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs },
+  pressAmtRow:        { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm, flexWrap: 'wrap' },
+  pressAmtBtn:        { flex: 1, minWidth: 64, paddingVertical: 11, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.gold, alignItems: 'center', backgroundColor: colors.white },
+  pressAmtBtnActive:  { backgroundColor: colors.gold },
+  pressAmtBtnText:    { fontSize: 14, fontWeight: '700', color: colors.gold },
+  pressAmtInput:      { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.sm, padding: spacing.sm, fontSize: 15, color: colors.textDark, marginTop: spacing.xs },
 
   // Conflict confirm modal
   confirmOverlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },

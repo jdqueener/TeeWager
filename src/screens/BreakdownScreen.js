@@ -9,7 +9,7 @@ import PaywallModal from '../components/PaywallModal';
 export default function BreakdownScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const { players, scores, firstBonus, beanValue, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0,
-    pressMode, presses = [], tenthPressed = false, holePresses = {} } = state;
+    pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {} } = state;
   const [selectedPlayer, setSelectedPlayer] = useState(0);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -59,16 +59,17 @@ export default function BreakdownScreen() {
   // Press-aware net dollars: compute per-hole with effective bean value
   let netDollars = 0;
   for (let h = 0; h < holeCount; h++) {
-    const effVal = getEffectiveBeanValue(beanValue, h, pressMode, presses, tenthPressed);
+    const effVal = getEffectiveBeanValue(beanValue, h, pressMode, presses, tenthPressed, tenthPressValue);
     const myB = beansAtHoleForPlayer(selectedPlayer, h, scores, activeBeans, firstBonus, n);
     const totalHB = players.reduce((s, _, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
     netDollars += effVal * (myB * n - totalHB);
-    if (pressMode === 'perHole' && holePresses[h]?.includes(selectedPlayer)) {
-      const pressed = holePresses[h];
-      const np = pressed.length;
+    const holePress = holePresses[h];
+    if (pressMode === 'perHole' && holePress?.playerIdxs?.includes(selectedPlayer)) {
+      const { playerIdxs, value: pressVal = beanValue } = holePress;
+      const np = playerIdxs.length;
       const myPB = beansAtHoleForPlayer(selectedPlayer, h, scores, activeBeans, firstBonus, n);
-      const totalPB = pressed.reduce((s, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
-      netDollars += beanValue * (myPB * np - totalPB);
+      const totalPB = playerIdxs.reduce((s, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
+      netDollars += pressVal * (myPB * np - totalPB);
     }
   }
 
@@ -160,12 +161,12 @@ export default function BreakdownScreen() {
                   {'\n'}
                   <Text style={styles.eventDollar}>
                     {(() => {
-                      const effVal = getEffectiveBeanValue(beanValue, event.h, pressMode, presses, tenthPressed);
-                      const pressed = pressMode === 'perHole' && holePresses[event.h];
-                      const pressMulti = pressed && pressed.includes(selectedPlayer) ? 2 : 1;
+                      const effVal = getEffectiveBeanValue(beanValue, event.h, pressMode, presses, tenthPressed, tenthPressValue);
+                      const holePress = pressMode === 'perHole' ? holePresses[event.h] : null;
+                      const pressBonus = holePress?.playerIdxs?.includes(selectedPlayer) ? (holePress.value ?? beanValue) : 0;
                       const dollars = event.incoming
-                        ? event.beans * effVal * pressMulti
-                        : event.beans * effVal * (n - 1) * pressMulti;
+                        ? event.beans * (effVal + pressBonus)
+                        : event.beans * (effVal + pressBonus) * (n - 1);
                       return `${dollars >= 0 ? '+' : ''}$${Math.abs(dollars).toFixed(2)}`;
                     })()}
                   </Text>

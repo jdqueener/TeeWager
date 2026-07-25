@@ -11,7 +11,7 @@ import ShareCard from '../components/ShareCard';
 export default function SettleUpScreen() {
   const { state, dispatch, pro, setPro, activeBeans } = useGame();
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18,
-    pressMode, presses, tenthPressed, holePresses } = state;
+    pressMode, presses, tenthPressed, tenthPressValue, holePresses } = state;
   const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -34,7 +34,7 @@ export default function SettleUpScreen() {
   }
 
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
-  const pressState = { pressMode, presses, tenthPressed, holePresses };
+  const pressState = { pressMode, presses, tenthPressed, tenthPressValue, holePresses };
   const payments   = computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount);
 
   async function saveToStats() {
