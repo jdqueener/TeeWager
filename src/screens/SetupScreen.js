@@ -452,12 +452,12 @@ export default function SetupScreen() {
           placeholderTextColor={colors.textLight}
         />
 
-        {/* Spots (handicap) */}
-        <Text style={styles.label}>Spots</Text>
+        {/* Handicap beans */}
+        <Text style={styles.label}>Handicap</Text>
         <View style={[styles.beanRow, { borderLeftColor: colors.green }]}>
           <View style={[styles.beanDot, { backgroundColor: colors.green }]} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.beanName}>Enable bean spots</Text>
+            <Text style={styles.beanName}>Enable Handicap Beans</Text>
             <Text style={styles.beanDesc}>Give players a bean head-start to balance handicaps</Text>
           </View>
           <Switch value={spotsEnabled} onValueChange={setSpotsEnabled} trackColor={{ true: colors.green }} />
