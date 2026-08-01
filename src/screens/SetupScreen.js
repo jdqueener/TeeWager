@@ -488,7 +488,7 @@ export default function SetupScreen() {
           <View style={[styles.beanDot, { backgroundColor: colors.gold }]} />
           <View style={{ flex: 1 }}>
             <Text style={styles.beanName}>Enable press</Text>
-            <Text style={styles.beanDesc}>Allow players to double the wager mid-round</Text>
+            <Text style={styles.beanDesc}>Allow players to increase the wager mid-round</Text>
           </View>
           <Switch value={pressEnabled} onValueChange={setPressEnabled} trackColor={{ true: colors.gold }} />
         </View>
