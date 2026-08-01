@@ -305,7 +305,7 @@ export default function ScorecardScreen() {
           {/* Running totals */}
           <View style={styles.totalsBar}>
             {players.map((name, pi) => {
-              const t = playerTotalBeans(pi);
+              const t = playerTotalBeans(pi) + (state.spots?.[pi] || 0);
               return (
                 <View key={pi} style={styles.totalChip}>
                   <Text style={styles.totalName} numberOfLines={1}>{name.split(' ')[0]}</Text>
@@ -484,7 +484,8 @@ export default function ScorecardScreen() {
               const tot   = outS + inS;
               const totP  = sumPar(front) + (back.length > 0 ? sumPar(back) : 0);
               const diff  = tot > 0 ? tot - totP : null;
-              const beans = holes.reduce((s, hi) => s + getHoleBeans(pi, hi), 0);
+              const earned = holes.reduce((s, hi) => s + getHoleBeans(pi, hi), 0);
+              const beans  = earned + (state.spots?.[pi] || 0);
               return (
                 <View key={pi} style={styles.totalRow}>
                   <Text style={styles.totalName2}>{name}</Text>
