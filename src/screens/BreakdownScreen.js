@@ -9,7 +9,7 @@ import PaywallModal from '../components/PaywallModal';
 export default function BreakdownScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const { players, scores, firstBonus, beanValue, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0,
-    pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {} } = state;
+    pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {}, spots = [] } = state;
   const [selectedPlayer, setSelectedPlayer] = useState(0);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -122,7 +122,7 @@ export default function BreakdownScreen() {
               <Text style={[styles.summaryVal, grandTotal < 0 && styles.neg]}>
                 {grandTotal >= 0 ? `+${grandTotal}` : grandTotal}
               </Text>
-              <Text style={styles.summaryLabel}>beans</Text>
+              <Text style={styles.summaryLabel}>beans{spots[selectedPlayer] > 0 ? ` +${spots[selectedPlayer]} spot` : ''}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>

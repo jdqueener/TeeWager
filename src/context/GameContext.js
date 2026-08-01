@@ -40,6 +40,7 @@ const INITIAL_SETUP = {
   tenthPressed: false,
   tenthPressValue: null, // chosen dollar value for tenth-hole press
   holePresses: {},       // { [holeIdx]: {playerIdxs, value} } — for 'perHole'
+  spots: [],             // [number] — bean spots (handicap) per player
   holeCount: 18,   // 9 or 18
   holeOffset: 0,   // 0 = front nine, 9 = back nine (only relevant for 9-hole rounds)
   course: null, // { id, name, tee, totalPar, holes: [{number,par,yardage,handicap}] }
@@ -51,7 +52,7 @@ function reducer(state, action) {
       return action.payload;
 
     case 'START_ROUND': {
-      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null } = action.payload;
+      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null, spots = [] } = action.payload;
       return {
         ...state,
         phase: 'round',
@@ -76,6 +77,7 @@ function reducer(state, action) {
         tenthPressed: false,
         tenthPressValue: null,
         holePresses: {},
+        spots: spots || [],
       };
     }
 

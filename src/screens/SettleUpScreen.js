@@ -11,7 +11,7 @@ import ShareCard from '../components/ShareCard';
 export default function SettleUpScreen() {
   const { state, dispatch, pro, setPro, activeBeans } = useGame();
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18,
-    pressMode, presses, tenthPressed, tenthPressValue, holePresses } = state;
+    pressMode, presses, tenthPressed, tenthPressValue, holePresses, spots = [] } = state;
   const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -35,7 +35,7 @@ export default function SettleUpScreen() {
 
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
   const pressState = { pressMode, presses, tenthPressed, tenthPressValue, holePresses };
-  const payments   = computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount);
+  const payments   = computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount, spots);
 
   async function saveToStats() {
     if (!pro) { setPaywallVisible(true); return; }
@@ -123,16 +123,19 @@ export default function SettleUpScreen() {
         <Text style={styles.sectionLabel}>Bean totals</Text>
         {players.map((name, i) => {
           const beans   = beanTotals[i];
+          const spot    = spots[i] || 0;
           const dollars = beans * beanValue;
           return (
             <View key={i} style={styles.row}>
               <Text style={styles.name}>{name}</Text>
-              <Text style={[styles.val, beans < 0 && styles.neg]}>
-                {beans >= 0 ? `+${beans}` : beans} beans
-              </Text>
-              <Text style={[styles.val, dollars < 0 && styles.neg]}>
-                {dollars >= 0 ? `+$${dollars.toFixed(2)}` : `-$${Math.abs(dollars).toFixed(2)}`}
-              </Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[styles.val, beans < 0 && styles.neg]}>
+                  {beans >= 0 ? `+${beans}` : beans} beans{spot > 0 ? ` +${spot} spot` : ''}
+                </Text>
+                <Text style={[styles.val, dollars < 0 && styles.neg]}>
+                  {dollars >= 0 ? `+$${dollars.toFixed(2)}` : `-$${Math.abs(dollars).toFixed(2)}`}
+                </Text>
+              </View>
             </View>
           );
         })}

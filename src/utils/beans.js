@@ -95,7 +95,7 @@ export function beansAtHoleForPlayer(playerIdx, holeIdx, scores, activeBeans, fi
 }
 
 // Press-aware settlement: handles all three press modes
-export function computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount = 18) {
+export function computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount = 18, spots = []) {
   const { pressMode, presses, tenthPressed, tenthPressValue, holePresses } = pressState || {};
   const n = players.length;
 
@@ -120,6 +120,13 @@ export function computePressSettleUp(players, scores, activeBeans, firstBonus, b
       }
     }
     return dollars;
+  });
+
+  // Apply spots: each spotted bean is worth beanValue from every other player
+  const totalSpots = (spots || []).reduce((s, v) => s + (v || 0), 0);
+  players.forEach((_, pi) => {
+    const mySpot = spots?.[pi] || 0;
+    if (totalSpots > 0) net[pi] += beanValue * (mySpot * n - totalSpots);
   });
 
   (wagers || []).forEach(w => {

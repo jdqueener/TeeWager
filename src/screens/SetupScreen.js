@@ -38,6 +38,8 @@ export default function SetupScreen() {
   const [customBeans, setCustomBeans] = useState([]);
   const [pressEnabled, setPressEnabled] = useState(false);
   const [pressMode, setPressMode] = useState('anytime');
+  const [spotsEnabled, setSpotsEnabled] = useState(false);
+  const [spots, setSpots] = useState([0, 0, 0, 0, 0]);
   const { user } = useAuth();
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -239,7 +241,7 @@ export default function SetupScreen() {
     );
     dispatch({
       type: 'START_ROUND',
-      payload: { players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom, wagers: [], course, holeCount, holeOffset, pressMode: pressEnabled ? pressMode : null },
+      payload: { players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom, wagers: [], course, holeCount, holeOffset, pressMode: pressEnabled ? pressMode : null, spots: spotsEnabled ? spots.slice(0, players.length) : players.map(() => 0) },
     });
   }
 
@@ -449,6 +451,36 @@ export default function SetupScreen() {
           placeholder="1.00"
           placeholderTextColor={colors.textLight}
         />
+
+        {/* Spots (handicap) */}
+        <Text style={styles.label}>Spots</Text>
+        <View style={[styles.beanRow, { borderLeftColor: colors.green }]}>
+          <View style={[styles.beanDot, { backgroundColor: colors.green }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.beanName}>Enable bean spots</Text>
+            <Text style={styles.beanDesc}>Give players a bean head-start to balance handicaps</Text>
+          </View>
+          <Switch value={spotsEnabled} onValueChange={setSpotsEnabled} trackColor={{ true: colors.green }} />
+        </View>
+        {spotsEnabled && (
+          <View style={styles.spotsWrap}>
+            {names.slice(0, playerCount).map((name, i) => (
+              <View key={i} style={styles.spotRow}>
+                <Text style={styles.spotName} numberOfLines={1}>{name || `Player ${i + 1}`}</Text>
+                <View style={styles.spotControls}>
+                  <TouchableOpacity style={styles.spotBtn} onPress={() => setSpots(prev => { const n = [...prev]; n[i] = Math.max(0, n[i] - 1); return n; })} activeOpacity={0.75}>
+                    <Text style={styles.spotBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.spotVal}>{spots[i] ?? 0}</Text>
+                  <TouchableOpacity style={styles.spotBtn} onPress={() => setSpots(prev => { const n = [...prev]; n[i] = (n[i] ?? 0) + 1; return n; })} activeOpacity={0.75}>
+                    <Text style={styles.spotBtnText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+            <Text style={styles.spotHint}>Spotted beans are added to each player's total at settlement</Text>
+          </View>
+        )}
 
         {/* Press */}
         <Text style={styles.label}>Press</Text>
@@ -666,6 +698,16 @@ const styles = StyleSheet.create({
   customBeanInput: { fontSize: 15, fontWeight: '700', color: colors.textDark, padding: 0, marginBottom: 2 },
   addCustomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: spacing.sm, marginBottom: spacing.sm, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.green, borderStyle: 'dashed' },
   addCustomText: { fontSize: 14, fontWeight: '700', color: colors.green },
+
+  // Spots
+  spotsWrap:    { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.green, padding: spacing.sm, marginBottom: spacing.sm },
+  spotRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: colors.border },
+  spotName:     { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textDark },
+  spotControls: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  spotBtn:      { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.green, justifyContent: 'center', alignItems: 'center' },
+  spotBtnText:  { fontSize: 20, fontWeight: '700', color: colors.green, lineHeight: 22 },
+  spotVal:      { width: 32, textAlign: 'center', fontSize: 18, fontWeight: '800', color: colors.textDark },
+  spotHint:     { fontSize: 12, color: colors.textLight, marginTop: spacing.sm, textAlign: 'center', lineHeight: 17 },
 
   // Press options
   pressOptions:     { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.gold, padding: spacing.sm, marginBottom: spacing.sm },
