@@ -76,8 +76,8 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
   return (
     <>
       <View style={[styles.banner, pro ? styles.proBanner : styles.freeBanner]}>
-        <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.menuIcon}>⚙</Text>
+        <TouchableOpacity onPress={handleNewRound} style={styles.newRoundBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={styles.newRoundText}>New Round</Text>
         </TouchableOpacity>
         {pro ? (
           <Text style={styles.text}>⛳ TeeWager Pro — all features unlocked</Text>
@@ -131,8 +131,9 @@ const styles = StyleSheet.create({
   freeBanner:  { backgroundColor: colors.gold },
   proBanner:   { backgroundColor: colors.green },
   text:        { flex: 1, color: colors.white, fontWeight: '700', fontSize: 13, textAlign: 'center' },
-  menuBtn:     { width: 32, alignItems: 'center' },
-  menuIcon:    { fontSize: 20, color: colors.white },
+  menuBtn:      { width: 32, alignItems: 'center' },
+  newRoundBtn:  { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' },
+  newRoundText: { fontSize: 11, fontWeight: '700', color: colors.white, letterSpacing: 0.3 },
 
   overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 32 },
   menu:        { backgroundColor: colors.white, borderRadius: radius.md, width: '100%', maxWidth: 320, overflow: 'hidden' },
