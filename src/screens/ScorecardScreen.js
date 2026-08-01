@@ -146,16 +146,33 @@ export default function ScorecardScreen() {
 
   function advanceHole() {
     if (hole >= lastHole) return;
-    const next = () => dispatch({ type: 'SET_HOLE', hole: hole + 1 });
+
+    const ldBean     = activeBeans.find(b => b.id === 'longDrive');
+    const kpBean     = activeBeans.find(b => b.id === 'kp');
+    const skinsBean  = activeBeans.find(b => b.id === 'lowBall');
+    const ldEligible = ldBean && isParAllowed(ldBean, par);
+    const kpEligible = kpBean && isParAllowed(kpBean, par);
+    const ldWon      = players.some((_, pi) => hasBean(pi, 'longDrive'));
+    const kpWon      = players.some((_, pi) => hasBean(pi, 'kp'));
+
+    const doCarryovers = () => {
+      if (ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER' });
+      if (kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER' });
+    };
+
+    const next = () => {
+      doCarryovers();
+      dispatch({ type: 'SET_HOLE', hole: hole + 1 });
+    };
 
     const holeStrokes = players.map((_, pi) => getStroke(pi, hole));
     const allEntered  = holeStrokes.every(s => s > 0);
     if (!allEntered) { next(); return; }
 
-    const minS      = Math.min(...holeStrokes);
-    const hLeaders  = players.map((_, pi) => holeStrokes[pi] === minS);
-    const outright  = hLeaders.filter(Boolean).length === 1;
-    const winner    = players.findIndex((_, pi) => hasBean(pi, 'lowBall'));
+    const minS     = Math.min(...holeStrokes);
+    const hLeaders = players.map((_, pi) => holeStrokes[pi] === minS);
+    const outright = hLeaders.filter(Boolean).length === 1;
+    const winner   = players.findIndex((_, pi) => hasBean(pi, 'lowBall'));
 
     const confirm = (title, msg) => {
       if (Platform.OS !== 'web') {
@@ -178,11 +195,13 @@ export default function ScorecardScreen() {
       return;
     }
 
-    // No one awarded but there's a clear winner — auto-award and advance.
-    if (winner < 0 && outright) {
-      dispatch({ type: 'SKINS_AWARD', playerIdx: hLeaders.indexOf(true), holeIdx: hole, totalBeans: 1 + skinsCarryover });
-      next();
-      return;
+    // No skins winner — auto-award outright winner or carry over tie
+    if (winner < 0 && skinsBean) {
+      if (outright) {
+        dispatch({ type: 'SKINS_AWARD', playerIdx: hLeaders.indexOf(true), holeIdx: hole, totalBeans: 1 + skinsCarryover });
+      } else {
+        dispatch({ type: 'SKINS_CARRYOVER' });
+      }
     }
 
     next();
