@@ -280,7 +280,7 @@ export default function SetupScreen() {
             <View style={styles.courseSearchRow}>
               <TextInput
                 style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                placeholder="Search course name…"
+                placeholder="Search by course name (e.g. Pine Ridge)…"
                 placeholderTextColor={colors.textLight}
                 value={courseQuery}
                 onChangeText={setCourseQuery}
@@ -294,9 +294,6 @@ export default function SetupScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.courseAltRow}>
-              <TouchableOpacity style={styles.altBtn} onPress={searchByLocation}>
-                <Text style={styles.altBtnText}>📍 Use my location</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={styles.altBtn} onPress={() => { setShowManualEntry(true); clearCourse(); }}>
                 <Text style={styles.altBtnText}>✏️ Enter manually</Text>
               </TouchableOpacity>
