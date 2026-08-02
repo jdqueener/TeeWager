@@ -299,7 +299,12 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
           </TouchableOpacity>
 
           {isSignUp && (
-            <Text style={styles.terms}>By creating an account you agree to our Terms of Service and Privacy Policy.</Text>
+            <Text style={styles.terms}>
+              By creating an account you agree to our{' '}
+              <Text style={styles.termsLink} onPress={() => Linking.openURL('https://teewager.io/terms')}>Terms of Service</Text>
+              {' '}and{' '}
+              <Text style={styles.termsLink} onPress={() => Linking.openURL('https://teewager.io/privacy')}>Privacy Policy</Text>.
+            </Text>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -535,7 +540,8 @@ const styles = StyleSheet.create({
   skipBtn:  { backgroundColor: colors.background, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },
   skipText: { color: colors.textMid, fontWeight: '600', fontSize: 15 },
 
-  terms: { fontSize: 11, color: colors.textLight, textAlign: 'center', marginTop: spacing.md, lineHeight: 16 },
+  terms:     { fontSize: 11, color: colors.textLight, textAlign: 'center', marginTop: spacing.md, lineHeight: 16 },
+  termsLink: { color: colors.green, fontWeight: '700', textDecorationLine: 'underline' },
 
   forgotLink:     { alignSelf: 'flex-end', marginBottom: spacing.xs, marginTop: -spacing.xs },
   forgotLinkText: { fontSize: 13, color: colors.green, fontWeight: '600' },
