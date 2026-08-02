@@ -111,9 +111,9 @@ export default function SetupScreen() {
     try {
       const results = await searchCoursesByName(courseQuery.trim());
       setCourseResults(results);
-      if (!results.length) setCourseError('No courses found. Try a different name or enter manually.');
+      if (!results.length) setCourseError('No courses found. Try a different name.');
     } catch (e) {
-      setCourseError(`Search failed: ${e.message}. Try a different name or enter pars manually.`);
+      setCourseError(`Search failed: ${e.message}. Try a different name.`);
     } finally {
       setCourseLoading(false);
     }
@@ -291,11 +291,6 @@ export default function SetupScreen() {
                 {courseLoading
                   ? <ActivityIndicator color={colors.white} size="small" />
                   : <Text style={styles.searchBtnText}>Search</Text>}
-              </TouchableOpacity>
-            </View>
-            <View style={styles.courseAltRow}>
-              <TouchableOpacity style={styles.altBtn} onPress={() => { setShowManualEntry(true); clearCourse(); }}>
-                <Text style={styles.altBtnText}>✏️ Enter manually</Text>
               </TouchableOpacity>
             </View>
             {!!courseError && <Text style={styles.courseError}>{courseError}</Text>}
