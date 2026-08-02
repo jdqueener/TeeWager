@@ -71,6 +71,10 @@ export default function SetupScreen() {
   const [recentCourses, setRecentCourses] = useState([]);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [showCitySearch, setShowCitySearch] = useState(false);
+  const [cityQuery, setCityQuery] = useState('');
+  const [cityLoading, setCityLoading] = useState(false);
+  const [cityError, setCityError] = useState('');
   const [manualPars, setManualPars] = useState(DEFAULT_PARS.slice(0, 9).map((p, i) => ({ number: i + 1, par: p, yardage: 0 })));
 
   // Resize manual par grid when holeCount changes
@@ -116,6 +120,22 @@ export default function SetupScreen() {
       setCourseError(`Search failed: ${e.message}. Try a different name or enter pars manually.`);
     } finally {
       setCourseLoading(false);
+    }
+  }
+
+  async function searchByCity() {
+    if (!cityQuery.trim()) return;
+    setCityLoading(true);
+    setCityError('');
+    try {
+      const results = await searchCoursesByName(cityQuery.trim());
+      setCourseResults(results);
+      if (!results.length) setCityError('No courses found for that city. Try adding the state (e.g. "Springfield OR").');
+      else { setShowCitySearch(false); setCityQuery(''); }
+    } catch (e) {
+      setCityError(`Search failed: ${e.message}`);
+    } finally {
+      setCityLoading(false);
     }
   }
 
@@ -294,10 +314,34 @@ export default function SetupScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.courseAltRow}>
-              <TouchableOpacity style={styles.altBtn} onPress={() => { setShowManualEntry(true); clearCourse(); }}>
-                <Text style={styles.altBtnText}>✏️ Enter manually</Text>
+              <TouchableOpacity style={styles.altBtn} onPress={() => { setShowCitySearch(v => !v); setCityError(''); }}>
+                <Text style={styles.altBtnText}>🏙️ Search by city</Text>
               </TouchableOpacity>
             </View>
+
+            {showCitySearch && (
+              <View style={{ marginTop: spacing.xs }}>
+                <View style={styles.courseSearchRow}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                    placeholder="City, State (e.g. Springfield OR)…"
+                    placeholderTextColor={colors.textLight}
+                    value={cityQuery}
+                    onChangeText={setCityQuery}
+                    onSubmitEditing={searchByCity}
+                    returnKeyType="search"
+                    autoFocus
+                  />
+                  <TouchableOpacity style={styles.searchBtn} onPress={searchByCity}>
+                    {cityLoading
+                      ? <ActivityIndicator color={colors.white} size="small" />
+                      : <Text style={styles.searchBtnText}>Go</Text>}
+                  </TouchableOpacity>
+                </View>
+                {!!cityError && <Text style={styles.courseError}>{cityError}</Text>}
+              </View>
+            )}
+
             {!!courseError && <Text style={styles.courseError}>{courseError}</Text>}
 
             {/* Recent courses */}
