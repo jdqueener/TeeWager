@@ -5,7 +5,7 @@ import { totalBeansForPlayer, computePressSettleUp } from '../utils/beans';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
 import { saveStats, loadStats } from '../utils/storage';
-import { colors, spacing, radius } from '../utils/theme';
+import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
 import ShareCard from '../components/ShareCard';
@@ -242,58 +242,58 @@ export default function SettleUpScreen() {
 const styles = StyleSheet.create({
   root:         { flex: 1, backgroundColor: colors.background },
   content:      { padding: spacing.md, paddingBottom: 100 },
-  heading:      { fontSize: 26, fontWeight: '900', color: colors.textDark, marginBottom: spacing.md },
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: spacing.md, marginBottom: spacing.xs },
+  heading:      { fontSize: 28, fontWeight: '900', color: colors.textDark, marginBottom: spacing.md, letterSpacing: -0.3 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: spacing.lg, marginBottom: spacing.sm },
 
   // Bean totals
-  row:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.xs },
-  name:   { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textDark },
-  val:    { fontSize: 14, fontWeight: '700', color: colors.green, marginLeft: spacing.sm },
+  row:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.xs, ...shadow.sm },
+  name:   { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
+  val:    { fontSize: 15, fontWeight: '800', color: colors.green, marginLeft: spacing.sm },
   neg:    { color: colors.red },
 
   // Payment cards
-  paymentCard:      { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  paymentCard:      { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', ...shadow.md },
   paymentPlayer:    { flex: 1 },
-  paymentName:      { fontSize: 16, fontWeight: '800', color: colors.textDark },
-  paymentRole:      { fontSize: 11, color: colors.textLight, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 2 },
+  paymentName:      { fontSize: 17, fontWeight: '900', color: colors.textDark },
+  paymentRole:      { fontSize: 11, color: colors.textLight, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 3 },
   paymentArrowWrap: { alignItems: 'center', paddingHorizontal: spacing.sm },
-  paymentAmt:       { fontSize: 22, fontWeight: '900', color: colors.green },
-  paymentArrow:     { fontSize: 20, color: colors.green, fontWeight: '900', marginTop: 2 },
+  paymentAmt:       { fontSize: 26, fontWeight: '900', color: colors.green },
+  paymentArrow:     { fontSize: 22, color: colors.green, fontWeight: '900', marginTop: 2 },
 
   // All square
-  allSquareCard:  { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.sm },
-  allSquareEmoji: { fontSize: 36, marginBottom: spacing.xs },
-  allSquare:      { fontSize: 18, fontWeight: '800', color: colors.green },
-  allSquareSub:   { fontSize: 14, color: colors.textLight, marginTop: 4 },
+  allSquareCard:  { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.sm, ...shadow.sm },
+  allSquareEmoji: { fontSize: 44, marginBottom: spacing.sm },
+  allSquare:      { fontSize: 20, fontWeight: '900', color: colors.green },
+  allSquareSub:   { fontSize: 14, color: colors.textLight, marginTop: 6 },
 
   // Chip-off
-  chipOffCard:     { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.gold, padding: spacing.md, marginBottom: spacing.sm },
+  chipOffCard:     { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 2, borderColor: colors.gold, padding: spacing.md, marginBottom: spacing.sm, ...shadow.sm },
   chipOffTitle:    { fontSize: 14, fontWeight: '700', color: colors.textDark, marginBottom: spacing.sm },
   chipOffRow:      { marginBottom: spacing.sm },
-  chipOffLabel:    { fontSize: 13, fontWeight: '600', color: colors.textMid, marginBottom: 6 },
+  chipOffLabel:    { fontSize: 13, fontWeight: '600', color: colors.textMid, marginBottom: 8 },
   chipOffPlayers:  { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
-  chipOffBtn:      { flex: 1, minWidth: 64, paddingVertical: 10, borderRadius: radius.sm, backgroundColor: colors.green, alignItems: 'center' },
-  chipOffBtnText:  { color: colors.white, fontWeight: '700', fontSize: 14 },
-  chipOffVoid:     { marginTop: spacing.xs, alignItems: 'center', paddingTop: spacing.sm, borderTopWidth: 0.5, borderTopColor: colors.border },
+  chipOffBtn:      { flex: 1, minWidth: 64, paddingVertical: 13, borderRadius: radius.sm, backgroundColor: colors.green, alignItems: 'center', ...shadow.green },
+  chipOffBtnText:  { color: colors.white, fontWeight: '800', fontSize: 14 },
+  chipOffVoid:     { marginTop: spacing.sm, alignItems: 'center', paddingTop: spacing.sm, borderTopWidth: 0.5, borderTopColor: colors.border },
   chipOffVoidText: { color: colors.textLight, fontSize: 13, fontWeight: '600' },
 
   // Wagers
   bold:        { fontWeight: '700' },
 
   // Buttons
-  btn:          { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 15, alignItems: 'center', marginTop: spacing.sm, shadowColor: colors.green, shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  btn:          { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 17, alignItems: 'center', marginTop: spacing.sm, ...shadow.green },
   btnSecondary: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.green, shadowOpacity: 0, elevation: 0 },
   btnSaved:     { borderColor: colors.textLight },
-  btnText:      { color: colors.white, fontWeight: '800', fontSize: 16 },
+  btnText:      { color: colors.white, fontWeight: '900', fontSize: 17 },
   btnSecText:   { color: colors.green, fontWeight: '700', fontSize: 15 },
 
   // Confirm modal
-  confirmOverlay:         { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  confirmCard:            { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg, width: '100%', maxWidth: 340 },
-  confirmTitle:           { fontSize: 18, fontWeight: '800', color: colors.textDark, marginBottom: spacing.xs },
+  confirmOverlay:         { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  confirmCard:            { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 340, ...shadow.md },
+  confirmTitle:           { fontSize: 20, fontWeight: '900', color: colors.textDark, marginBottom: spacing.xs },
   confirmSub:             { fontSize: 14, color: colors.textMid, marginBottom: spacing.lg },
-  confirmDestructive:     { backgroundColor: colors.red, borderRadius: radius.pill, paddingVertical: 12, alignItems: 'center', marginBottom: spacing.sm },
-  confirmDestructiveText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  confirmDestructive:     { backgroundColor: colors.red, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', marginBottom: spacing.sm },
+  confirmDestructiveText: { color: colors.white, fontWeight: '800', fontSize: 16 },
   confirmCancel:          { paddingVertical: 12, alignItems: 'center' },
   confirmCancelText:      { color: colors.textMid, fontSize: 15 },
 });

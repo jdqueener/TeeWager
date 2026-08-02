@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
-import { colors, spacing, radius } from '../utils/theme';
+import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
 
@@ -929,59 +929,59 @@ const styles = StyleSheet.create({
 
   // Mode toggle
   modeBar:           { flexDirection: 'row', backgroundColor: colors.white, borderBottomWidth: 0.5, borderBottomColor: colors.border, padding: 6, gap: 4 },
-  modeBtn:           { flex: 1, paddingVertical: 9, borderRadius: radius.pill, alignItems: 'center' },
-  modeBtnActive:     { backgroundColor: colors.green, shadowColor: colors.green, shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  modeBtn:           { flex: 1, paddingVertical: 11, borderRadius: radius.pill, alignItems: 'center' },
+  modeBtnActive:     { backgroundColor: colors.green, ...shadow.green },
   modeBtnText:       { fontSize: 14, fontWeight: '700', color: colors.textLight },
   modeBtnTextActive: { color: colors.white },
 
   // Hole navigation
-  holeNav:     { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.green, paddingVertical: spacing.sm, shadowColor: colors.green, shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  navBtn:      { paddingHorizontal: spacing.md, minWidth: 48, alignItems: 'center', justifyContent: 'center' },
-  navArrow:    { fontSize: 34, color: colors.white, fontWeight: '200' },
+  holeNav:     { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.green, paddingVertical: 10, ...shadow.green },
+  navBtn:      { paddingHorizontal: spacing.md, minWidth: 56, minHeight: 52, alignItems: 'center', justifyContent: 'center' },
+  navArrow:    { fontSize: 36, color: colors.white, fontWeight: '200' },
   navDisabled: { opacity: 0.25 },
   holeCenter:  { flex: 1, alignItems: 'center', paddingVertical: 2 },
-  holeLabel:   { fontSize: 22, fontWeight: '900', color: colors.white, letterSpacing: -0.3 },
-  parLabel:    { fontSize: 12, color: 'rgba(255,255,255,0.7)', textAlign: 'center', flexWrap: 'wrap', marginTop: 1 },
+  holeLabel:   { fontSize: 24, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
+  parLabel:    { fontSize: 12, color: 'rgba(255,255,255,0.75)', textAlign: 'center', flexWrap: 'wrap', marginTop: 2 },
 
   // Running totals bar
-  totalsBar:  { flexDirection: 'row', backgroundColor: colors.white, borderBottomWidth: 0.5, borderBottomColor: colors.border, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, gap: spacing.sm },
+  totalsBar:  { flexDirection: 'row', backgroundColor: colors.white, borderBottomWidth: 0.5, borderBottomColor: colors.border, paddingVertical: 10, paddingHorizontal: spacing.md, gap: spacing.sm },
   totalChip:  { flex: 1, alignItems: 'center' },
-  totalName:  { fontSize: 11, color: colors.textLight, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
-  totalVal:   { fontSize: 17, fontWeight: '900', color: colors.green, marginTop: 1 },
+  totalName:  { fontSize: 11, color: colors.textLight, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  totalVal:   { fontSize: 22, fontWeight: '900', color: colors.green, marginTop: 2 },
 
   holeContent: { padding: spacing.md, paddingBottom: 120 },
 
   // Stroke counter
-  strokesCard:   { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
-  strokesLabel:  { fontSize: 11, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: spacing.sm },
+  strokesCard:   { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, ...shadow.sm },
+  strokesLabel:  { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: spacing.sm },
   strokesRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   strokePlayer:  { alignItems: 'center', gap: 6, paddingVertical: spacing.xs },
   strokeName:    { fontSize: 12, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.3 },
   strokeCounter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  strokeBtn:     { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center', shadowColor: colors.green, shadowOpacity: 0.25, shadowRadius: 3, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  strokeBtnText: { color: colors.white, fontSize: 22, fontWeight: '300', lineHeight: 28 },
-  strokeVal:     { width: 46, height: 46, borderRadius: radius.sm, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border },
-  strokeNum:     { fontSize: 20, fontWeight: '800', color: colors.textDark },
+  strokeBtn:     { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center', ...shadow.green },
+  strokeBtnText: { color: colors.white, fontSize: 24, fontWeight: '300', lineHeight: 30 },
+  strokeVal:     { width: 50, height: 50, borderRadius: radius.sm, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },
+  strokeNum:     { fontSize: 22, fontWeight: '800', color: colors.textDark },
   strokeDiff:    { fontSize: 11, fontWeight: '800', color: colors.textMid },
 
   dimLabel: { fontSize: 11, color: colors.textLight, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.md, marginBottom: spacing.sm, fontWeight: '700' },
 
   // Bean cards
-  card:            { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, marginBottom: spacing.sm, padding: spacing.md, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
+  card:            { backgroundColor: colors.white, borderRadius: radius.md, marginBottom: spacing.sm, padding: spacing.md, ...shadow.sm },
   cardDimmed:      { opacity: 0.4 },
   cardHeader:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   beanName:        { fontSize: 15, fontWeight: '800', color: colors.textDark },
-  beanValue:       { fontSize: 13, color: colors.green, fontWeight: '600' },
+  beanValue:       { fontSize: 13, color: colors.green, fontWeight: '700' },
   playerRow:       { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
-  playerBtn:       { flex: 1, minWidth: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 14, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
+  playerBtn:       { flex: 1, minWidth: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 16, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
   playerBtnActive: { backgroundColor: colors.green, borderColor: colors.green },
   playerBtnNeg:    { backgroundColor: colors.red, borderColor: colors.red },
-  playerBtnText:   { fontSize: 13, fontWeight: '700', color: colors.textMid },
+  playerBtnText:   { fontSize: 14, fontWeight: '700', color: colors.textMid },
   playerBtnTextActive: { color: colors.white, fontWeight: '800' },
-  checkmark:       { fontSize: 12, color: colors.white, fontWeight: '900' },
+  checkmark:       { fontSize: 13, color: colors.white, fontWeight: '900' },
   neg:             { color: colors.red },
 
-  carryoverBadge:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
+  carryoverBadge:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 3 },
   carryoverBadgeText: { color: colors.white, fontSize: 12, fontWeight: '800' },
   carryoverBtn:       { marginTop: spacing.sm, borderTopWidth: 0.5, borderTopColor: colors.border, paddingTop: spacing.sm, alignItems: 'center' },
   carryoverBtnText:   { color: colors.gold, fontWeight: '700', fontSize: 13 },
@@ -992,7 +992,7 @@ const styles = StyleSheet.create({
   // Grid mode
   gridContent:       { padding: spacing.sm, paddingBottom: 80 },
   gridTitle:         { fontSize: 15, fontWeight: '800', color: colors.textDark, padding: spacing.sm, paddingBottom: 4 },
-  gridCard:          { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, marginBottom: spacing.sm, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
+  gridCard:          { backgroundColor: colors.white, borderRadius: radius.md, marginBottom: spacing.sm, overflow: 'hidden', ...shadow.sm },
   gridRow:           { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: colors.border },
   gridRowAlt:        { backgroundColor: colors.offWhite },
   gridParRow:        { backgroundColor: '#e8f5ee' },
@@ -1009,7 +1009,7 @@ const styles = StyleSheet.create({
   gridScoreTotalText:{ fontSize: 14, fontWeight: '800', color: colors.textDark },
   gridDiffText:      { fontSize: 9, fontWeight: '700', color: colors.textMid },
 
-  totalsCard:         { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md },
+  totalsCard:         { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
   totalsSectionLabel: { fontSize: 12, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: spacing.sm },
   totalRow:           { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: colors.border },
   totalName2:         { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textDark },
@@ -1019,23 +1019,23 @@ const styles = StyleSheet.create({
   totalBeans:         { fontSize: 13, fontWeight: '700', color: colors.green, width: 60, textAlign: 'right' },
 
   // Press bar
-  pressBar:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF9E6', borderBottomWidth: 0.5, borderBottomColor: colors.gold, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.sm, minHeight: 44 },
-  pressActive:  { fontSize: 13, fontWeight: '700', color: colors.gold },
-  pressBtn:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingVertical: 7, paddingHorizontal: spacing.md },
-  pressBtnText: { fontSize: 12, fontWeight: '800', color: colors.white },
+  pressBar:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF9E6', borderBottomWidth: 1, borderBottomColor: '#E8CE7A', paddingHorizontal: spacing.md, paddingVertical: 10, gap: spacing.sm, minHeight: 48 },
+  pressActive:  { fontSize: 13, fontWeight: '700', color: '#8B6914' },
+  pressBtn:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingVertical: 9, paddingHorizontal: spacing.md, ...shadow.gold },
+  pressBtnText: { fontSize: 13, fontWeight: '800', color: colors.white },
 
   // Press player-pick modal
-  pressModalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  pressModalSheet:    { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, paddingBottom: 40 },
-  pressModalTitle:    { fontSize: 18, fontWeight: '900', color: colors.textDark, marginBottom: spacing.xs },
-  pressModalSub:      { fontSize: 13, color: colors.textMid, marginBottom: spacing.md, lineHeight: 19 },
-  pressAllBtn:        { borderWidth: 1.5, borderColor: colors.gold, borderRadius: radius.pill, paddingVertical: 10, alignItems: 'center', marginBottom: spacing.sm },
-  pressAllBtnText:    { color: colors.gold, fontWeight: '700', fontSize: 14 },
-  pressPlayerRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, marginBottom: spacing.xs, backgroundColor: colors.background },
+  pressModalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  pressModalSheet:    { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, paddingBottom: 44 },
+  pressModalTitle:    { fontSize: 20, fontWeight: '900', color: colors.textDark, marginBottom: spacing.xs },
+  pressModalSub:      { fontSize: 14, color: colors.textMid, marginBottom: spacing.md, lineHeight: 20 },
+  pressAllBtn:        { borderWidth: 1.5, borderColor: colors.gold, borderRadius: radius.pill, paddingVertical: 12, alignItems: 'center', marginBottom: spacing.sm },
+  pressAllBtnText:    { color: colors.gold, fontWeight: '800', fontSize: 14 },
+  pressPlayerRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 15, paddingHorizontal: spacing.md, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, marginBottom: spacing.xs, backgroundColor: colors.background },
   pressPlayerRowActive:{ backgroundColor: colors.gold, borderColor: colors.gold },
-  pressPlayerName:    { fontSize: 15, fontWeight: '700', color: colors.textDark },
-  pressPlayerCheck:   { fontSize: 16, color: colors.white, fontWeight: '900' },
-  pressConfirmBtn:    { backgroundColor: colors.gold, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', marginTop: spacing.md },
+  pressPlayerName:    { fontSize: 16, fontWeight: '700', color: colors.textDark },
+  pressPlayerCheck:   { fontSize: 17, color: colors.white, fontWeight: '900' },
+  pressConfirmBtn:    { backgroundColor: colors.gold, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center', marginTop: spacing.md, ...shadow.gold },
   pressConfirmBtnDisabled: { backgroundColor: colors.border },
   pressConfirmText:   { color: colors.white, fontWeight: '800', fontSize: 15 },
   pressCancelHoleBtn: { paddingVertical: 12, alignItems: 'center' },

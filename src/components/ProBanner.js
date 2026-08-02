@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
-import { colors, spacing, radius } from '../utils/theme';
+import { colors, spacing, radius, shadow } from '../utils/theme';
 import AccountMenu from './AccountMenu';
 import AuthScreen from '../screens/AuthScreen';
 import PostRoundScreen from '../screens/PostRoundScreen';
@@ -127,13 +127,13 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
 }
 
 const styles = StyleSheet.create({
-  banner:      { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  banner:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: spacing.md },
   freeBanner:  { backgroundColor: colors.gold },
   proBanner:   { backgroundColor: colors.green },
-  text:        { flex: 1, color: colors.white, fontWeight: '700', fontSize: 13, textAlign: 'center' },
-  menuBtn:      { width: 32, alignItems: 'center' },
-  newRoundBtn:  { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' },
-  newRoundText: { fontSize: 11, fontWeight: '700', color: colors.white, letterSpacing: 0.3 },
+  text:        { flex: 1, color: colors.white, fontWeight: '700', fontSize: 13, textAlign: 'center', letterSpacing: 0.1 },
+  menuBtn:      { width: 34, alignItems: 'center' },
+  newRoundBtn:  { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.65)' },
+  newRoundText: { fontSize: 12, fontWeight: '700', color: colors.white, letterSpacing: 0.2 },
 
   overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 32 },
   menu:        { backgroundColor: colors.white, borderRadius: radius.md, width: '100%', maxWidth: 320, overflow: 'hidden' },
