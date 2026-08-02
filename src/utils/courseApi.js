@@ -21,8 +21,8 @@ export async function searchCoursesByName(query) {
   return normalizeCourseList(data.courses ?? []);
 }
 
-export async function searchCoursesByLocation(lat, lng) {
-  const data = await apiFetch(`/search?latitude=${lat}&longitude=${lng}`);
+export async function searchCoursesByLocation(lat, lng, rangeKm = 80) {
+  const data = await apiFetch(`/search?latitude=${lat}&longitude=${lng}&range_km=${rangeKm}`);
   return normalizeCourseList(data.courses ?? []);
 }
 
