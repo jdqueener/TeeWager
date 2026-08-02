@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { totalBeansForPlayer, computePressSettleUp } from '../utils/beans';
+import { incrementRoundsCompleted } from '../utils/pro';
+import { supabase } from '../utils/supabase';
 import { saveStats, loadStats } from '../utils/storage';
 import { colors, spacing, radius } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
@@ -9,11 +11,25 @@ import PaywallModal from '../components/PaywallModal';
 import ShareCard from '../components/ShareCard';
 
 export default function SettleUpScreen() {
-  const { state, dispatch, pro, setPro, activeBeans } = useGame();
+  const { state, dispatch, pro, setPro, activeBeans, refreshProfile } = useGame();
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18,
     pressMode, presses, tenthPressed, tenthPressValue, holePresses, spots = [] } = state;
   const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
+  const countedRef = useRef(false);
+
+  // Increment rounds completed once per settle-up session
+  useEffect(() => {
+    if (countedRef.current) return;
+    countedRef.current = true;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await incrementRoundsCompleted(session.user.id);
+        await refreshProfile(session.user.id);
+      }
+    })();
+  }, []);
   const [saved, setSaved] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);

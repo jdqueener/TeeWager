@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Switch, Modal, FlatList, ActivityIndicator, Platform,
+  StyleSheet, Switch, Modal, FlatList, ActivityIndicator, Platform, Linking,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { BEAN_DEFS, DEFAULT_PARS, beanLabel } from '../utils/beans';
@@ -26,7 +26,8 @@ const MAX_PRO_PLAYERS  = 5;
 const TEE_COLORS = { Blue: '#1a6fb5', White: '#e0e0e0', Red: '#c0392b', Gold: '#B8860B', Black: '#222', Green: '#1A4A2E' };
 
 export default function SetupScreen() {
-  const { dispatch, pro, setPro } = useGame();
+  const { dispatch, pro, setPro, canPlay, roundsLeft } = useGame();
+  const [trialExpiredVisible, setTrialExpiredVisible] = useState(false);
   const [playerCount, setPlayerCount] = useState(2);
   const [holeCount, setHoleCount] = useState(18);
   const [nineChoice, setNineChoice] = useState('front'); // 'front' | 'back'
@@ -208,6 +209,7 @@ export default function SetupScreen() {
   }
 
   function startRound() {
+    if (!canPlay) { setTrialExpiredVisible(true); return; }
     const players = names.slice(0, playerCount).map(n => n.trim());
     if (players.some(n => !n)) {
       setSavePrompt({ error: 'Please enter a name for each player.' });
@@ -564,6 +566,12 @@ export default function SetupScreen() {
           <Text style={styles.addCustomText}>+ Add custom bean</Text>
         </TouchableOpacity>
 
+        {!pro && (
+          <Text style={styles.trialBadge}>
+            {roundsLeft > 0 ? `${roundsLeft} free round${roundsLeft === 1 ? '' : 's'} remaining` : 'Free trial complete — upgrade to keep playing'}
+          </Text>
+        )}
+
         <TouchableOpacity style={styles.startBtn} onPress={startRound} activeOpacity={0.85}>
           <Text style={styles.startText}>Start Round →</Text>
         </TouchableOpacity>
@@ -630,6 +638,29 @@ export default function SetupScreen() {
       </Modal>
 
       <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
+
+      {/* Trial expired modal */}
+      <Modal visible={trialExpiredVisible} transparent animationType="fade">
+        <View style={styles.promptOverlay}>
+          <View style={styles.promptCard}>
+            <Text style={styles.trialExpiredEmoji}>⛳</Text>
+            <Text style={styles.promptTitle}>Free trial complete</Text>
+            <Text style={styles.promptSub}>
+              You've played your 3 free rounds. Upgrade to TeeWager Pro to keep playing unlimited rounds and unlock all features.
+            </Text>
+            <TouchableOpacity
+              style={styles.promptSave}
+              onPress={() => { setTrialExpiredVisible(false); Linking.openURL('https://www.teewager.io/upgrade'); }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.promptSaveText}>Upgrade at teewager.io →</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.promptSkip} onPress={() => setTrialExpiredVisible(false)}>
+              <Text style={styles.promptSkipText}>Maybe later</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -718,7 +749,9 @@ const styles = StyleSheet.create({
   pressOptionLabel: { fontSize: 14, fontWeight: '700', color: colors.textDark },
   pressOptionDesc:  { fontSize: 12, color: colors.textLight, marginTop: 2, lineHeight: 17 },
 
-  startBtn:  { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 18, alignItems: 'center', marginTop: spacing.lg, shadowColor: colors.green, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  trialBadge:        { textAlign: 'center', fontSize: 13, fontWeight: '600', color: colors.textMid, marginTop: spacing.md, marginBottom: spacing.xs },
+  trialExpiredEmoji: { fontSize: 40, textAlign: 'center', marginBottom: spacing.sm },
+  startBtn:  { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 18, alignItems: 'center', marginTop: spacing.sm, shadowColor: colors.green, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   startText: { color: colors.white, fontWeight: '800', fontSize: 17, letterSpacing: 0.3 },
 
   modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },

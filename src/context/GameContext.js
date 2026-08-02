@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useReducer, useState } from 'react';
 import { BEAN_DEFS, DEFAULT_PARS } from '../utils/beans';
-import { saveGame, loadGame, clearGame, isPro as checkPro, loadCustomDefs } from '../utils/storage';
+import { saveGame, loadGame, clearGame, loadCustomDefs } from '../utils/storage';
+import { fetchProfile, ensureProfile, isTrialExpired, trialRoundsLeft } from '../utils/pro';
+import { supabase } from '../utils/supabase';
 
 const GameContext = createContext(null);
 
@@ -224,20 +226,35 @@ function reducer(state, action) {
 
 export function GameProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_SETUP);
-  const [pro, setPro] = useState(true); // TODO: revert to false when Stripe is live
+  const [pro, setPro] = useState(false);
+  const [profile, setProfile] = useState({ is_pro: false, rounds_completed: 0 });
   const [loading, setLoading] = useState(true);
+
+  async function refreshProfile(userId) {
+    if (!userId) return;
+    await ensureProfile(userId);
+    const p = await fetchProfile(userId);
+    setProfile(p);
+    setPro(!!p.is_pro);
+  }
 
   useEffect(() => {
     (async () => {
-      const [saved, customs] = await Promise.all([
-        loadGame(),
-        loadCustomDefs(),
-      ]);
+      const [saved, customs] = await Promise.all([loadGame(), loadCustomDefs()]);
       if (saved) dispatch({ type: 'LOAD', payload: { ...saved, customBeans: customs } });
       else if (customs.length) dispatch({ type: 'LOAD', payload: { ...INITIAL_SETUP, customBeans: customs } });
-      setPro(true); // TODO: revert to checkPro() when Stripe is live
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) await refreshProfile(session.user.id);
+
       setLoading(false);
     })();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) refreshProfile(session.user.id);
+      else { setProfile({ is_pro: false, rounds_completed: 0 }); setPro(false); }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   // auto-save whenever round state changes; clear on reset
@@ -255,8 +272,11 @@ export function GameProvider({ children }) {
     return state.course?.holes?.[offset + holeIdx]?.par ?? DEFAULT_PARS[offset + holeIdx];
   }
 
+  const canPlay = pro || !isTrialExpired(profile);
+  const roundsLeft = trialRoundsLeft(profile);
+
   return (
-    <GameContext.Provider value={{ state, dispatch, pro, setPro, loading, allBeans, activeBeans, getHolePar }}>
+    <GameContext.Provider value={{ state, dispatch, pro, setPro, profile, setProfile, refreshProfile, canPlay, roundsLeft, loading, allBeans, activeBeans, getHolePar }}>
       {children}
     </GameContext.Provider>
   );
