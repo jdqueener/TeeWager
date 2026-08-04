@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer } from '../utils/beans';
-import { colors, spacing, radius } from '../utils/theme';
+import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
 
@@ -116,6 +116,7 @@ export default function BreakdownScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Summary header */}
         <View style={styles.summaryCard}>
+          <View style={styles.summaryGlow} />
           <Text style={styles.summaryName}>{players[selectedPlayer]}</Text>
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
@@ -185,36 +186,37 @@ export default function BreakdownScreen() {
 const styles = StyleSheet.create({
   root:          { flex: 1, backgroundColor: colors.background },
 
-  playerTabs:    { backgroundColor: colors.white, borderBottomWidth: 0.5, borderBottomColor: colors.border, maxHeight: 56 },
-  tab:           { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.pill },
-  tabActive:     { backgroundColor: colors.green },
-  tabText:       { fontSize: 14, fontWeight: '600', color: colors.textMid },
-  tabTextActive: { color: colors.white },
+  playerTabs:    { backgroundColor: colors.white, maxHeight: 60, ...shadow.sm, zIndex: 5 },
+  tab:           { paddingHorizontal: spacing.md, paddingVertical: 9, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border, justifyContent: 'center' },
+  tabActive:     { backgroundColor: colors.green, borderColor: colors.green, ...shadow.green },
+  tabText:       { fontSize: 14, fontWeight: '700', color: colors.textMid },
+  tabTextActive: { color: colors.white, fontWeight: '800' },
 
   content:       { padding: spacing.md, paddingBottom: 100 },
 
-  summaryCard:   { backgroundColor: colors.green, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md, shadowColor: colors.green, shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
-  summaryName:   { fontSize: 18, fontWeight: '800', color: colors.white, marginBottom: spacing.sm },
+  summaryCard:   { backgroundColor: colors.green, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md, overflow: 'hidden', ...shadow.green },
+  summaryGlow:   { position: 'absolute', top: -60, right: -30, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(45,107,68,0.45)' },
+  summaryName:   { fontSize: 20, fontWeight: '900', color: colors.white, marginBottom: spacing.md, letterSpacing: -0.4 },
   summaryRow:    { flexDirection: 'row', alignItems: 'center' },
   summaryItem:   { flex: 1, alignItems: 'center' },
-  summaryVal:    { fontSize: 26, fontWeight: '900', color: colors.white },
-  summaryLabel:  { fontSize: 10, color: 'rgba(255,255,255,0.65)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
-  summaryDivider:{ width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.2)' },
+  summaryVal:    { fontSize: 27, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
+  summaryLabel:  { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 4 },
+  summaryDivider:{ width: 1, height: 40, backgroundColor: 'rgba(255,255,255,0.22)' },
   neg:           { color: '#ffb3b3' },
 
-  sectionLabel:  { fontSize: 11, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: spacing.sm },
+  sectionLabel:  { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm, marginLeft: 2 },
 
-  eventRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, borderLeftWidth: 4, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.xs, gap: spacing.sm, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 2, elevation: 1 },
+  eventRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderLeftWidth: 4, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm, ...shadow.sm },
   eventRowNeg:   { borderLeftColor: colors.red },
-  eventLeft:     { alignItems: 'center', minWidth: 44, backgroundColor: colors.background, borderRadius: radius.sm, paddingVertical: spacing.xs },
-  eventHole:     { fontSize: 13, fontWeight: '800', color: colors.textDark },
-  eventPar:      { fontSize: 10, color: colors.textLight, fontWeight: '600' },
+  eventLeft:     { alignItems: 'center', minWidth: 48, backgroundColor: colors.greenPale, borderRadius: radius.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.xs },
+  eventHole:     { fontSize: 13, fontWeight: '900', color: colors.green },
+  eventPar:      { fontSize: 10, color: colors.textMid, fontWeight: '700', marginTop: 1 },
   eventMid:      { flex: 1 },
-  eventDesc:     { fontSize: 14, fontWeight: '600', color: colors.textDark },
-  eventBeans:    { fontSize: 16, fontWeight: '900', color: colors.green, textAlign: 'right' },
-  eventDollar:   { fontSize: 11, fontWeight: '600', color: colors.textMid },
+  eventDesc:     { fontSize: 14, fontWeight: '700', color: colors.textDark },
+  eventBeans:    { fontSize: 17, fontWeight: '900', color: colors.green, textAlign: 'right', letterSpacing: -0.3 },
+  eventDollar:   { fontSize: 11, fontWeight: '700', color: colors.textMid },
 
-  emptyWrap:     { alignItems: 'center', marginTop: 60 },
-  emptyIcon:     { fontSize: 48, marginBottom: spacing.sm },
-  empty:         { color: colors.textMid, textAlign: 'center', fontSize: 16, fontWeight: '600' },
+  emptyWrap:     { alignItems: 'center', marginTop: 70, paddingHorizontal: spacing.xl },
+  emptyIcon:     { fontSize: 52, marginBottom: spacing.md },
+  empty:         { color: colors.textMid, textAlign: 'center', fontSize: 16, fontWeight: '600', lineHeight: 24 },
 });

@@ -931,7 +931,7 @@ const styles = StyleSheet.create({
   modeBar:           { flexDirection: 'row', backgroundColor: colors.white, borderBottomWidth: 0.5, borderBottomColor: colors.border, padding: 6, gap: 4 },
   modeBtn:           { flex: 1, paddingVertical: 11, borderRadius: radius.pill, alignItems: 'center' },
   modeBtnActive:     { backgroundColor: colors.green, ...shadow.green },
-  modeBtnText:       { fontSize: 14, fontWeight: '700', color: colors.textLight },
+  modeBtnText:       { fontSize: 14, fontWeight: '800', color: colors.textMid },
   modeBtnTextActive: { color: colors.white },
 
   // Hole navigation
@@ -940,14 +940,14 @@ const styles = StyleSheet.create({
   navArrow:    { fontSize: 36, color: colors.white, fontWeight: '200' },
   navDisabled: { opacity: 0.25 },
   holeCenter:  { flex: 1, alignItems: 'center', paddingVertical: 2 },
-  holeLabel:   { fontSize: 24, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
-  parLabel:    { fontSize: 12, color: 'rgba(255,255,255,0.75)', textAlign: 'center', flexWrap: 'wrap', marginTop: 2 },
+  holeLabel:   { fontSize: 25, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
+  parLabel:    { fontSize: 12, color: 'rgba(255,255,255,0.82)', textAlign: 'center', flexWrap: 'wrap', marginTop: 3, fontWeight: '600' },
 
   // Running totals bar
-  totalsBar:  { flexDirection: 'row', backgroundColor: colors.white, borderBottomWidth: 0.5, borderBottomColor: colors.border, paddingVertical: 10, paddingHorizontal: spacing.md, gap: spacing.sm },
-  totalChip:  { flex: 1, alignItems: 'center' },
-  totalName:  { fontSize: 11, color: colors.textLight, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-  totalVal:   { fontSize: 22, fontWeight: '900', color: colors.green, marginTop: 2 },
+  totalsBar:  { flexDirection: 'row', backgroundColor: colors.white, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, gap: spacing.xs, ...shadow.sm, zIndex: 5 },
+  totalChip:  { flex: 1, alignItems: 'center', backgroundColor: colors.greenPale, borderRadius: radius.sm, paddingVertical: 8, paddingHorizontal: 4 },
+  totalName:  { fontSize: 10, color: colors.textMid, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  totalVal:   { fontSize: 22, fontWeight: '900', color: colors.green, marginTop: 2, letterSpacing: -0.5 },
 
   holeContent: { padding: spacing.md, paddingBottom: 120 },
 
@@ -974,7 +974,7 @@ const styles = StyleSheet.create({
   beanValue:       { fontSize: 13, color: colors.green, fontWeight: '700' },
   playerRow:       { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
   playerBtn:       { flex: 1, minWidth: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 16, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
-  playerBtnActive: { backgroundColor: colors.green, borderColor: colors.green },
+  playerBtnActive: { backgroundColor: colors.green, borderColor: colors.green, ...shadow.green },
   playerBtnNeg:    { backgroundColor: colors.red, borderColor: colors.red },
   playerBtnText:   { fontSize: 14, fontWeight: '700', color: colors.textMid },
   playerBtnTextActive: { color: colors.white, fontWeight: '800' },

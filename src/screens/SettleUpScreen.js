@@ -93,7 +93,10 @@ export default function SettleUpScreen() {
     <View style={styles.root}>
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>Settle Up</Text>
+        <View style={styles.headingWrap}>
+          <Text style={styles.heading}>Settle Up</Text>
+          <View style={styles.headingRule} />
+        </View>
 
         {/* Chip-Off */}
         {needsChipOff && (
@@ -242,8 +245,10 @@ export default function SettleUpScreen() {
 const styles = StyleSheet.create({
   root:         { flex: 1, backgroundColor: colors.background },
   content:      { padding: spacing.md, paddingBottom: 100 },
-  heading:      { fontSize: 28, fontWeight: '900', color: colors.textDark, marginBottom: spacing.md, letterSpacing: -0.3 },
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: spacing.lg, marginBottom: spacing.sm },
+  headingWrap:  { marginBottom: spacing.sm },
+  heading:      { fontSize: 34, fontWeight: '900', color: colors.textDark, letterSpacing: -0.8 },
+  headingRule:  { width: 46, height: 4, borderRadius: 2, backgroundColor: colors.gold, marginTop: spacing.sm },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 1, marginTop: spacing.lg, marginBottom: spacing.sm },
 
   // Bean totals
   row:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.xs, ...shadow.sm },
@@ -252,13 +257,13 @@ const styles = StyleSheet.create({
   neg:    { color: colors.red },
 
   // Payment cards
-  paymentCard:      { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', ...shadow.md },
+  paymentCard:      { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', borderLeftWidth: 4, borderLeftColor: colors.gold, ...shadow.md },
   paymentPlayer:    { flex: 1 },
-  paymentName:      { fontSize: 17, fontWeight: '900', color: colors.textDark },
-  paymentRole:      { fontSize: 11, color: colors.textLight, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 3 },
+  paymentName:      { fontSize: 17, fontWeight: '900', color: colors.textDark, letterSpacing: -0.3 },
+  paymentRole:      { fontSize: 10, color: colors.textLight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 3 },
   paymentArrowWrap: { alignItems: 'center', paddingHorizontal: spacing.sm },
-  paymentAmt:       { fontSize: 26, fontWeight: '900', color: colors.green },
-  paymentArrow:     { fontSize: 22, color: colors.green, fontWeight: '900', marginTop: 2 },
+  paymentAmt:       { fontSize: 27, fontWeight: '900', color: colors.green, letterSpacing: -0.5 },
+  paymentArrow:     { fontSize: 20, color: colors.goldLight, fontWeight: '900', marginTop: 2 },
 
   // All square
   allSquareCard:  { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.sm, ...shadow.sm },

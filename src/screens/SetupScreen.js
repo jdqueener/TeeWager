@@ -258,8 +258,12 @@ export default function SetupScreen() {
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.heroEmoji}>⛳</Text>
+          <View style={styles.heroGlow} />
+          <View style={styles.heroEmojiRing}>
+            <Text style={styles.heroEmoji}>⛳</Text>
+          </View>
           <Text style={styles.heroTitle}>TeeWager</Text>
+          <View style={styles.heroDivider} />
           <Text style={styles.heroSub}>Set up your round</Text>
         </View>
 
@@ -560,13 +564,16 @@ export default function SetupScreen() {
         </TouchableOpacity>
 
         {!pro && (
-          <Text style={styles.trialBadge}>
-            {roundsLeft > 0 ? `${roundsLeft} free round${roundsLeft === 1 ? '' : 's'} remaining` : 'Free trial complete — upgrade to keep playing'}
-          </Text>
+          <View style={styles.trialBadgeWrap}>
+            <Text style={styles.trialBadge}>
+              {roundsLeft > 0 ? `${roundsLeft} free round${roundsLeft === 1 ? '' : 's'} remaining` : 'Free trial complete — upgrade to keep playing'}
+            </Text>
+          </View>
         )}
 
-        <TouchableOpacity style={styles.startBtn} onPress={startRound} activeOpacity={0.85}>
-          <Text style={styles.startText}>Start Round →</Text>
+        <TouchableOpacity style={styles.startBtn} onPress={startRound} activeOpacity={0.88}>
+          <Text style={styles.startText}>Start Round</Text>
+          <Text style={styles.startArrow}>→</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -663,12 +670,15 @@ const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: 100 },
 
   // Hero header
-  hero:      { backgroundColor: colors.green, borderRadius: radius.lg, paddingVertical: spacing.lg, paddingHorizontal: spacing.md, marginBottom: spacing.lg, alignItems: 'center', ...shadow.green },
-  heroEmoji: { fontSize: 40, marginBottom: spacing.xs },
-  heroTitle: { fontSize: 32, fontWeight: '900', color: colors.white, textAlign: 'center', letterSpacing: -0.5 },
-  heroSub:   { fontSize: 14, color: 'rgba(255,255,255,0.70)', textAlign: 'center', marginTop: 4, fontWeight: '500' },
+  hero:      { backgroundColor: colors.green, borderRadius: radius.xl, paddingVertical: spacing.xl, paddingHorizontal: spacing.md, marginBottom: spacing.lg, alignItems: 'center', overflow: 'hidden', ...shadow.green },
+  heroGlow:  { position: 'absolute', top: -70, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(45,107,68,0.55)' },
+  heroEmojiRing: { width: 74, height: 74, borderRadius: 37, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  heroEmoji: { fontSize: 38 },
+  heroTitle: { fontSize: 38, fontWeight: '900', color: colors.white, textAlign: 'center', letterSpacing: -1 },
+  heroDivider: { width: 40, height: 3, borderRadius: 2, backgroundColor: colors.goldLight, marginTop: spacing.sm, marginBottom: 2 },
+  heroSub:   { fontSize: 13, color: 'rgba(255,255,255,0.78)', textAlign: 'center', marginTop: 6, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.5 },
 
-  label:   { fontSize: 12, fontWeight: '800', color: colors.textMid, marginTop: spacing.lg, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.8 },
+  label:   { fontSize: 12, fontWeight: '800', color: colors.textMid, marginTop: spacing.lg, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 1 },
   row:     { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
 
   // Course search
@@ -701,10 +711,10 @@ const styles = StyleSheet.create({
   manualPar:     { fontSize: 16, fontWeight: '800', color: colors.textDark, minWidth: 18, textAlign: 'center' },
   manualAdj:     { fontSize: 20, color: colors.green, fontWeight: '700', paddingHorizontal: 2 },
 
-  countBtn:           { flex: 1, paddingVertical: 15, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
+  countBtn:           { flex: 1, paddingVertical: 15, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white, ...shadow.sm },
   countBtnActive:     { backgroundColor: colors.green, borderColor: colors.green, ...shadow.green },
   countBtnLocked:     { opacity: 0.45 },
-  countBtnText:       { fontWeight: '700', color: colors.textDark, fontSize: 14 },
+  countBtnText:       { fontWeight: '800', color: colors.textDark, fontSize: 14 },
   countBtnTextActive: { color: colors.white },
 
   playerInputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
@@ -713,7 +723,7 @@ const styles = StyleSheet.create({
   pickerBtnText:  { color: colors.white, fontSize: 18, fontWeight: '700' },
 
   // Bean rows
-  beanRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.sm, borderLeftWidth: 5, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.xs, gap: spacing.sm, ...shadow.sm },
+  beanRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderLeftWidth: 5, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm, ...shadow.sm },
   beanDot:      { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   beanName:     { fontSize: 15, fontWeight: '700', color: colors.textDark },
   beanProBadge: { fontSize: 10, fontWeight: '800', color: colors.gold, letterSpacing: 0.5 },
@@ -743,10 +753,12 @@ const styles = StyleSheet.create({
   pressOptionLabel: { fontSize: 14, fontWeight: '700', color: colors.textDark },
   pressOptionDesc:  { fontSize: 12, color: colors.textLight, marginTop: 2, lineHeight: 18 },
 
-  trialBadge:        { textAlign: 'center', fontSize: 13, fontWeight: '600', color: colors.textMid, marginTop: spacing.md, marginBottom: spacing.xs },
+  trialBadgeWrap:    { alignSelf: 'center', backgroundColor: colors.goldPale, borderRadius: radius.pill, paddingVertical: 7, paddingHorizontal: spacing.md, marginTop: spacing.lg, borderWidth: 1, borderColor: 'rgba(184,134,11,0.25)' },
+  trialBadge:        { textAlign: 'center', fontSize: 12.5, fontWeight: '700', color: '#8B6914', letterSpacing: 0.2 },
   trialExpiredEmoji: { fontSize: 44, textAlign: 'center', marginBottom: spacing.sm },
-  startBtn:  { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 20, alignItems: 'center', marginTop: spacing.md, ...shadow.green },
-  startText: { color: colors.white, fontWeight: '900', fontSize: 18, letterSpacing: 0.4 },
+  startBtn:  { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 21, alignItems: 'center', marginTop: spacing.lg, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)', ...shadow.green },
+  startText: { color: colors.white, fontWeight: '900', fontSize: 19, letterSpacing: 0.5, textTransform: 'uppercase' },
+  startArrow: { color: colors.goldLight, fontWeight: '900', fontSize: 20 },
 
   modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   pickerSheet:      { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: '65%', paddingBottom: 34 },

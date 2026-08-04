@@ -127,13 +127,13 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
 }
 
 const styles = StyleSheet.create({
-  banner:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: spacing.md },
+  banner:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: spacing.md, zIndex: 10, ...shadow.sm },
   freeBanner:  { backgroundColor: colors.gold },
   proBanner:   { backgroundColor: colors.green },
-  text:        { flex: 1, color: colors.white, fontWeight: '700', fontSize: 13, textAlign: 'center', letterSpacing: 0.1 },
+  text:        { flex: 1, color: colors.white, fontWeight: '800', fontSize: 13, textAlign: 'center', letterSpacing: 0.2 },
   menuBtn:      { width: 34, alignItems: 'center' },
-  newRoundBtn:  { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.65)' },
-  newRoundText: { fontSize: 12, fontWeight: '700', color: colors.white, letterSpacing: 0.2 },
+  newRoundBtn:  { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.7)', backgroundColor: 'rgba(255,255,255,0.12)' },
+  newRoundText: { fontSize: 12, fontWeight: '800', color: colors.white, letterSpacing: 0.3 },
 
   overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 32 },
   menu:        { backgroundColor: colors.white, borderRadius: radius.md, width: '100%', maxWidth: 320, overflow: 'hidden' },
