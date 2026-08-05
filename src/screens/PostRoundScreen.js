@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Platform,
+  View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator,
 } from 'react-native';
 import { colors, spacing, radius } from '../utils/theme';
+import { setPro as storePro } from '../utils/storage';
+import { grantPro } from '../utils/pro';
+import { supabase } from '../utils/supabase';
 
 const STRIPE_MONTHLY  = 'https://buy.stripe.com/test_5kQ7sE8s28av5kSdn4dwc00';
 const STRIPE_ANNUAL   = 'https://buy.stripe.com/test_bJeaEQaAa1M7bJg96Odwc01';
 const STRIPE_LIFETIME = 'https://buy.stripe.com/test_aFa4gs23E0I3cNk0Aidwc02';
+
+const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';
+const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
+const PRODUCT_LIFETIME = 'io.teewager.app.pro.lifetime';
 
 const PRO_FEATURES = [
   'All 13 beans — HIO, sandy, 2-tree, flag-length & more',
@@ -17,8 +24,26 @@ const PRO_FEATURES = [
   'Custom bean creator',
 ];
 
-function openStripe(url) {
-  if (Platform.OS === 'web') window.location.href = url;
+async function nativePurchase(productId, setLoading, onSuccess) {
+  try {
+    setLoading(productId);
+    const Purchases = (await import('react-native-purchases')).default;
+    const offerings = await Purchases.getOfferings();
+    const all = offerings.current?.availablePackages ?? [];
+    const pkg = all.find(p => p.product.identifier === productId);
+    if (!pkg) throw new Error('Product not found');
+    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    if (customerInfo.entitlements.active['pro']) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) await grantPro(session.user.id);
+      await storePro(true);
+      onSuccess();
+    }
+  } catch (e) {
+    if (!e.userCancelled) console.warn('Purchase error', e);
+  } finally {
+    setLoading(null);
+  }
 }
 
 // ── Winner card ───────────────────────────────────────────────────────────────
@@ -78,7 +103,14 @@ function NudgeView({ summary, onAcceptTrial, onSkip }) {
 }
 
 // ── Paywall view — shown after trial round ────────────────────────────────────
-function PaywallView({ onSkip }) {
+function PaywallView({ onSkip, onPurchaseSuccess }) {
+  const [loading, setLoading] = useState(null);
+
+  async function handlePurchase(productId, stripeUrl) {
+    if (Platform.OS === 'web') { window.location.href = stripeUrl; return; }
+    await nativePurchase(productId, setLoading, onPurchaseSuccess);
+  }
+
   return (
     <View style={styles.sheet}>
       <View style={styles.pill} />
@@ -86,38 +118,44 @@ function PaywallView({ onSkip }) {
       <Text style={styles.emoji}>⛳</Text>
       <Text style={styles.title}>Keep the full experience.</Text>
       <Text style={styles.body}>
-        Your free Pro round is up. Upgrade to keep all 13 beans, breakdown tab, share cards, and more.
+        Your free trial is up. Upgrade to keep all 13 beans, breakdown tab, share cards, and more.
       </Text>
 
       {/* Monthly */}
-      <TouchableOpacity style={styles.tierCard} onPress={() => openStripe(STRIPE_MONTHLY)} activeOpacity={0.85}>
+      <TouchableOpacity style={styles.tierCard} onPress={() => handlePurchase(PRODUCT_MONTHLY, STRIPE_MONTHLY)} activeOpacity={0.85} disabled={!!loading}>
         <View style={{ flex: 1 }}>
           <Text style={styles.tierName}>Monthly</Text>
           <Text style={styles.tierSub}>Try it, cancel anytime</Text>
         </View>
-        <Text style={styles.tierPrice}>$2.99<Text style={styles.tierPer}>/mo</Text></Text>
+        {loading === PRODUCT_MONTHLY
+          ? <ActivityIndicator color={colors.green} />
+          : <Text style={styles.tierPrice}>$4.99<Text style={styles.tierPer}>/mo</Text></Text>}
       </TouchableOpacity>
 
       {/* Annual — featured */}
-      <TouchableOpacity style={[styles.tierCard, styles.tierCardFeatured]} onPress={() => openStripe(STRIPE_ANNUAL)} activeOpacity={0.85}>
+      <TouchableOpacity style={[styles.tierCard, styles.tierCardFeatured]} onPress={() => handlePurchase(PRODUCT_ANNUAL, STRIPE_ANNUAL)} activeOpacity={0.85} disabled={!!loading}>
         <View style={styles.featuredBadge}><Text style={styles.featuredBadgeText}>BEST VALUE</Text></View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.tierName, styles.tierNameLight]}>Annual</Text>
           <Text style={[styles.tierSub, styles.tierSubLight]}>2 months free vs monthly</Text>
         </View>
-        <Text style={[styles.tierPrice, styles.tierPriceLight]}>$29.90<Text style={styles.tierPer}>/yr</Text></Text>
+        {loading === PRODUCT_ANNUAL
+          ? <ActivityIndicator color={colors.white} />
+          : <Text style={[styles.tierPrice, styles.tierPriceLight]}>$49.90<Text style={styles.tierPer}>/yr</Text></Text>}
       </TouchableOpacity>
 
       {/* Lifetime */}
-      <TouchableOpacity style={styles.tierCard} onPress={() => openStripe(STRIPE_LIFETIME)} activeOpacity={0.85}>
+      <TouchableOpacity style={styles.tierCard} onPress={() => handlePurchase(PRODUCT_LIFETIME, STRIPE_LIFETIME)} activeOpacity={0.85} disabled={!!loading}>
         <View style={{ flex: 1 }}>
           <Text style={styles.tierName}>Lifetime</Text>
           <Text style={styles.tierSub}>Pay once, play forever</Text>
         </View>
-        <Text style={styles.tierPrice}>$49.99<Text style={styles.tierPer}> once</Text></Text>
+        {loading === PRODUCT_LIFETIME
+          ? <ActivityIndicator color={colors.green} />
+          : <Text style={styles.tierPrice}>$79.99<Text style={styles.tierPer}> once</Text></Text>}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.skipBtn} onPress={onSkip}>
+      <TouchableOpacity style={styles.skipBtn} onPress={onSkip} disabled={!!loading}>
         <Text style={styles.skipText}>Not now — continue free</Text>
       </TouchableOpacity>
     </View>
@@ -125,14 +163,14 @@ function PaywallView({ onSkip }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function PostRoundScreen({ visible, view, summary, onAcceptTrial, onSkip }) {
+export default function PostRoundScreen({ visible, view, summary, onAcceptTrial, onSkip, onPurchaseSuccess }) {
   if (!visible) return null;
   return (
     <View style={styles.overlay}>
       <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onSkip} />
       {view === 'nudge'
         ? <NudgeView summary={summary} onAcceptTrial={onAcceptTrial} onSkip={onSkip} />
-        : <PaywallView onSkip={onSkip} />
+        : <PaywallView onSkip={onSkip} onPurchaseSuccess={onPurchaseSuccess ?? onSkip} />
       }
     </View>
   );

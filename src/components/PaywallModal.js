@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Modal, View, Text, TextInput, TouchableOpacity,
+  Modal, View, Text, TouchableOpacity,
   StyleSheet, Platform, ActivityIndicator,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
 import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
+import { grantPro } from '../utils/pro';
+import { supabase } from '../utils/supabase';
 
+// Web-only Stripe links (live — replace test links when ready)
 const STRIPE_MONTHLY  = 'https://buy.stripe.com/test_5kQ7sE8s28av5kSdn4dwc00';
 const STRIPE_ANNUAL   = 'https://buy.stripe.com/test_bJeaEQaAa1M7bJg96Odwc01';
 const STRIPE_LIFETIME = 'https://buy.stripe.com/test_aFa4gs23E0I3cNk0Aidwc02';
+
+// RevenueCat product IDs
+const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';
+const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
+const PRODUCT_LIFETIME = 'io.teewager.app.pro.lifetime';
 
 const PRO_FEATURES = [
   'All 13 beans unlocked',
@@ -21,50 +28,70 @@ const PRO_FEATURES = [
   'Lifetime stats tracker',
 ];
 
-function openStripe(url) {
-  if (Platform.OS === 'web') {
-    window.location.href = url;
+async function nativePurchase(productId, onUnlock, onClose, setLoading) {
+  try {
+    setLoading(productId);
+    const Purchases = (await import('react-native-purchases')).default;
+    const offerings = await Purchases.getOfferings();
+    const all = offerings.current?.availablePackages ?? [];
+    const pkg = all.find(p => p.product.identifier === productId);
+    if (!pkg) throw new Error('Product not found');
+    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    if (customerInfo.entitlements.active['pro']) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) await grantPro(session.user.id);
+      await storePro(true);
+      onUnlock();
+      onClose();
+    }
+  } catch (e) {
+    if (!e.userCancelled) console.warn('Purchase error', e);
+  } finally {
+    setLoading(null);
+  }
+}
+
+async function nativeRestore(onUnlock, onClose, setRestoreStatus) {
+  try {
+    setRestoreStatus('loading');
+    const Purchases = (await import('react-native-purchases')).default;
+    const customerInfo = await Purchases.restorePurchases();
+    if (customerInfo.entitlements.active['pro']) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) await grantPro(session.user.id);
+      await storePro(true);
+      setRestoreStatus('success');
+      setTimeout(() => { onUnlock(); onClose(); setRestoreStatus(''); }, 800);
+    } else {
+      setRestoreStatus('none');
+      setTimeout(() => setRestoreStatus(''), 2000);
+    }
+  } catch (e) {
+    console.warn('Restore error', e);
+    setRestoreStatus('');
   }
 }
 
 export default function PaywallModal({ visible, onClose, onUnlock }) {
   const [view, setView] = useState('main');
-  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(null);
   const [restoreStatus, setRestoreStatus] = useState('');
 
-  useEffect(() => {
-    const sub = Linking.addEventListener('url', ({ url }) => {
-      if (url.includes('pro-success')) handleUnlock();
-    });
-    return () => sub.remove();
-  }, []);
-
-  async function handlePurchase(url) {
+  async function handlePurchase(productId, stripeUrl) {
     if (Platform.OS === 'web') {
-      window.location.href = url;
-    } else {
-      const result = await WebBrowser.openAuthSessionAsync(url, 'teewager://pro-success');
-      if (result.type === 'success' && result.url?.includes('pro-success')) handleUnlock();
+      window.location.href = stripeUrl;
+      return;
     }
-  }
-
-  async function handleUnlock() {
-    await storePro(true);
-    onUnlock();
-    onClose();
+    await nativePurchase(productId, onUnlock, onClose, setLoading);
   }
 
   async function handleRestore() {
-    if (!email.trim()) return;
-    setRestoreStatus('loading');
-    await new Promise(r => setTimeout(r, 1200));
-    setRestoreStatus('success');
-    await storePro(true);
-    setTimeout(() => { onUnlock(); onClose(); setView('main'); setRestoreStatus(''); setEmail(''); }, 800);
+    if (Platform.OS === 'web') return;
+    await nativeRestore(onUnlock, onClose, setRestoreStatus);
   }
 
   function resetAndClose() {
-    setView('main'); setRestoreStatus(''); setEmail(''); onClose();
+    setView('main'); setRestoreStatus(''); onClose();
   }
 
   return (
@@ -89,77 +116,71 @@ export default function PaywallModal({ visible, onClose, onUnlock }) {
               </View>
 
               {/* Monthly */}
-              <TouchableOpacity style={styles.tierCard} onPress={() => handlePurchase(STRIPE_MONTHLY)} activeOpacity={0.85}>
+              <TouchableOpacity
+                style={styles.tierCard}
+                onPress={() => handlePurchase(PRODUCT_MONTHLY, STRIPE_MONTHLY)}
+                activeOpacity={0.85}
+                disabled={!!loading}
+              >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.tierName}>Monthly</Text>
                   <Text style={styles.tierSub}>Try it, cancel anytime</Text>
                 </View>
-                <Text style={styles.tierPrice}>$2.99<Text style={styles.tierPer}>/mo</Text></Text>
+                {loading === PRODUCT_MONTHLY
+                  ? <ActivityIndicator color={colors.green} />
+                  : <Text style={styles.tierPrice}>$4.99<Text style={styles.tierPer}>/mo</Text></Text>}
               </TouchableOpacity>
 
               {/* Annual — featured */}
-              <TouchableOpacity style={[styles.tierCard, styles.tierCardFeatured]} onPress={() => handlePurchase(STRIPE_ANNUAL)} activeOpacity={0.85}>
+              <TouchableOpacity
+                style={[styles.tierCard, styles.tierCardFeatured]}
+                onPress={() => handlePurchase(PRODUCT_ANNUAL, STRIPE_ANNUAL)}
+                activeOpacity={0.85}
+                disabled={!!loading}
+              >
                 <View style={styles.featuredBadge}><Text style={styles.featuredBadgeText}>BEST VALUE</Text></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.tierName, { color: colors.white }]}>Annual</Text>
                   <Text style={[styles.tierSub, { color: 'rgba(255,255,255,0.65)' }]}>2 months free vs monthly</Text>
                 </View>
-                <Text style={[styles.tierPrice, { color: colors.white }]}>$29.90<Text style={styles.tierPer}>/yr</Text></Text>
+                {loading === PRODUCT_ANNUAL
+                  ? <ActivityIndicator color={colors.white} />
+                  : <Text style={[styles.tierPrice, { color: colors.white }]}>$49.90<Text style={styles.tierPer}>/yr</Text></Text>}
               </TouchableOpacity>
 
               {/* Lifetime */}
-              <TouchableOpacity style={styles.tierCard} onPress={() => handlePurchase(STRIPE_LIFETIME)} activeOpacity={0.85}>
+              <TouchableOpacity
+                style={styles.tierCard}
+                onPress={() => handlePurchase(PRODUCT_LIFETIME, STRIPE_LIFETIME)}
+                activeOpacity={0.85}
+                disabled={!!loading}
+              >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.tierName}>Lifetime</Text>
                   <Text style={styles.tierSub}>Pay once, play forever</Text>
                 </View>
-                <Text style={styles.tierPrice}>$49.99<Text style={styles.tierPer}> once</Text></Text>
+                {loading === PRODUCT_LIFETIME
+                  ? <ActivityIndicator color={colors.green} />
+                  : <Text style={styles.tierPrice}>$79.99<Text style={styles.tierPer}> once</Text></Text>}
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => setView('restore')} style={styles.restoreBtn}>
-                <Text style={styles.restoreText}>Restore purchase</Text>
-              </TouchableOpacity>
+              {Platform.OS !== 'web' && (
+                <TouchableOpacity onPress={handleRestore} style={styles.restoreBtn} disabled={!!loading}>
+                  {restoreStatus === 'loading'
+                    ? <ActivityIndicator color={colors.textMid} />
+                    : restoreStatus === 'success'
+                    ? <Text style={styles.successText}>✓ Pro restored!</Text>
+                    : restoreStatus === 'none'
+                    ? <Text style={styles.restoreText}>No purchase found</Text>
+                    : <Text style={styles.restoreText}>Restore purchase</Text>}
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity style={styles.skipBtn} onPress={resetAndClose}>
                 <Text style={styles.skipText}>Not now</Text>
               </TouchableOpacity>
             </>
-          ) : (
-            <>
-              <Text style={styles.title}>Restore Purchase</Text>
-              <Text style={styles.body}>
-                Enter the email address you used when you purchased TeeWager Pro.
-              </Text>
-              <TextInput
-                style={styles.emailInput}
-                placeholder="you@example.com"
-                placeholderTextColor={colors.textLight}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={email}
-                onChangeText={setEmail}
-                editable={restoreStatus !== 'loading'}
-              />
-              {restoreStatus === 'loading' ? (
-                <ActivityIndicator color={colors.green} style={{ marginVertical: spacing.md }} />
-              ) : restoreStatus === 'success' ? (
-                <Text style={styles.successText}>✓ Pro unlocked!</Text>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.primaryBtn, !email.trim() && { opacity: 0.4 }]}
-                  onPress={handleRestore}
-                  disabled={!email.trim()}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.primaryBtnText}>Restore</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity style={styles.skipBtn} onPress={() => { setView('main'); setRestoreStatus(''); setEmail(''); }}>
-                <Text style={styles.skipText}>← Back</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          ) : null}
         </View>
       </View>
     </Modal>
@@ -189,14 +210,9 @@ const styles = StyleSheet.create({
   featuredBadge:    { position: 'absolute', top: 0, right: 0, backgroundColor: colors.gold, paddingHorizontal: 10, paddingVertical: 3, borderBottomLeftRadius: radius.sm },
   featuredBadgeText:{ fontSize: 9, fontWeight: '800', color: colors.white, letterSpacing: 0.5 },
 
-  primaryBtn:      { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center' },
-  primaryBtnText:  { color: colors.white, fontWeight: '800', fontSize: 16 },
-
   restoreBtn:   { alignItems: 'center' },
   restoreText:  { color: colors.textMid, fontSize: 14, textDecorationLine: 'underline' },
+  successText:  { fontSize: 15, color: colors.green, fontWeight: '800' },
   skipBtn:      { alignItems: 'center', paddingVertical: spacing.xs },
   skipText:     { color: colors.textLight, fontSize: 14 },
-
-  emailInput:   { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.sm, padding: spacing.md, fontSize: 16, color: colors.textDark },
-  successText:  { fontSize: 18, color: colors.green, fontWeight: '800', textAlign: 'center', marginVertical: spacing.md },
 });
