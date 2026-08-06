@@ -183,7 +183,7 @@ function ResetScreen({ onDone }) {
 
 // ─── Step 1: Auth form ────────────────────────────────────────────────────────
 function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
-  const { signUp, signIn, signInWithGoogle } = useAuth();
+  const { signUp, signIn, signInWithGoogle, signInWithApple } = useAuth();
   const [mode, setMode] = useState(initialMode === 'signup' ? 'signup' : 'signin');
   const [fullName, setFullName]         = useState('');
   const [scoringName, setScoringName]   = useState('');
@@ -296,6 +296,11 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
           <TouchableOpacity style={styles.googleBtn} onPress={signInWithGoogle} activeOpacity={0.85}>
             <Text style={styles.googleBtnIcon}>G</Text>
             <Text style={styles.googleBtnText}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.appleBtn} onPress={signInWithApple} activeOpacity={0.85}>
+            <Text style={styles.appleBtnIcon}></Text>
+            <Text style={styles.appleBtnText}>Continue with Apple</Text>
           </TouchableOpacity>
 
           {isSignUp && (
@@ -549,6 +554,10 @@ const styles = StyleSheet.create({
   googleBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.pill, paddingVertical: 14, gap: spacing.sm, backgroundColor: colors.white },
   googleBtnIcon:  { fontSize: 16, fontWeight: '900', color: '#4285F4', width: 22, textAlign: 'center' },
   googleBtnText:  { fontSize: 15, fontWeight: '700', color: colors.textDark },
+
+  appleBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, paddingVertical: 14, gap: spacing.sm, backgroundColor: '#000', marginTop: spacing.sm },
+  appleBtnIcon:  { fontSize: 18, color: '#fff', width: 22, textAlign: 'center' },
+  appleBtnText:  { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   backLink:      { alignItems: 'center', marginTop: spacing.md },
   backLinkText:  { fontSize: 14, color: colors.green, fontWeight: '600' },

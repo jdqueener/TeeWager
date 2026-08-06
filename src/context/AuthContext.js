@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { getReferral, clearReferral } from '../utils/referral';
 
@@ -76,6 +77,32 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   }
 
+  async function signInWithApple() {
+    if (Platform.OS === 'web') {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: { redirectTo: 'https://www.teewager.io/app' },
+      });
+      if (error) throw error;
+      return;
+    }
+    const AppleAuth = (await import('expo-apple-authentication')).default;
+    const { AppleAuthenticationScope } = await import('expo-apple-authentication');
+    const credential = await AppleAuth.signInAsync({
+      requestedScopes: [
+        AppleAuthenticationScope.FULL_NAME,
+        AppleAuthenticationScope.EMAIL,
+      ],
+    });
+    const { identityToken } = credential;
+    if (!identityToken) throw new Error('Apple sign-in failed — no identity token.');
+    const { error } = await supabase.auth.signInWithIdToken({
+      provider: 'apple',
+      token: identityToken,
+    });
+    if (error) throw error;
+  }
+
   async function updatePassword(newPassword) {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
@@ -98,7 +125,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       session, profile, loading,
       user: session?.user ?? null,
-      signUp, signIn, signOut, updateProfile, forgotPassword, signInWithGoogle, updatePassword,
+      signUp, signIn, signOut, updateProfile, forgotPassword, signInWithGoogle, signInWithApple, updatePassword,
     }}>
       {children}
     </AuthContext.Provider>

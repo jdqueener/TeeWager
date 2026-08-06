@@ -47,7 +47,8 @@
     },
     "plugins": [
       "expo-sharing",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {
