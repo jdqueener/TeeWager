@@ -10,6 +10,7 @@
     { "src": "^/admin$", "dest": "/admin.html" },
     { "src": "^/portal$", "dest": "/portal.html" },
     { "src": "^/register$", "dest": "/partner.html" },
+    { "src": "^/privacy$", "dest": "/privacy.html" },
     { "src": "^/app$", "dest": "/index.html" },
     { "src": "^/app/(.*)$", "dest": "/index.html" },
     { "handle": "filesystem" },
