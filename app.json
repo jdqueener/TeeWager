@@ -3,20 +3,33 @@
     "name": "TeeWager",
     "slug": "TeeWager",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "scheme": "teewager",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "io.teewager.app",
+      "buildNumber": "3",
+      "infoPlist": {
+        "NSCameraUsageDescription": "TeeWager uses your camera to scan QR codes at partner courses.",
+        "NSPhotoLibraryUsageDescription": "TeeWager saves your round results to your photo library.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "io.teewager.app",
+      "versionCode": 4,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#14432A",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": []
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -35,6 +48,12 @@
     "plugins": [
       "expo-sharing",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "284e43de-e5b4-45a9-9ed3-320728a64f76"
+      }
+    },
+    "owner": "teewager-llc"
   }
 }

@@ -1,22 +1,22 @@
 export const DEFAULT_PARS = [4,3,5,4,4,3,5,4,4,4,5,3,4,4,3,5,4,4];
 
 export const BEAN_DEFS = [
-  { id: 'lowBall',   name: 'Low Ball',   v: 1, pf: null,  fb: false, free: true, solo: true, desc: 'Low score wins; ties carry over', skins: true },
-  { id: 'longDrive', name: 'Long Drive', v: 1, pf: [4,5], fb: false, free: true, solo: true, desc: 'Best drive on hole' },
-  { id: 'kp',        name: 'KP',         v: 1, pf: [3],   fb: false, free: true, solo: true, desc: 'Closest to pin' },
-  { id: 'birdie',    name: 'Birdie',     v: 1, pf: null,  fb: true,  free: true, desc: 'First birdie earns 2' },
-  { id: 'eagle',     name: 'Eagle',      v: 4, pf: null,  fb: false, free: true, desc: '' },
-  { id: 'threePutt', name: '3-Putt',     v: 1, pf: null,  fb: true,  free: true, awardToOthers: true, desc: 'First awards 2 to each; then 1 each' },
+  { id: 'lowBall',   name: 'Low Ball',   v: 1, pf: null,  fb: false, free: false, solo: true, desc: 'Low score wins; ties carry over', skins: true },
+  { id: 'longDrive', name: 'Long Drive', v: 1, pf: [4,5], fb: false, free: true,  solo: true, desc: 'Best drive on hole' },
+  { id: 'kp',        name: 'KP',         v: 1, pf: [3],   fb: false, free: true,  solo: true, desc: 'Closest to pin' },
+  { id: 'birdie',    name: 'Birdie',     v: 1, pf: null,  fb: true,  free: true,  desc: 'First birdie earns 2' },
+  { id: 'eagle',     name: 'Eagle',      v: 4, pf: null,  fb: false, free: false, desc: '' },
+  { id: 'threePutt', name: '3-Putt',     v: 1, pf: null,  fb: true,  free: false, awardToOthers: true, desc: 'First awards 2 to each; then 1 each' },
   { id: 'holeInOne', name: 'Hole in One',v:20, pf: null,  fb: false, free: false, desc: '' },
   { id: 'dblEagle',  name: 'Double Eagle',v:40,pf: [5],   fb: false, free: false, desc: '' },
   { id: 'sandyBird', name: 'Sandy Birdie',v:2, pf: null,  fb: false, free: false, desc: 'Birdie after sand' },
-  { id: 'sandyPar',  name: 'Sandy Par',  v: 1, pf: null,  fb: false, free: true,  desc: 'Par after sand' },
+  { id: 'sandyPar',  name: 'Sandy Par',  v: 1, pf: null,  fb: false, free: false, desc: 'Par after sand' },
   { id: 'twoTreePar',name: '2-Tree Par', v: 2, pf: null,  fb: false, free: false, desc: 'Par after 2 trees' },
   { id: 'teeStick',  name: 'Tee Sticks Up',v:1,pf: null,  fb: false, free: false, desc: 'Tee flips back in' },
-  { id: 'flagLength',name: 'Flag Length +',v:1,pf: null,  fb: false, free: false, desc: 'Long putt made' },
-  { id: 'fourPutt',  name: '4-Putt',     v: 2, pf: null,  fb: false, free: true,  awardToOthers: true, desc: 'Awards 2 beans to each other player' },
-  { id: 'chipIn',    name: 'Chip In',    v: 1, pf: null,  fb: false, free: true,  desc: 'Hole out from off the green' },
-  { id: 'bonusBean', name: 'Bonus Bean', v: 1, pf: null,  fb: false, free: true,  impromptu: true, desc: 'In-round challenge bean' },
+  { id: 'flagLength',name: 'Flag Length +',v:1,pf: null,  fb: false, free: true,  desc: 'Long putt made' },
+  { id: 'fourPutt',  name: '4-Putt',     v: 2, pf: null,  fb: false, free: false, awardToOthers: true, desc: 'Awards 2 beans to each other player' },
+  { id: 'chipIn',    name: 'Chip In',    v: 1, pf: null,  fb: false, free: false, desc: 'Hole out from off the green' },
+  { id: 'bonusBean', name: 'Bonus Bean', v: 1, pf: null,  fb: false, free: false, impromptu: true, desc: 'In-round challenge bean' },
 ];
 
 export function beanLabel(value, awardToOthers = false) {

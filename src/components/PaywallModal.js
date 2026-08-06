@@ -20,11 +20,11 @@ const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
 const PRODUCT_LIFETIME = 'io.teewager.app.pro.lifetime';
 
 const PRO_FEATURES = [
-  'All 13 beans unlocked',
+  'Full scorecard with real yardages — ditch the paper',
+  'All 13 games unlocked — birdie, sandy, HIO & more',
   'Up to 5 players',
-  'Custom bean creator',
   'Hole-by-hole breakdown tab',
-  'Screenshot share card',
+  'Screenshot share card for the group chat',
   'Lifetime stats tracker',
 ];
 
