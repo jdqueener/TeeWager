@@ -14,17 +14,19 @@ const STRIPE_MONTHLY  = 'https://buy.stripe.com/test_5kQ7sE8s28av5kSdn4dwc00';
 const STRIPE_LIFETIME = 'https://buy.stripe.com/test_bJeaEQaAa1M7bJg96Odwc01'; // TODO: replace with live lifetime link
 
 const FREE_FEATURES = [
-  { label: 'Up to 4 players per round', pro: false },
-  { label: 'All standard bean types', pro: false },
-  { label: 'Live scorecard & leaderboard', pro: false },
-  { label: 'Round history', pro: false },
+  { label: '3 free rounds', pro: false },
+  { label: 'Full scorecard with real yardages', pro: false },
+  { label: '4 core games — long drive, KP, flag length+, birdie', pro: false },
+  { label: 'Up to 4 players', pro: false },
+  { label: 'Automatic settle-up', pro: false },
 ];
 
 const PRO_EXTRAS = [
-  { label: '5th player slot', pro: true },
-  { label: 'Pro-only bean types (Nassau, Skins…)', pro: true },
-  { label: 'Unlimited round history', pro: true },
-  { label: 'Priority support', pro: true },
+  { label: 'All 13 games unlocked', pro: true },
+  { label: 'Up to 5 players', pro: true },
+  { label: 'Hole-by-hole breakdown tab', pro: true },
+  { label: 'Screenshot share card', pro: true },
+  { label: 'Lifetime stats tracker', pro: true },
 ];
 
 function Check({ pro }) {
@@ -337,11 +339,11 @@ function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetim
           <View style={styles.proBadge}><Text style={styles.proBadgeText}>MOST POPULAR</Text></View>
           <View style={styles.planCardHeader}>
             <Text style={[styles.planName, { color: colors.white }]}>Pro Monthly</Text>
-            <Text style={[styles.planPrice, { color: colors.white }]}>$2.99<Text style={[styles.planPer, { color: 'rgba(255,255,255,0.75)' }]}>/mo</Text></Text>
+            <Text style={[styles.planPrice, { color: colors.white }]}>$4.99<Text style={[styles.planPer, { color: 'rgba(255,255,255,0.75)' }]}>/mo</Text></Text>
           </View>
           <Text style={styles.planDesc}>Try Pro with no commitment. All premium features unlocked — cancel anytime. Best way to get started.</Text>
           <View style={[styles.planCta, styles.planCtaPro]}>
-            <Text style={[styles.planCtaText, { color: colors.green }]}>Start Pro for $2.99 →</Text>
+            <Text style={[styles.planCtaText, { color: colors.green }]}>Start Pro for $4.99 →</Text>
           </View>
         </TouchableOpacity>
 
@@ -349,9 +351,9 @@ function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetim
         <TouchableOpacity style={styles.planCard} onPress={onSelectAnnual} activeOpacity={0.85}>
           <View style={styles.planCardHeader}>
             <Text style={styles.planName}>Pro Annual</Text>
-            <Text style={styles.planPrice}>$29.90<Text style={styles.planPer}>/yr</Text></Text>
+            <Text style={styles.planPrice}>$49.90<Text style={styles.planPer}>/yr</Text></Text>
           </View>
-          <Text style={[styles.planDesc, { color: colors.textMid }]}>Save 17% vs monthly — just $2.49/month. Great if you play year-round and want the best deal on Pro.</Text>
+          <Text style={[styles.planDesc, { color: colors.textMid }]}>Save 2 months vs monthly — just $4.16/month. Great if you play year-round and want the best deal on Pro.</Text>
           <View style={[styles.planCta, styles.planCtaFree]}>
             <Text style={[styles.planCtaText, { color: colors.green }]}>Save with Annual →</Text>
           </View>
@@ -361,9 +363,9 @@ function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetim
         <TouchableOpacity style={styles.planCard} onPress={onSelectLifetime} activeOpacity={0.85}>
           <View style={styles.planCardHeader}>
             <Text style={styles.planName}>Pro Lifetime</Text>
-            <Text style={styles.planPrice}>$49.99<Text style={styles.planPer}> once</Text></Text>
+            <Text style={styles.planPrice}>$79.99<Text style={styles.planPer}> once</Text></Text>
           </View>
-          <Text style={[styles.planDesc, { color: colors.textMid }]}>Pay once, play forever. Covers itself in under 2 years — no recurring charges, ever.</Text>
+          <Text style={[styles.planDesc, { color: colors.textMid }]}>Pay once, play forever. No recurring charges, ever.</Text>
           <View style={[styles.planCta, styles.planCtaFree]}>
             <Text style={[styles.planCtaText, { color: colors.green }]}>Own it forever →</Text>
           </View>
@@ -375,7 +377,7 @@ function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetim
             <Text style={styles.planName}>Free</Text>
             <Text style={styles.planPrice}>$0</Text>
           </View>
-          <Text style={[styles.planDesc, { color: colors.textMid }]}>Up to 4 players, core bean types, and round history. A great way to try TeeWager before upgrading.</Text>
+          <Text style={[styles.planDesc, { color: colors.textMid }]}>3 free rounds with 4 core games, full yardage scorecard, and up to 4 players. No credit card needed.</Text>
           <View style={[styles.planCta, { backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.pill, paddingVertical: 13, alignItems: 'center', marginTop: spacing.md }]}>
             <Text style={[styles.planCtaText, { color: colors.textMid }]}>Continue free →</Text>
           </View>
