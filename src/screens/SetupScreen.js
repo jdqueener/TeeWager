@@ -45,9 +45,10 @@ export default function SetupScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false);
 
   // Read ?mode= from URL on web to auto-open auth in correct tab
-  const urlMode = Platform.OS === 'web'
-    ? (new URLSearchParams(window.location.search)).get('mode') ?? null
-    : null;
+  const urlMode = (() => {
+    if (Platform.OS !== 'web') return null;
+    try { return (new URLSearchParams(window.location.search)).get('mode') ?? null; } catch { return null; }
+  })();
   const [authVisible, setAuthVisible] = useState(!user || urlMode === 'signin' || urlMode === 'signup');
   const [authInitialMode, setAuthInitialMode] = useState(urlMode === 'signup' ? 'signup' : 'signin');
 

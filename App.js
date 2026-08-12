@@ -11,9 +11,6 @@ import { View, ActivityIndicator } from 'react-native';
 import { colors } from './src/utils/theme';
 import { captureReferral } from './src/utils/referral';
 
-// Capture ?ref= partner code as early as possible
-captureReferral();
-
 const RC_IOS_KEY     = 'appl_lpLsIMgYVgtrXxeqYsMYqmigtpS';
 const RC_ANDROID_KEY = ''; // fill in after Google Play Console is set up
 
@@ -32,6 +29,7 @@ function AppContent() {
 }
 
 export default function App() {
+  useEffect(() => { captureReferral(); }, []);
   useEffect(() => {
     if (Platform.OS === 'web') return;
     (async () => {

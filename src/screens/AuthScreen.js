@@ -451,7 +451,7 @@ export default function AuthScreen({ onSkip, initialMode }) {
 
   // Detect password-reset redirect (?mode=reset in URL)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && window.location) {
       const params = new URLSearchParams(window.location.search);
       if (params.get('mode') === 'reset') {
         setStep('reset');

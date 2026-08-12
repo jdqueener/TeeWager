@@ -6,6 +6,7 @@ const KEY = 'teewager_ref';
 export function captureReferral() {
   if (Platform.OS !== 'web') return;
   try {
+    if (!window.location) return;
     const ref = new URLSearchParams(window.location.search).get('ref');
     if (ref) localStorage.setItem(KEY, ref);
   } catch {}
