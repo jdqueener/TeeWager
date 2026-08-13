@@ -8,7 +8,7 @@ import ProBanner from '../components/ProBanner';
 
 export default function ScoringScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
-  const { players, scores, firstBonus, currentHole, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18, holeOffset = 0 } = state;
+  const { players, scores, firstBonus, currentHole, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18, holeOffset = 0, ldCarryoverEnabled = true, kpCarryoverEnabled = true } = state;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const hole = currentHole;
   const lastHole = holeCount - 1;
@@ -90,13 +90,13 @@ export default function ScoringScreen() {
   function advanceHole() {
     if (hole >= lastHole) return;
 
-    // Auto-carryover LD if active on this par and no one won it
-    if (visibleBeans.find(b => b.id === 'longDrive') && !players.some((_, pi) => hasBean(pi, 'longDrive'))) {
+    // Auto-carryover LD if active on this par, no one won it, and carryover is enabled
+    if (ldCarryoverEnabled && visibleBeans.find(b => b.id === 'longDrive') && !players.some((_, pi) => hasBean(pi, 'longDrive'))) {
       dispatch({ type: 'LD_CARRYOVER' });
     }
 
-    // Auto-carryover KP if active on this par (par 3) and no one won it
-    if (visibleBeans.find(b => b.id === 'kp') && !players.some((_, pi) => hasBean(pi, 'kp'))) {
+    // Auto-carryover KP if active on this par (par 3), no one won it, and carryover is enabled
+    if (kpCarryoverEnabled && visibleBeans.find(b => b.id === 'kp') && !players.some((_, pi) => hasBean(pi, 'kp'))) {
       dispatch({ type: 'KP_CARRYOVER' });
     }
 
@@ -163,8 +163,8 @@ export default function ScoringScreen() {
             hole={hole}
             carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : bean.id === 'lowBall' ? skinsCarryover : 0}
             onCarryover={
-              bean.id === 'longDrive' ? () => dispatch({ type: 'LD_CARRYOVER' }) :
-              bean.id === 'kp'        ? () => dispatch({ type: 'KP_CARRYOVER' }) :
+              bean.id === 'longDrive' && ldCarryoverEnabled ? () => dispatch({ type: 'LD_CARRYOVER' }) :
+              bean.id === 'kp'        && kpCarryoverEnabled ? () => dispatch({ type: 'KP_CARRYOVER' }) :
               null
             }
             carryoverLabel={bean.id === 'kp' ? 'No one on the green' : 'No fairway'}

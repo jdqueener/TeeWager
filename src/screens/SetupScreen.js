@@ -42,6 +42,8 @@ export default function SetupScreen() {
   const [pressMode, setPressMode] = useState('anytime');
   const [spotsEnabled, setSpotsEnabled] = useState(false);
   const [spots, setSpots] = useState([0, 0, 0, 0, 0]);
+  const [ldCarryoverEnabled, setLdCarryoverEnabled] = useState(true);
+  const [kpCarryoverEnabled, setKpCarryoverEnabled] = useState(true);
   const { user } = useAuth();
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -245,7 +247,7 @@ export default function SetupScreen() {
     );
     dispatch({
       type: 'START_ROUND',
-      payload: { players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom, wagers: [], course, holeCount, holeOffset, pressMode: pressEnabled ? pressMode : null, spots: spotsEnabled ? spots.slice(0, players.length) : players.map(() => 0) },
+      payload: { players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom, wagers: [], course, holeCount, holeOffset, pressMode: pressEnabled ? pressMode : null, spots: spotsEnabled ? spots.slice(0, players.length) : players.map(() => 0), ldCarryoverEnabled, kpCarryoverEnabled },
     });
   }
 
@@ -531,25 +533,47 @@ export default function SetupScreen() {
           const locked = !bean.free && !pro;
           const on = enabledBeans.has(bean.id);
           return (
-            <View key={bean.id} style={[styles.beanRow, { borderLeftColor: locked ? colors.gold : colors.green }]}>
-              <View style={[styles.beanDot, { backgroundColor: locked ? colors.gold : colors.green }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.beanName}>
-                  {bean.name}
-                  {locked && <Text style={styles.beanProBadge}> PRO</Text>}
-                  <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
-                    {'  '}{beanLabel(bean.v)}
+            <React.Fragment key={bean.id}>
+              <View style={[styles.beanRow, { borderLeftColor: locked ? colors.gold : colors.green }]}>
+                <View style={[styles.beanDot, { backgroundColor: locked ? colors.gold : colors.green }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.beanName}>
+                    {bean.name}
+                    {locked && <Text style={styles.beanProBadge}> PRO</Text>}
+                    <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
+                      {'  '}{beanLabel(bean.v)}
+                    </Text>
                   </Text>
-                </Text>
-                {bean.desc ? <Text style={styles.beanDesc}>{bean.desc}</Text> : null}
+                  {bean.desc ? <Text style={styles.beanDesc}>{bean.desc}</Text> : null}
+                </View>
+                <Switch
+                  value={on}
+                  onValueChange={() => toggleBean(bean.id, bean.free)}
+                  trackColor={{ true: colors.green }}
+                  disabled={locked && !pro}
+                />
               </View>
-              <Switch
-                value={on}
-                onValueChange={() => toggleBean(bean.id, bean.free)}
-                trackColor={{ true: colors.green }}
-                disabled={locked && !pro}
-              />
-            </View>
+              {bean.id === 'longDrive' && on && (
+                <View style={styles.carryoverRow}>
+                  <Text style={styles.carryoverLabel}>Carry over Long Drive</Text>
+                  <Switch
+                    value={ldCarryoverEnabled}
+                    onValueChange={setLdCarryoverEnabled}
+                    trackColor={{ true: colors.green }}
+                  />
+                </View>
+              )}
+              {bean.id === 'kp' && on && (
+                <View style={styles.carryoverRow}>
+                  <Text style={styles.carryoverLabel}>Carry over KP</Text>
+                  <Switch
+                    value={kpCarryoverEnabled}
+                    onValueChange={setKpCarryoverEnabled}
+                    trackColor={{ true: colors.green }}
+                  />
+                </View>
+              )}
+            </React.Fragment>
           );
         })}
 
@@ -703,6 +727,8 @@ const styles = StyleSheet.create({
   altBtn:          { flex: 1, paddingVertical: 13, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
   altBtnText:      { fontSize: 14, color: colors.textMid, fontWeight: '600' },
   courseError:     { fontSize: 13, color: colors.red, marginTop: spacing.xs, marginBottom: spacing.xs },
+  carryoverRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: spacing.md, marginBottom: 4, backgroundColor: colors.surface, borderRadius: 8, marginLeft: 24 },
+  carryoverLabel:  { fontSize: 13, color: colors.textMid },
   recentLabel:     { fontSize: 11, color: colors.textLight, fontWeight: '700', marginTop: spacing.sm, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   recentRow:       { flexDirection: 'row', alignItems: 'center' },
   recentName:      { flex: 1 },

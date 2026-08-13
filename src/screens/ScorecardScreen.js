@@ -20,6 +20,7 @@ export default function ScorecardScreen() {
     currentHole, ldCarryover, kpCarryover, skinsCarryover = 0,
     holeCount = 18, holeOffset = 0, course,
     pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {},
+    ldCarryoverEnabled = true, kpCarryoverEnabled = true,
   } = state;
 
   const strokes = state.strokes?.length === players.length
@@ -156,8 +157,8 @@ export default function ScorecardScreen() {
     const kpWon      = players.some((_, pi) => hasBean(pi, 'kp'));
 
     const doCarryovers = () => {
-      if (ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER' });
-      if (kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER' });
+      if (ldCarryoverEnabled && ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER' });
+      if (kpCarryoverEnabled && kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER' });
     };
 
     const next = () => {
@@ -429,8 +430,8 @@ export default function ScorecardScreen() {
                   hole={hole}
                   carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : 0}
                   onCarryover={
-                    bean.id === 'longDrive' ? () => dispatch({ type: 'LD_CARRYOVER' }) :
-                    bean.id === 'kp'        ? () => dispatch({ type: 'KP_CARRYOVER' }) :
+                    bean.id === 'longDrive' && ldCarryoverEnabled ? () => dispatch({ type: 'LD_CARRYOVER' }) :
+                    bean.id === 'kp'        && kpCarryoverEnabled ? () => dispatch({ type: 'KP_CARRYOVER' }) :
                     null
                   }
                   carryoverLabel={bean.id === 'kp' ? 'No one on the green' : 'No fairway'}

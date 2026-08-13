@@ -36,6 +36,8 @@ const INITIAL_SETUP = {
   ldCarryover: 0,
   kpCarryover: 0,
   skinsCarryover: 0,
+  ldCarryoverEnabled: true,
+  kpCarryoverEnabled: true,
   bonusBeanDescs: {}, // { [holeIdx]: string }
   pressMode: null,       // null | 'anytime' | 'tenth' | 'perHole'
   presses: [],           // [{holeIdx, value}] — for 'anytime'
@@ -54,7 +56,7 @@ function reducer(state, action) {
       return action.payload;
 
     case 'START_ROUND': {
-      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null, spots = [] } = action.payload;
+      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null, spots = [], ldCarryoverEnabled = true, kpCarryoverEnabled = true } = action.payload;
       return {
         ...state,
         phase: 'round',
@@ -73,6 +75,8 @@ function reducer(state, action) {
         ldCarryover: 0,
         kpCarryover: 0,
         skinsCarryover: 0,
+        ldCarryoverEnabled,
+        kpCarryoverEnabled,
         bonusBeanDescs: {},
         pressMode: pressMode || null,
         presses: [],
