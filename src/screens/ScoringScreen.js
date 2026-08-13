@@ -90,13 +90,7 @@ export default function ScoringScreen() {
   function advanceHole() {
     if (hole >= lastHole) return;
 
-    // Auto-carryover (reducer deduplicates by holeIdx)
-    if (ldCarryoverEnabled && visibleBeans.find(b => b.id === 'longDrive') && !players.some((_, pi) => hasBean(pi, 'longDrive'))) {
-      dispatch({ type: 'LD_CARRYOVER', holeIdx: hole });
-    }
-    if (kpCarryoverEnabled && visibleBeans.find(b => b.id === 'kp') && !players.some((_, pi) => hasBean(pi, 'kp'))) {
-      dispatch({ type: 'KP_CARRYOVER', holeIdx: hole });
-    }
+    // Skins auto-carryover on tie (no manual option for this one)
     if (activeBeans.find(b => b.id === 'lowBall') && lowBallTied && !players.some((_, pi) => hasBean(pi, 'lowBall'))) {
       dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
     }

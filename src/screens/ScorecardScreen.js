@@ -157,8 +157,7 @@ export default function ScorecardScreen() {
     const kpWon      = players.some((_, pi) => hasBean(pi, 'kp'));
 
     const doCarryovers = () => {
-      if (ldCarryoverEnabled && ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER', holeIdx: hole });
-      if (kpCarryoverEnabled && kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER', holeIdx: hole });
+      // LD and KP carryover is manual-only (via "No fairway" / "No one on green" buttons)
     };
 
     const next = () => {
