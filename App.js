@@ -12,7 +12,7 @@ import { colors } from './src/utils/theme';
 import { captureReferral } from './src/utils/referral';
 
 const RC_IOS_KEY     = 'appl_lpLsIMgYVgtrXxeqYsMYqmigtpS';
-const RC_ANDROID_KEY = ''; // fill in after Google Play Console is set up
+const RC_ANDROID_KEY = 'goog_jBnQlLaUiGEBwtJfSWTNCCTQKCt';
 
 function AppContent() {
   const { state, loading } = useGame();
