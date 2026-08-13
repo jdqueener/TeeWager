@@ -5,9 +5,7 @@ import AccountMenu from './AccountMenu';
 import AuthScreen from '../screens/AuthScreen';
 import PostRoundScreen from '../screens/PostRoundScreen';
 import { useGame } from '../context/GameContext';
-import {
-  incrementRoundsPlayed, isTrialUsed, setTrialUsed, setProPlan,
-} from '../utils/storage';
+import { setTrialUsed, setProPlan } from '../utils/storage';
 
 function computeSummary(state) {
   const { players, scores, beanValue } = state;
@@ -35,44 +33,22 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
   const [postRoundVisible, setPostRoundVisible] = useState(false);
   const [postRoundView, setPostRoundView] = useState('nudge'); // 'nudge' | 'paywall'
 
-  async function handleNewRound() {
+  function handleNewRound() {
     setMenuVisible(false);
-
-    if (state.phase === 'round') {
-      Alert.alert(
-        'Start New Round?',
-        'This will clear all current scores and cannot be undone.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Start New Round', style: 'destructive', onPress: startNewRound },
-        ]
-      );
-      return;
-    }
-
-    startNewRound();
-  }
-
-  async function startNewRound() {
-    if (IS_BETA) {
-      onReset?.();
-      return;
-    }
-
-    const roundsCompleted = await incrementRoundsPlayed();
-    const trialAlreadyUsed = await isTrialUsed();
-
-    if (roundsCompleted === 1 && !trialAlreadyUsed) {
-      // After round 1 — show trial nudge
-      setPostRoundView('nudge');
-      setPostRoundVisible(true);
-    } else if (roundsCompleted === 2 && trialAlreadyUsed) {
-      // After the trial round — show soft paywall
-      setPostRoundView('paywall');
-      setPostRoundVisible(true);
-    } else {
-      onReset?.();
-    }
+    setTimeout(() => {
+      if (state.phase === 'round') {
+        Alert.alert(
+          'Start New Round?',
+          'This will clear all current scores and cannot be undone.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Start New Round', style: 'destructive', onPress: () => onReset?.() },
+          ]
+        );
+      } else {
+        onReset?.();
+      }
+    }, 300);
   }
 
   async function handleAcceptTrial() {
