@@ -43,20 +43,18 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
     );
 
     if (hasScores) {
-      await new Promise(resolve =>
-        Alert.alert(
-          'Start New Round?',
-          'This will clear all current scores and cannot be undone.',
-          [
-            { text: 'Cancel', style: 'cancel', onPress: resolve },
-            { text: 'Start New Round', style: 'destructive', onPress: () => { resolve(); return startNewRound(); } },
-          ]
-        )
+      Alert.alert(
+        'Start New Round?',
+        'This will clear all current scores and cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Start New Round', style: 'destructive', onPress: startNewRound },
+        ]
       );
       return;
     }
 
-    await startNewRound();
+    startNewRound();
   }
 
   async function startNewRound() {
