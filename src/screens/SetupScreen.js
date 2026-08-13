@@ -19,6 +19,7 @@ import {
   getAvailableTees,
   getRecentCourses,
   addRecentCourse,
+  removeRecentCourse,
 } from '../utils/courseApi';
 
 const MAX_FREE_PLAYERS = 4;
@@ -306,9 +307,21 @@ export default function SetupScreen() {
               <>
                 <Text style={styles.recentLabel}>Recent</Text>
                 {recentCourses.map(c => (
-                  <TouchableOpacity key={c.id} style={styles.courseResult} onPress={() => selectCourse(c)}>
-                    <Text style={styles.courseResultName}>{c.name}</Text>
-                  </TouchableOpacity>
+                  <View key={c.id} style={styles.recentRow}>
+                    <TouchableOpacity style={styles.recentName} onPress={() => selectCourse(c)}>
+                      <Text style={styles.courseResultName}>{c.name}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.recentRemove}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      onPress={async () => {
+                        await removeRecentCourse(c.id);
+                        setRecentCourses(prev => prev.filter(r => r.id !== c.id));
+                      }}
+                    >
+                      <Text style={styles.recentRemoveText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
                 ))}
               </>
             )}
@@ -691,6 +704,10 @@ const styles = StyleSheet.create({
   altBtnText:      { fontSize: 14, color: colors.textMid, fontWeight: '600' },
   courseError:     { fontSize: 13, color: colors.red, marginTop: spacing.xs, marginBottom: spacing.xs },
   recentLabel:     { fontSize: 11, color: colors.textLight, fontWeight: '700', marginTop: spacing.sm, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  recentRow:       { flexDirection: 'row', alignItems: 'center' },
+  recentName:      { flex: 1 },
+  recentRemove:    { paddingHorizontal: 10, paddingVertical: 8 },
+  recentRemoveText:{ fontSize: 14, color: colors.textLight },
   courseResult:    { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.xs, ...shadow.sm },
   courseResultName:{ fontSize: 15, fontWeight: '700', color: colors.textDark },
   courseResultSub: { fontSize: 12, color: colors.textLight, marginTop: 3 },

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Alert } from 'react-native';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import AccountMenu from './AccountMenu';
 import AuthScreen from '../screens/AuthScreen';
@@ -38,8 +38,29 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
   async function handleNewRound() {
     setMenuVisible(false);
 
+    const hasScores = state.scores?.some(playerScores =>
+      playerScores?.some(hole => hole && Object.values(hole).some(v => v))
+    );
+
+    if (hasScores) {
+      await new Promise(resolve =>
+        Alert.alert(
+          'Start New Round?',
+          'This will clear all current scores and cannot be undone.',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: resolve },
+            { text: 'Start New Round', style: 'destructive', onPress: () => { resolve(); return startNewRound(); } },
+          ]
+        )
+      );
+      return;
+    }
+
+    await startNewRound();
+  }
+
+  async function startNewRound() {
     if (IS_BETA) {
-      // In beta, skip post-round screens and just reset
       onReset?.();
       return;
     }

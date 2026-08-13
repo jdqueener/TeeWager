@@ -92,3 +92,8 @@ export async function addRecentCourse(course) {
   const updated = [course, ...current.filter(c => c.id !== course.id)].slice(0, 5);
   await AsyncStorage.setItem('recent_courses', JSON.stringify(updated));
 }
+
+export async function removeRecentCourse(courseId) {
+  const current = await getRecentCourses();
+  await AsyncStorage.setItem('recent_courses', JSON.stringify(current.filter(c => c.id !== courseId)));
+}
