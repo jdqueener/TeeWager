@@ -90,22 +90,15 @@ export default function ScoringScreen() {
   function advanceHole() {
     if (hole >= lastHole) return;
 
-    // Only apply carryovers when advancing past the furthest hole reached
-    if (hole >= progressHole) {
-      // Auto-carryover LD if active on this par, no one won it, and carryover is enabled
-      if (ldCarryoverEnabled && visibleBeans.find(b => b.id === 'longDrive') && !players.some((_, pi) => hasBean(pi, 'longDrive'))) {
-        dispatch({ type: 'LD_CARRYOVER' });
-      }
-
-      // Auto-carryover KP if active on this par (par 3), no one won it, and carryover is enabled
-      if (kpCarryoverEnabled && visibleBeans.find(b => b.id === 'kp') && !players.some((_, pi) => hasBean(pi, 'kp'))) {
-        dispatch({ type: 'KP_CARRYOVER' });
-      }
-
-      // Auto-carryover skins on a tie
-      if (activeBeans.find(b => b.id === 'lowBall') && lowBallTied && !players.some((_, pi) => hasBean(pi, 'lowBall'))) {
-        dispatch({ type: 'SKINS_CARRYOVER' });
-      }
+    // Auto-carryover (reducer deduplicates by holeIdx)
+    if (ldCarryoverEnabled && visibleBeans.find(b => b.id === 'longDrive') && !players.some((_, pi) => hasBean(pi, 'longDrive'))) {
+      dispatch({ type: 'LD_CARRYOVER', holeIdx: hole });
+    }
+    if (kpCarryoverEnabled && visibleBeans.find(b => b.id === 'kp') && !players.some((_, pi) => hasBean(pi, 'kp'))) {
+      dispatch({ type: 'KP_CARRYOVER', holeIdx: hole });
+    }
+    if (activeBeans.find(b => b.id === 'lowBall') && lowBallTied && !players.some((_, pi) => hasBean(pi, 'lowBall'))) {
+      dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
     }
 
     dispatch({ type: 'SET_HOLE', hole: hole + 1 });
@@ -166,8 +159,8 @@ export default function ScoringScreen() {
             hole={hole}
             carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : bean.id === 'lowBall' ? skinsCarryover : 0}
             onCarryover={
-              bean.id === 'longDrive' && ldCarryoverEnabled ? () => dispatch({ type: 'LD_CARRYOVER' }) :
-              bean.id === 'kp'        && kpCarryoverEnabled ? () => dispatch({ type: 'KP_CARRYOVER' }) :
+              bean.id === 'longDrive' && ldCarryoverEnabled ? () => dispatch({ type: 'LD_CARRYOVER', holeIdx: hole }) :
+              bean.id === 'kp'        && kpCarryoverEnabled ? () => dispatch({ type: 'KP_CARRYOVER', holeIdx: hole }) :
               null
             }
             carryoverLabel={bean.id === 'kp' ? 'No one on the green' : 'No fairway'}

@@ -35,8 +35,11 @@ const INITIAL_SETUP = {
   progressHole: 0,
   strokes: [],
   ldCarryover: 0,
+  ldCarryoverLastHole: -1,
   kpCarryover: 0,
+  kpCarryoverLastHole: -1,
   skinsCarryover: 0,
+  skinsCarryoverLastHole: -1,
   ldCarryoverEnabled: true,
   kpCarryoverEnabled: true,
   bonusBeanDescs: {}, // { [holeIdx]: string }
@@ -75,8 +78,11 @@ function reducer(state, action) {
         currentHole: 0,
         progressHole: 0,
         ldCarryover: 0,
+        ldCarryoverLastHole: -1,
         kpCarryover: 0,
+        kpCarryoverLastHole: -1,
         skinsCarryover: 0,
+        skinsCarryoverLastHole: -1,
         ldCarryoverEnabled,
         kpCarryoverEnabled,
         bonusBeanDescs: {},
@@ -134,7 +140,8 @@ function reducer(state, action) {
     }
 
     case 'LD_CARRYOVER':
-      return { ...state, ldCarryover: state.ldCarryover + 1 };
+      if (action.holeIdx <= (state.ldCarryoverLastHole ?? -1)) return state;
+      return { ...state, ldCarryover: state.ldCarryover + 1, ldCarryoverLastHole: action.holeIdx };
 
     case 'LD_AWARD_WITH_CARRYOVER': {
       const { playerIdx, holeIdx, totalBeans: awardBeans } = action;
@@ -155,7 +162,8 @@ function reducer(state, action) {
       return { ...state, ldCarryover: action.value };
 
     case 'KP_CARRYOVER':
-      return { ...state, kpCarryover: state.kpCarryover + 1 };
+      if (action.holeIdx <= (state.kpCarryoverLastHole ?? -1)) return state;
+      return { ...state, kpCarryover: state.kpCarryover + 1, kpCarryoverLastHole: action.holeIdx };
 
     case 'KP_AWARD_WITH_CARRYOVER': {
       const { playerIdx, holeIdx, totalBeans: awardBeans } = action;
@@ -176,7 +184,8 @@ function reducer(state, action) {
       return { ...state, kpCarryover: action.value };
 
     case 'SKINS_CARRYOVER':
-      return { ...state, skinsCarryover: state.skinsCarryover + 1 };
+      if (action.holeIdx <= (state.skinsCarryoverLastHole ?? -1)) return state;
+      return { ...state, skinsCarryover: state.skinsCarryover + 1, skinsCarryoverLastHole: action.holeIdx };
 
     case 'SKINS_AWARD': {
       const { playerIdx, holeIdx, totalBeans: awardBeans } = action;

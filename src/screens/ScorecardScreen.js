@@ -157,9 +157,8 @@ export default function ScorecardScreen() {
     const kpWon      = players.some((_, pi) => hasBean(pi, 'kp'));
 
     const doCarryovers = () => {
-      if (hole < progressHole) return; // already processed this hole
-      if (ldCarryoverEnabled && ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER' });
-      if (kpCarryoverEnabled && kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER' });
+      if (ldCarryoverEnabled && ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER', holeIdx: hole });
+      if (kpCarryoverEnabled && kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER', holeIdx: hole });
     };
 
     const next = () => {
@@ -202,7 +201,7 @@ export default function ScorecardScreen() {
       if (outright) {
         dispatch({ type: 'SKINS_AWARD', playerIdx: hLeaders.indexOf(true), holeIdx: hole, totalBeans: 1 + skinsCarryover });
       } else {
-        dispatch({ type: 'SKINS_CARRYOVER' });
+        dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
       }
     }
 
@@ -412,7 +411,7 @@ export default function ScorecardScreen() {
                     outright={outright}
                     hasWinner={pi => hasBean(pi, 'lowBall')}
                     onAward={pi => togglePlayer(bean, pi)}
-                    onCarryover={() => dispatch({ type: 'SKINS_CARRYOVER' })}
+                    onCarryover={() => dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole })}
                     carryover={skinsCarryover}
                     anyAwarded={players.some((_, pi) => hasBean(pi, 'lowBall'))}
                     onShowConflict={(title, msg, onConfirm) => setConflictPrompt({ title, msg, onConfirm })}
@@ -431,8 +430,8 @@ export default function ScorecardScreen() {
                   hole={hole}
                   carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : 0}
                   onCarryover={
-                    bean.id === 'longDrive' && ldCarryoverEnabled ? () => dispatch({ type: 'LD_CARRYOVER' }) :
-                    bean.id === 'kp'        && kpCarryoverEnabled ? () => dispatch({ type: 'KP_CARRYOVER' }) :
+                    bean.id === 'longDrive' && ldCarryoverEnabled ? () => dispatch({ type: 'LD_CARRYOVER', holeIdx: hole }) :
+                    bean.id === 'kp'        && kpCarryoverEnabled ? () => dispatch({ type: 'KP_CARRYOVER', holeIdx: hole }) :
                     null
                   }
                   carryoverLabel={bean.id === 'kp' ? 'No one on the green' : 'No fairway'}
