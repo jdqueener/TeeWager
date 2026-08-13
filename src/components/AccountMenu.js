@@ -4,6 +4,7 @@ import {
   ScrollView, StyleSheet, ActivityIndicator, Linking, Platform,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useGame } from '../context/GameContext';
 import { colors, spacing, radius } from '../utils/theme';
 
 const STRIPE_PORTAL = 'https://billing.stripe.com/p/login/test_5kQ7sE8s28av5kSdn4dwc00';
@@ -27,6 +28,7 @@ function Row({ label, value, hint }) {
 
 export default function AccountMenu({ onSignIn, size = 36 }) {
   const { user, profile, signOut, updateProfile } = useAuth();
+  const { dispatch } = useGame();
   const [visible, setVisible]   = useState(false);
   const [editing, setEditing]   = useState(false);
   const [busy, setBusy]         = useState(false);
@@ -204,7 +206,7 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
             {/* Sign out */}
             <TouchableOpacity
               style={styles.signOutBtn}
-              onPress={async () => { setVisible(false); await signOut(); }}
+              onPress={async () => { setVisible(false); dispatch({ type: 'RESET' }); await signOut(); }}
               activeOpacity={0.85}
             >
               <Text style={styles.signOutText}>Sign Out</Text>

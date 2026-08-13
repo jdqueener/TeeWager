@@ -38,11 +38,7 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
   async function handleNewRound() {
     setMenuVisible(false);
 
-    const hasScores = state.scores?.some(playerScores =>
-      playerScores?.some(hole => hole && Object.values(hole).some(v => v))
-    );
-
-    if (hasScores) {
+    if (state.phase === 'round') {
       Alert.alert(
         'Start New Round?',
         'This will clear all current scores and cannot be undone.',
