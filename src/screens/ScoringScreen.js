@@ -87,10 +87,18 @@ export default function ScoringScreen() {
   const visibleBeans = activeBeans.filter(b => isParAllowed(b, par));
   const dimmedBeans  = activeBeans.filter(b => !isParAllowed(b, par));
 
+  const isPastHole = hole < progressHole;
+
   function advanceHole() {
     if (hole >= lastHole) return;
 
-    // Skins auto-carryover on tie (no manual option for this one)
+    // Auto-carryover — reducer deduplicates by holeIdx so back/forward is safe
+    if (ldCarryoverEnabled && visibleBeans.find(b => b.id === 'longDrive') && !players.some((_, pi) => hasBean(pi, 'longDrive'))) {
+      dispatch({ type: 'LD_CARRYOVER', holeIdx: hole });
+    }
+    if (kpCarryoverEnabled && visibleBeans.find(b => b.id === 'kp') && !players.some((_, pi) => hasBean(pi, 'kp'))) {
+      dispatch({ type: 'KP_CARRYOVER', holeIdx: hole });
+    }
     if (activeBeans.find(b => b.id === 'lowBall') && lowBallTied && !players.some((_, pi) => hasBean(pi, 'lowBall'))) {
       dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
     }
@@ -151,8 +159,8 @@ export default function ScoringScreen() {
             pro={pro}
             firstBonus={firstBonus}
             hole={hole}
-            carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : bean.id === 'lowBall' ? skinsCarryover : 0}
-            onCarryover={
+            carryover={isPastHole ? 0 : (bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : bean.id === 'lowBall' ? skinsCarryover : 0)}
+            onCarryover={isPastHole ? null :
               bean.id === 'longDrive' && ldCarryoverEnabled ? () => dispatch({ type: 'LD_CARRYOVER', holeIdx: hole }) :
               bean.id === 'kp'        && kpCarryoverEnabled ? () => dispatch({ type: 'KP_CARRYOVER', holeIdx: hole }) :
               null

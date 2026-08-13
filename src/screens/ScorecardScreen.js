@@ -39,6 +39,7 @@ export default function ScorecardScreen() {
   const hole = currentHole;
   const par  = getHolePar(hole);
   const lastHole = holeCount - 1;
+  const isPastHole = hole < progressHole;
 
   // Current effective bean value at this hole
   const currentEffValue = getEffectiveBeanValue(beanValue, hole, pressMode, presses, tenthPressed, tenthPressValue);
@@ -157,7 +158,8 @@ export default function ScorecardScreen() {
     const kpWon      = players.some((_, pi) => hasBean(pi, 'kp'));
 
     const doCarryovers = () => {
-      // LD and KP carryover is manual-only (via "No fairway" / "No one on green" buttons)
+      if (ldCarryoverEnabled && ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER', holeIdx: hole });
+      if (kpCarryoverEnabled && kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER', holeIdx: hole });
     };
 
     const next = () => {
@@ -410,8 +412,8 @@ export default function ScorecardScreen() {
                     outright={outright}
                     hasWinner={pi => hasBean(pi, 'lowBall')}
                     onAward={pi => togglePlayer(bean, pi)}
-                    onCarryover={() => dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole })}
-                    carryover={skinsCarryover}
+                    onCarryover={isPastHole ? null : () => dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole })}
+                    carryover={isPastHole ? 0 : skinsCarryover}
                     anyAwarded={players.some((_, pi) => hasBean(pi, 'lowBall'))}
                     onShowConflict={(title, msg, onConfirm) => setConflictPrompt({ title, msg, onConfirm })}
                   />
@@ -427,8 +429,8 @@ export default function ScorecardScreen() {
                   pro={pro}
                   firstBonus={firstBonus}
                   hole={hole}
-                  carryover={bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : 0}
-                  onCarryover={
+                  carryover={isPastHole ? 0 : (bean.id === 'longDrive' ? ldCarryover : bean.id === 'kp' ? kpCarryover : 0)}
+                  onCarryover={isPastHole ? null :
                     bean.id === 'longDrive' && ldCarryoverEnabled ? () => dispatch({ type: 'LD_CARRYOVER', holeIdx: hole }) :
                     bean.id === 'kp'        && kpCarryoverEnabled ? () => dispatch({ type: 'KP_CARRYOVER', holeIdx: hole }) :
                     null
