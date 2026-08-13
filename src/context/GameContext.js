@@ -32,6 +32,7 @@ const INITIAL_SETUP = {
   firstBonus: {},
   wagers: [],
   currentHole: 0,
+  progressHole: 0,
   strokes: [],
   ldCarryover: 0,
   kpCarryover: 0,
@@ -72,6 +73,7 @@ function reducer(state, action) {
         strokes: makeEmptyStrokes(players.length),
         firstBonus: makeFirstBonus(),
         currentHole: 0,
+        progressHole: 0,
         ldCarryover: 0,
         kpCarryover: 0,
         skinsCarryover: 0,
@@ -88,7 +90,7 @@ function reducer(state, action) {
     }
 
     case 'SET_HOLE':
-      return { ...state, currentHole: action.hole };
+      return { ...state, currentHole: action.hole, progressHole: Math.max(state.progressHole, action.hole) };
 
     case 'SET_STROKE': {
       const { playerIdx, holeIdx, value } = action;

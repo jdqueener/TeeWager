@@ -17,7 +17,7 @@ export default function ScorecardScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const {
     players, scores, firstBonus, beanValue,
-    currentHole, ldCarryover, kpCarryover, skinsCarryover = 0,
+    currentHole, progressHole = 0, ldCarryover, kpCarryover, skinsCarryover = 0,
     holeCount = 18, holeOffset = 0, course,
     pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {},
     ldCarryoverEnabled = true, kpCarryoverEnabled = true,
@@ -157,6 +157,7 @@ export default function ScorecardScreen() {
     const kpWon      = players.some((_, pi) => hasBean(pi, 'kp'));
 
     const doCarryovers = () => {
+      if (hole < progressHole) return; // already processed this hole
       if (ldCarryoverEnabled && ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER' });
       if (kpCarryoverEnabled && kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER' });
     };

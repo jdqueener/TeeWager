@@ -8,7 +8,7 @@ import ProBanner from '../components/ProBanner';
 
 export default function ScoringScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
-  const { players, scores, firstBonus, currentHole, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18, holeOffset = 0, ldCarryoverEnabled = true, kpCarryoverEnabled = true } = state;
+  const { players, scores, firstBonus, currentHole, progressHole = 0, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18, holeOffset = 0, ldCarryoverEnabled = true, kpCarryoverEnabled = true } = state;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const hole = currentHole;
   const lastHole = holeCount - 1;
@@ -90,19 +90,22 @@ export default function ScoringScreen() {
   function advanceHole() {
     if (hole >= lastHole) return;
 
-    // Auto-carryover LD if active on this par, no one won it, and carryover is enabled
-    if (ldCarryoverEnabled && visibleBeans.find(b => b.id === 'longDrive') && !players.some((_, pi) => hasBean(pi, 'longDrive'))) {
-      dispatch({ type: 'LD_CARRYOVER' });
-    }
+    // Only apply carryovers when advancing past the furthest hole reached
+    if (hole >= progressHole) {
+      // Auto-carryover LD if active on this par, no one won it, and carryover is enabled
+      if (ldCarryoverEnabled && visibleBeans.find(b => b.id === 'longDrive') && !players.some((_, pi) => hasBean(pi, 'longDrive'))) {
+        dispatch({ type: 'LD_CARRYOVER' });
+      }
 
-    // Auto-carryover KP if active on this par (par 3), no one won it, and carryover is enabled
-    if (kpCarryoverEnabled && visibleBeans.find(b => b.id === 'kp') && !players.some((_, pi) => hasBean(pi, 'kp'))) {
-      dispatch({ type: 'KP_CARRYOVER' });
-    }
+      // Auto-carryover KP if active on this par (par 3), no one won it, and carryover is enabled
+      if (kpCarryoverEnabled && visibleBeans.find(b => b.id === 'kp') && !players.some((_, pi) => hasBean(pi, 'kp'))) {
+        dispatch({ type: 'KP_CARRYOVER' });
+      }
 
-    // Auto-carryover skins on a tie
-    if (activeBeans.find(b => b.id === 'lowBall') && lowBallTied && !players.some((_, pi) => hasBean(pi, 'lowBall'))) {
-      dispatch({ type: 'SKINS_CARRYOVER' });
+      // Auto-carryover skins on a tie
+      if (activeBeans.find(b => b.id === 'lowBall') && lowBallTied && !players.some((_, pi) => hasBean(pi, 'lowBall'))) {
+        dispatch({ type: 'SKINS_CARRYOVER' });
+      }
     }
 
     dispatch({ type: 'SET_HOLE', hole: hole + 1 });
