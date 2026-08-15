@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "io.teewager.app",
-      "versionCode": 10,
+      "versionCode": 11,
       "adaptiveIcon": {
         "backgroundColor": "#14432A",
         "foregroundImage": "./assets/android-icon-foreground.png",
