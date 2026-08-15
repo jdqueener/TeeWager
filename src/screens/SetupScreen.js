@@ -10,7 +10,7 @@ import PaywallModal from '../components/PaywallModal';
 import ProBanner from '../components/ProBanner';
 import AccountMenu from '../components/AccountMenu';
 import AuthScreen from './AuthScreen';
-import { loadSavedPlayers, savePlayer } from '../utils/storage';
+import { loadSavedPlayers, savePlayer, deleteSavedPlayer } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
 import {
   searchCoursesByName,
@@ -629,12 +629,20 @@ export default function SetupScreen() {
               data={savedPlayers}
               keyExtractor={item => item}
               renderItem={({ item }) => (
-                <TouchableOpacity style={styles.pickerItem} onPress={() => selectSavedPlayer(item)}>
-                  <View style={styles.pickerAvatar}>
-                    <Text style={styles.pickerAvatarText}>{item.slice(0,2).toUpperCase()}</Text>
-                  </View>
-                  <Text style={styles.pickerItemText}>{item}</Text>
-                </TouchableOpacity>
+                <View style={styles.pickerItem}>
+                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }} onPress={() => selectSavedPlayer(item)}>
+                    <View style={styles.pickerAvatar}>
+                      <Text style={styles.pickerAvatarText}>{item.slice(0,2).toUpperCase()}</Text>
+                    </View>
+                    <Text style={styles.pickerItemText}>{item}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={async () => {
+                    await deleteSavedPlayer(item);
+                    setSavedPlayers(prev => prev.filter(n => n !== item));
+                  }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={{ fontSize: 18, color: '#999', paddingHorizontal: 12 }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
               )}
               ListEmptyComponent={
                 <Text style={styles.pickerEmpty}>No saved players yet.{'\n'}Type a name and tap away to save it.</Text>
