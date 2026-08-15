@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './supabase';
+import { pushCourses } from './cloudSync';
 
 const API_KEY  = 'FRXWXF5EXNPQJEIM7VOFO746SA';
 const BASE_URL = 'https://api.golfcourseapi.com/v1';
@@ -87,13 +89,23 @@ export async function getRecentCourses() {
   return raw ? JSON.parse(raw) : [];
 }
 
+async function _getAuthedUserId() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user?.id ?? null;
+}
+
 export async function addRecentCourse(course) {
   const current = await getRecentCourses();
   const updated = [course, ...current.filter(c => c.id !== course.id)].slice(0, 5);
   await AsyncStorage.setItem('recent_courses', JSON.stringify(updated));
+  const uid = await _getAuthedUserId();
+  if (uid) pushCourses(uid, updated).catch(() => {});
 }
 
 export async function removeRecentCourse(courseId) {
   const current = await getRecentCourses();
-  await AsyncStorage.setItem('recent_courses', JSON.stringify(current.filter(c => c.id !== courseId)));
+  const updated = current.filter(c => c.id !== courseId);
+  await AsyncStorage.setItem('recent_courses', JSON.stringify(updated));
+  const uid = await _getAuthedUserId();
+  if (uid) pushCourses(uid, updated).catch(() => {});
 }

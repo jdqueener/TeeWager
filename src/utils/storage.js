@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './supabase';
+import { pushPlayers } from './cloudSync';
 
 const KEYS = {
   GAME:          'teewager_game_v1',
@@ -88,13 +90,24 @@ export async function loadSavedPlayers() {
   return raw ? JSON.parse(raw) : [];
 }
 
+async function _getAuthedUserId() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user?.id ?? null;
+}
+
 export async function savePlayer(name) {
   const current = await loadSavedPlayers();
   if (current.includes(name)) return;
-  await AsyncStorage.setItem(KEYS.PLAYERS, JSON.stringify([...current, name]));
+  const updated = [...current, name];
+  await AsyncStorage.setItem(KEYS.PLAYERS, JSON.stringify(updated));
+  const uid = await _getAuthedUserId();
+  if (uid) pushPlayers(uid, updated).catch(() => {});
 }
 
 export async function deleteSavedPlayer(name) {
   const current = await loadSavedPlayers();
-  await AsyncStorage.setItem(KEYS.PLAYERS, JSON.stringify(current.filter(n => n !== name)));
+  const updated = current.filter(n => n !== name);
+  await AsyncStorage.setItem(KEYS.PLAYERS, JSON.stringify(updated));
+  const uid = await _getAuthedUserId();
+  if (uid) pushPlayers(uid, updated).catch(() => {});
 }

@@ -5,6 +5,7 @@ import * as Linking from 'expo-linking';
 import { supabase } from '../utils/supabase';
 import { signInWithAppleNative } from '../utils/appleAuth';
 import { getReferral, clearReferral } from '../utils/referral';
+import { pullUserData, clearLocalUserData } from '../utils/cloudSync';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -35,6 +36,7 @@ export function AuthProvider({ children }) {
         .eq('id', session.user.id)
         .single();
       setProfile(data);
+      pullUserData(session.user.id).catch(() => {});
     })();
   }, [session]);
 
@@ -64,6 +66,7 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
+    await clearLocalUserData();
     await supabase.auth.signOut();
   }
 
