@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
-  StatusBar, Linking,
+  StatusBar, Linking, SafeAreaView,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
@@ -510,7 +510,7 @@ export default function AuthScreen({ onSkip, initialMode }) {
 const styles = StyleSheet.create({
   root:     { flex: 1, backgroundColor: colors.green },
 
-  hero:     { alignItems: 'center', paddingTop: 70, paddingBottom: 32, paddingHorizontal: spacing.xl },
+  hero:     { alignItems: 'center', paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 24 : 70, paddingBottom: 32, paddingHorizontal: spacing.xl },
   heroEmoji:{ fontSize: 52, marginBottom: spacing.sm },
   heroTitle:{ fontSize: 36, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
   heroSub:  { fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs },

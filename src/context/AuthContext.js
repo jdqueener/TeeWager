@@ -1,8 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { supabase } from '../utils/supabase';
 import { signInWithAppleNative } from '../utils/appleAuth';
 import { getReferral, clearReferral } from '../utils/referral';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const AuthContext = createContext(null);
 
@@ -71,11 +75,17 @@ export function AuthProvider({ children }) {
   }
 
   async function signInWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const redirectTo = Linking.createURL('/');
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: 'https://www.teewager.io/app' },
+      options: { redirectTo, skipBrowserRedirect: true },
     });
     if (error) throw error;
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type === 'success') {
+      const { url } = result;
+      await supabase.auth.exchangeCodeForSession(url);
+    }
   }
 
   async function signInWithApple() {
