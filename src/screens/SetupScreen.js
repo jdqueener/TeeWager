@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Switch, Modal, FlatList, ActivityIndicator, Platform, Linking, Image, Alert,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+const ImagePicker = Platform.OS !== 'web' ? require('expo-image-picker') : null;
 import { useGame } from '../context/GameContext';
 import { BEAN_DEFS, DEFAULT_PARS, beanLabel } from '../utils/beans';
 import { colors, spacing, radius, shadow } from '../utils/theme';
@@ -191,40 +191,14 @@ export default function SetupScreen() {
     setManualCourseName('');
   }
 
-  async function pickScorecardPhoto() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow photo access to scan a scorecard.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      base64: true,
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets?.[0]?.base64) return;
-    setPhotoLoading(true);
-    try {
-      const holes = await parseScorecardImage(result.assets[0].base64);
-      setManualPars(holes.map(h => ({ number: h.number, par: h.par ?? 4, yardage: h.yardage ?? 0 })));
-      setShowManualEntry(true);
-    } catch {
-      Alert.alert('Could not read scorecard', 'Try again with a clearer photo, or enter hole pars manually.');
-    } finally {
-      setPhotoLoading(false);
-    }
-  }
-
   async function takeScorecardPhoto() {
+    if (!ImagePicker) return;
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Allow camera access to scan a scorecard.');
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      base64: true,
-      quality: 0.8,
-    });
+    const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.8 });
     if (result.canceled || !result.assets?.[0]?.base64) return;
     setPhotoLoading(true);
     try {
@@ -388,11 +362,13 @@ export default function SetupScreen() {
                   <TouchableOpacity style={styles.noResultsBtn} onPress={() => { setShowManualEntry(true); setCourseError(''); }}>
                     <Text style={styles.noResultsBtnText}>Enter manually</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.noResultsBtn, { backgroundColor: colors.green }]} onPress={() => { setCourseError(''); takeScorecardPhoto(); }}>
-                    {photoLoading
-                      ? <ActivityIndicator color={colors.white} size="small" />
-                      : <Text style={[styles.noResultsBtnText, { color: colors.white }]}>📷 Scan scorecard</Text>}
-                  </TouchableOpacity>
+                  {Platform.OS !== 'web' && (
+                    <TouchableOpacity style={[styles.noResultsBtn, { backgroundColor: colors.green }]} onPress={() => { setCourseError(''); takeScorecardPhoto(); }}>
+                      {photoLoading
+                        ? <ActivityIndicator color={colors.white} size="small" />
+                        : <Text style={[styles.noResultsBtnText, { color: colors.white }]}>📷 Scan scorecard</Text>}
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             )}
@@ -466,13 +442,15 @@ export default function SetupScreen() {
               onChangeText={setManualCourseName}
               maxLength={60}
             />
-            <View style={styles.manualScanRow}>
-              <TouchableOpacity style={styles.scanBtn} onPress={takeScorecardPhoto} disabled={photoLoading}>
-                {photoLoading
-                  ? <ActivityIndicator color={colors.green} size="small" />
-                  : <Text style={styles.scanBtnText}>📷 Scan scorecard instead</Text>}
-              </TouchableOpacity>
-            </View>
+            {Platform.OS !== 'web' && (
+              <View style={styles.manualScanRow}>
+                <TouchableOpacity style={styles.scanBtn} onPress={takeScorecardPhoto} disabled={photoLoading}>
+                  {photoLoading
+                    ? <ActivityIndicator color={colors.green} size="small" />
+                    : <Text style={styles.scanBtnText}>📷 Scan scorecard instead</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
             <Text style={styles.label}>Hole pars &amp; yardage</Text>
             <View style={styles.manualGrid}>
               {manualPars.map((h, i) => (
