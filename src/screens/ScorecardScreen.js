@@ -30,6 +30,7 @@ export default function ScorecardScreen() {
   const [mode, setMode] = useState('hole'); // 'hole' | 'grid'
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [conflictPrompt, setConflictPrompt] = useState(null);
+  const [firstBirdiePrompt, setFirstBirdiePrompt] = useState(null); // { holeIdx, tiedPlayers: [pi,...] }
   const [pressModalVisible, setPressModalVisible] = useState(false);
   const [selectedPressPlayers, setSelectedPressPlayers] = useState([]);
   const [pressAmountModal, setPressAmountModal] = useState(null); // { mode: 'anytime'|'tenth' }
@@ -213,13 +214,12 @@ export default function ScorecardScreen() {
     const newVal = Math.max(0, val);
     dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hi, value: newVal });
 
-    const holePar = getHolePar(hi);
-    const diff = newVal > 0 ? newVal - holePar : null;
-
+    const holePar    = getHolePar(hi);
+    const diff       = newVal > 0 ? newVal - holePar : null;
     const birdieBean = activeBeans.find(b => b.id === 'birdie');
     const eagleBean  = activeBeans.find(b => b.id === 'eagle');
 
-    // Clear any existing auto-awarded birdie/eagle on this hole for this player
+    // Clear existing auto-awarded birdie/eagle for this player on this hole
     if (birdieBean && (scores[pi]?.[hi]?.birdie || 0) > 0) {
       dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'birdie', delta: -1, bean: birdieBean });
     }
@@ -227,12 +227,29 @@ export default function ScorecardScreen() {
       dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'eagle', delta: -1, bean: eagleBean });
     }
 
-    // Auto-award based on new score
     if (diff === -1 && birdieBean) {
-      dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'birdie', delta: 1, bean: birdieBean });
+      // Check if another player already has a birdie on this hole and firstBonus not yet claimed
+      const otherBirdiePlayers = players
+        .map((_, opi) => opi)
+        .filter(opi => opi !== pi && (scores[opi]?.[hi]?.birdie || 0) > 0);
+
+      if (otherBirdiePlayers.length > 0 && firstBonus?.birdie === undefined) {
+        // Two birdies on the same hole, first birdie bonus unclaimed — prompt for longest putt
+        dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'birdie', delta: 1, bean: birdieBean });
+        setFirstBirdiePrompt({ holeIdx: hi, tiedPlayers: [...otherBirdiePlayers, pi] });
+      } else {
+        dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'birdie', delta: 1, bean: birdieBean });
+      }
     } else if (diff <= -2 && eagleBean) {
       dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'eagle', delta: 1, bean: eagleBean });
     }
+  }
+
+  function assignFirstBirdieBonus(winnerIdx, holeIdx) {
+    const birdieBean = activeBeans.find(b => b.id === 'birdie');
+    if (!birdieBean) return;
+    dispatch({ type: 'SET_FIRST_BIRDIE_BONUS', playerIdx: winnerIdx, holeIdx });
+    setFirstBirdiePrompt(null);
   }
 
   function strokeColor(s, p) {
@@ -653,6 +670,30 @@ export default function ScorecardScreen() {
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setPressAmountModal(null)} style={styles.pressDismissBtn}>
               <Text style={styles.pressDismissText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* First birdie tie-breaker prompt */}
+      <Modal visible={!!firstBirdiePrompt} transparent animationType="fade">
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>First Birdie Bonus</Text>
+            <Text style={styles.confirmMsg}>
+              Two birdies on hole {(firstBirdiePrompt?.holeIdx ?? 0) + 1 + holeOffset} — who had the longest putt?{'\n'}They earn 2 beans.
+            </Text>
+            {(firstBirdiePrompt?.tiedPlayers ?? []).map(pi => (
+              <TouchableOpacity
+                key={pi}
+                style={styles.confirmAdvance}
+                onPress={() => assignFirstBirdieBonus(pi, firstBirdiePrompt.holeIdx)}
+              >
+                <Text style={styles.confirmAdvanceText}>{players[pi]?.split(' ')[0]}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.confirmBack} onPress={() => setFirstBirdiePrompt(null)}>
+              <Text style={styles.confirmBackText}>Decide later</Text>
             </TouchableOpacity>
           </View>
         </View>

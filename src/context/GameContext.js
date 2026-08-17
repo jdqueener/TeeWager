@@ -139,6 +139,14 @@ function reducer(state, action) {
       return { ...state, scores, firstBonus };
     }
 
+    case 'SET_FIRST_BIRDIE_BONUS': {
+      const { playerIdx, holeIdx } = action;
+      return {
+        ...state,
+        firstBonus: { ...state.firstBonus, birdie: { playerIdx, holeIdx } },
+      };
+    }
+
     case 'LD_CARRYOVER':
       if (action.holeIdx <= (state.ldCarryoverLastHole ?? -1)) return state;
       return { ...state, ldCarryover: state.ldCarryover + 1, ldCarryoverLastHole: action.holeIdx };
