@@ -210,7 +210,29 @@ export default function ScorecardScreen() {
   }
 
   function setStroke(pi, hi, val) {
-    dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hi, value: Math.max(0, val) });
+    const newVal = Math.max(0, val);
+    dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hi, value: newVal });
+
+    const holePar = getHolePar(hi);
+    const diff = newVal > 0 ? newVal - holePar : null;
+
+    const birdieBean = activeBeans.find(b => b.id === 'birdie');
+    const eagleBean  = activeBeans.find(b => b.id === 'eagle');
+
+    // Clear any existing auto-awarded birdie/eagle on this hole for this player
+    if (birdieBean && (scores[pi]?.[hi]?.birdie || 0) > 0) {
+      dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'birdie', delta: -1, bean: birdieBean });
+    }
+    if (eagleBean && (scores[pi]?.[hi]?.eagle || 0) > 0) {
+      dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'eagle', delta: -1, bean: eagleBean });
+    }
+
+    // Auto-award based on new score
+    if (diff === -1 && birdieBean) {
+      dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'birdie', delta: 1, bean: birdieBean });
+    } else if (diff <= -2 && eagleBean) {
+      dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'eagle', delta: 1, bean: eagleBean });
+    }
   }
 
   function strokeColor(s, p) {
@@ -252,8 +274,9 @@ export default function ScorecardScreen() {
     return t;
   }
 
-  const visibleBeans = activeBeans.filter(b => isParAllowed(b, par));
-  const dimmedBeans  = activeBeans.filter(b => !isParAllowed(b, par));
+  const AUTO_BEANS = new Set(['birdie', 'eagle']);
+  const visibleBeans = activeBeans.filter(b => isParAllowed(b, par) && !AUTO_BEANS.has(b.id));
+  const dimmedBeans  = activeBeans.filter(b => !isParAllowed(b, par) && !AUTO_BEANS.has(b.id));
 
   const courseName = course?.name ?? '';
   const teeLabel   = course?.tee ? ` · ${course.tee}` : '';
@@ -357,6 +380,11 @@ export default function ScorecardScreen() {
                   const playerStyle = useGrid
                     ? [styles.strokePlayer, { flexBasis: '48%', flexGrow: 0 }]
                     : [styles.strokePlayer, { flex: 1 }];
+                  const autoBirdieAwarded = (scores[pi]?.[hole]?.birdie || 0) > 0;
+                  const autoEagleAwarded  = (scores[pi]?.[hole]?.eagle  || 0) > 0;
+                  const autoLabel = autoEagleAwarded ? '🦅 Eagle' : autoBirdieAwarded ? '🐦 Birdie' : null;
+                  const isFirstBirdie = autoBirdieAwarded && state.firstBonus?.birdie?.playerIdx === pi && state.firstBonus?.birdie?.holeIdx === hole;
+
                   return (
                     <View key={pi} style={playerStyle}>
                       <Text style={styles.strokeName} numberOfLines={1}>{name.split(' ')[0]}</Text>
@@ -385,6 +413,11 @@ export default function ScorecardScreen() {
                           s - par > 0 && { color: colors.red },
                         ]}>
                           {s - par === 0 ? 'E' : s - par > 0 ? `+${s - par}` : s - par}
+                        </Text>
+                      )}
+                      {autoLabel && (
+                        <Text style={styles.autoAwardLabel}>
+                          {autoLabel}{isFirstBirdie ? ' ×2' : ''}
                         </Text>
                       )}
                     </View>
@@ -965,6 +998,7 @@ const styles = StyleSheet.create({
   strokeVal:     { width: 50, height: 50, borderRadius: radius.sm, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },
   strokeNum:     { fontSize: 22, fontWeight: '800', color: colors.textDark },
   strokeDiff:    { fontSize: 11, fontWeight: '800', color: colors.textMid },
+  autoAwardLabel:{ fontSize: 10, fontWeight: '700', color: colors.green, marginTop: 2 },
 
   dimLabel: { fontSize: 11, color: colors.textLight, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.md, marginBottom: spacing.sm, fontWeight: '700' },
 

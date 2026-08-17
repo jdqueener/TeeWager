@@ -84,8 +84,9 @@ export default function ScoringScreen() {
     return t;
   }
 
-  const visibleBeans = activeBeans.filter(b => isParAllowed(b, par));
-  const dimmedBeans  = activeBeans.filter(b => !isParAllowed(b, par));
+  const AUTO_BEANS = new Set(['birdie', 'eagle']);
+  const visibleBeans = activeBeans.filter(b => isParAllowed(b, par) && !AUTO_BEANS.has(b.id));
+  const dimmedBeans  = activeBeans.filter(b => !isParAllowed(b, par) && !AUTO_BEANS.has(b.id));
 
   const isPastHole = hole < progressHole;
 
