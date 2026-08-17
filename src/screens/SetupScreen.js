@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Switch, Modal, FlatList, ActivityIndicator, Platform, Linking,
+  StyleSheet, Switch, Modal, FlatList, ActivityIndicator, Platform, Linking, Image, Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useGame } from '../context/GameContext';
 import { BEAN_DEFS, DEFAULT_PARS, beanLabel } from '../utils/beans';
 import { colors, spacing, radius, shadow } from '../utils/theme';
@@ -21,6 +22,7 @@ import {
   addRecentCourse,
   removeRecentCourse,
 } from '../utils/courseApi';
+import { searchCustomCourses, saveCustomCourse, parseScorecardImage } from '../utils/customCourseApi';
 
 const MAX_FREE_PLAYERS = 4;
 const MAX_PRO_PLAYERS  = 5;
@@ -75,7 +77,9 @@ export default function SetupScreen() {
   const [recentCourses, setRecentCourses] = useState([]);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualCourseName, setManualCourseName] = useState('');
   const [manualPars, setManualPars] = useState(DEFAULT_PARS.slice(0, 9).map((p, i) => ({ number: i + 1, par: p, yardage: 0 })));
+  const [photoLoading, setPhotoLoading] = useState(false);
 
   // Resize manual par grid when holeCount changes
   useEffect(() => {
@@ -113,9 +117,16 @@ export default function SetupScreen() {
     setCourseLoading(true);
     setCourseError('');
     try {
-      const results = await searchCoursesByName(courseQuery.trim());
-      setCourseResults(results);
-      if (!results.length) setCourseError('No courses found. Try a different name.');
+      const [apiResults, customResults] = await Promise.allSettled([
+        searchCoursesByName(courseQuery.trim()),
+        searchCustomCourses(courseQuery.trim()),
+      ]);
+      const combined = [
+        ...(apiResults.status === 'fulfilled' ? apiResults.value : []),
+        ...(customResults.status === 'fulfilled' ? customResults.value : []),
+      ];
+      setCourseResults(combined);
+      if (!combined.length) setCourseError('no_results');
     } catch (e) {
       setCourseError(`Search failed: ${e.message}. Try a different name.`);
     } finally {
@@ -157,10 +168,18 @@ export default function SetupScreen() {
   }
 
   function selectCourse(course) {
-    setSelectedCourse(course);
-    setLoadedCourse(null);
+    if (course.custom && course.holes?.length) {
+      // Custom course already has full hole data — load it directly
+      const totalPar = course.holes.reduce((s, h) => s + (h.par ?? 4), 0);
+      setLoadedCourse({ id: course.id, name: course.name, tee: '', totalPar, holes: course.holes, custom: true });
+      setSelectedCourse(course);
+    } else {
+      setSelectedCourse(course);
+      setLoadedCourse(null);
+    }
     setShowCourseModal(false);
     setCourseResults([]);
+    setCourseError('');
   }
 
   function clearCourse() {
@@ -169,6 +188,54 @@ export default function SetupScreen() {
     setAvailableTees([]);
     setSelectedTee('');
     setShowManualEntry(false);
+    setManualCourseName('');
+  }
+
+  async function pickScorecardPhoto() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Allow photo access to scan a scorecard.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      base64: true,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+    setPhotoLoading(true);
+    try {
+      const holes = await parseScorecardImage(result.assets[0].base64);
+      setManualPars(holes.map(h => ({ number: h.number, par: h.par ?? 4, yardage: h.yardage ?? 0 })));
+      setShowManualEntry(true);
+    } catch {
+      Alert.alert('Could not read scorecard', 'Try again with a clearer photo, or enter hole pars manually.');
+    } finally {
+      setPhotoLoading(false);
+    }
+  }
+
+  async function takeScorecardPhoto() {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Allow camera access to scan a scorecard.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      base64: true,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+    setPhotoLoading(true);
+    try {
+      const holes = await parseScorecardImage(result.assets[0].base64);
+      setManualPars(holes.map(h => ({ number: h.number, par: h.par ?? 4, yardage: h.yardage ?? 0 })));
+      setShowManualEntry(true);
+    } catch {
+      Alert.alert('Could not read scorecard', 'Try again with a clearer photo, or enter hole pars manually.');
+    } finally {
+      setPhotoLoading(false);
+    }
   }
 
   function handleNameBlur(idx) {
@@ -229,13 +296,21 @@ export default function SetupScreen() {
 
     let course = null;
     if (showManualEntry) {
+      const name = manualCourseName.trim() || 'Custom Course';
+      let savedId = 'manual_' + Date.now();
+      try {
+        const saved = await saveCustomCourse(name, manualPars);
+        savedId = saved.id;
+      } catch {}
       course = {
-        id: 'manual',
-        name: 'Manual Entry',
+        id: savedId,
+        name,
         tee: '',
         totalPar: manualPars.reduce((s, h) => s + h.par, 0),
         holes: manualPars,
+        custom: true,
       };
+      addRecentCourse({ id: savedId, name });
     } else if (loadedCourse) {
       course = loadedCourse;
       addRecentCourse({ id: course.id, name: course.name });
@@ -302,7 +377,25 @@ export default function SetupScreen() {
                   : <Text style={styles.searchBtnText}>Search</Text>}
               </TouchableOpacity>
             </View>
-            {!!courseError && <Text style={styles.courseError}>{courseError}</Text>}
+            {!!courseError && courseError !== 'no_results' && (
+              <Text style={styles.courseError}>{courseError}</Text>
+            )}
+            {courseError === 'no_results' && (
+              <View style={styles.noResultsCard}>
+                <Text style={styles.noResultsTitle}>Course not found?</Text>
+                <Text style={styles.noResultsSub}>Add it so you and others can use it next time.</Text>
+                <View style={styles.noResultsRow}>
+                  <TouchableOpacity style={styles.noResultsBtn} onPress={() => { setShowManualEntry(true); setCourseError(''); }}>
+                    <Text style={styles.noResultsBtnText}>Enter manually</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.noResultsBtn, { backgroundColor: colors.green }]} onPress={() => { setCourseError(''); takeScorecardPhoto(); }}>
+                    {photoLoading
+                      ? <ActivityIndicator color={colors.white} size="small" />
+                      : <Text style={[styles.noResultsBtnText, { color: colors.white }]}>📷 Scan scorecard</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
             {/* Recent courses */}
             {!courseResults.length && recentCourses.length > 0 && (
@@ -331,7 +424,10 @@ export default function SetupScreen() {
             {/* Search results */}
             {courseResults.map(c => (
               <TouchableOpacity key={c.id} style={styles.courseResult} onPress={() => selectCourse(c)}>
-                <Text style={styles.courseResultName}>{c.name}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.courseResultName}>{c.name}</Text>
+                  {c.custom && <Text style={styles.customBadge}>custom</Text>}
+                </View>
                 {(c.city || c.state) && (
                   <Text style={styles.courseResultSub}>{[c.city, c.state].filter(Boolean).join(', ')}</Text>
                 )}
@@ -358,10 +454,26 @@ export default function SetupScreen() {
           </>
         )}
 
-        {/* Manual par entry */}
+        {/* Manual course entry */}
         {showManualEntry && (
           <>
-            <Text style={styles.label}>Hole pars</Text>
+            <Text style={styles.label}>Course name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Riverside Municipal"
+              placeholderTextColor={colors.textLight}
+              value={manualCourseName}
+              onChangeText={setManualCourseName}
+              maxLength={60}
+            />
+            <View style={styles.manualScanRow}>
+              <TouchableOpacity style={styles.scanBtn} onPress={takeScorecardPhoto} disabled={photoLoading}>
+                {photoLoading
+                  ? <ActivityIndicator color={colors.green} size="small" />
+                  : <Text style={styles.scanBtnText}>📷 Scan scorecard instead</Text>}
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.label}>Hole pars &amp; yardage</Text>
             <View style={styles.manualGrid}>
               {manualPars.map((h, i) => (
                 <View key={i} style={styles.manualCell}>
@@ -375,11 +487,20 @@ export default function SetupScreen() {
                       <Text style={styles.manualAdj}>+</Text>
                     </TouchableOpacity>
                   </View>
+                  <TextInput
+                    style={styles.manualYardage}
+                    keyboardType="number-pad"
+                    placeholder="yds"
+                    placeholderTextColor={colors.textLight}
+                    value={h.yardage > 0 ? String(h.yardage) : ''}
+                    onChangeText={v => setManualPars(prev => prev.map((x, j) => j === i ? { ...x, yardage: parseInt(v) || 0 } : x))}
+                    maxLength={4}
+                  />
                 </View>
               ))}
             </View>
-            <TouchableOpacity style={styles.altBtn} onPress={() => setShowManualEntry(false)}>
-              <Text style={styles.altBtnText}>Cancel manual entry</Text>
+            <TouchableOpacity style={styles.altBtn} onPress={() => { setShowManualEntry(false); setManualCourseName(''); }}>
+              <Text style={styles.altBtnText}>Cancel</Text>
             </TouchableOpacity>
           </>
         )}
@@ -755,13 +876,26 @@ const styles = StyleSheet.create({
   teeBtnText:       { fontWeight: '700', color: colors.textDark, fontSize: 14 },
   teeBtnTextActive: { color: colors.white },
 
+  // No results / add course
+  noResultsCard:    { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1.5, borderColor: colors.border, ...shadow.sm },
+  noResultsTitle:   { fontSize: 15, fontWeight: '800', color: colors.textDark, marginBottom: 4 },
+  noResultsSub:     { fontSize: 13, color: colors.textMid, marginBottom: spacing.sm },
+  noResultsRow:     { flexDirection: 'row', gap: spacing.sm },
+  noResultsBtn:     { flex: 1, paddingVertical: 12, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
+  noResultsBtnText: { fontSize: 14, fontWeight: '700', color: colors.textDark },
+  customBadge:      { fontSize: 10, fontWeight: '800', color: colors.green, backgroundColor: 'rgba(26,74,46,0.1)', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+
   // Manual entry
-  manualGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.sm },
-  manualCell:    { width: '18%', backgroundColor: colors.white, borderRadius: radius.sm, padding: spacing.xs, alignItems: 'center', ...shadow.sm },
-  manualHoleNum: { fontSize: 11, color: colors.textLight, fontWeight: '700', marginBottom: 2 },
-  manualParRow:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  manualPar:     { fontSize: 16, fontWeight: '800', color: colors.textDark, minWidth: 18, textAlign: 'center' },
-  manualAdj:     { fontSize: 20, color: colors.green, fontWeight: '700', paddingHorizontal: 2 },
+  manualScanRow:  { marginBottom: spacing.sm },
+  scanBtn:        { paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.green, borderStyle: 'dashed', alignItems: 'center' },
+  scanBtnText:    { fontSize: 14, fontWeight: '600', color: colors.green },
+  manualGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.sm },
+  manualCell:     { width: '18%', backgroundColor: colors.white, borderRadius: radius.sm, padding: spacing.xs, alignItems: 'center', ...shadow.sm },
+  manualHoleNum:  { fontSize: 11, color: colors.textLight, fontWeight: '700', marginBottom: 2 },
+  manualParRow:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  manualPar:      { fontSize: 16, fontWeight: '800', color: colors.textDark, minWidth: 18, textAlign: 'center' },
+  manualAdj:      { fontSize: 20, color: colors.green, fontWeight: '700', paddingHorizontal: 2 },
+  manualYardage:  { fontSize: 10, color: colors.textMid, borderBottomWidth: 1, borderBottomColor: colors.border, textAlign: 'center', width: '100%', marginTop: 3, paddingVertical: 2 },
 
   countBtn:           { flex: 1, paddingVertical: 15, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white, ...shadow.sm },
   countBtnActive:     { backgroundColor: colors.green, borderColor: colors.green, ...shadow.green },

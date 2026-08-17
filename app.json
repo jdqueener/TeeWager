@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "io.teewager.app",
-      "versionCode": 11,
+      "versionCode": 13,
       "adaptiveIcon": {
         "backgroundColor": "#14432A",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -49,7 +49,14 @@
     },
     "plugins": [
       "expo-sharing",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "TeeWager uses your photos to scan golf scorecards.",
+          "cameraPermission": "TeeWager uses your camera to scan golf scorecards."
+        }
+      ]
     ],
     "extra": {
       "eas": {
