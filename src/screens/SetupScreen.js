@@ -409,6 +409,20 @@ export default function SetupScreen() {
                 )}
               </TouchableOpacity>
             ))}
+
+            {/* Always-visible add course option */}
+            <View style={styles.addCourseRow}>
+              <TouchableOpacity onPress={() => { setShowManualEntry(true); setCourseError(''); }} style={styles.addCourseLink}>
+                <Text style={styles.addCourseLinkText}>Don't see your course? Add it manually</Text>
+              </TouchableOpacity>
+              {Platform.OS !== 'web' && (
+                <TouchableOpacity onPress={() => { setCourseError(''); takeScorecardPhoto(); }} style={styles.addCourseLink}>
+                  {photoLoading
+                    ? <ActivityIndicator color={colors.green} size="small" />
+                    : <Text style={styles.addCourseLinkText}>📷 Scan scorecard</Text>}
+                </TouchableOpacity>
+              )}
+            </View>
           </>
         )}
 
@@ -862,6 +876,9 @@ const styles = StyleSheet.create({
   noResultsBtn:     { flex: 1, paddingVertical: 12, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
   noResultsBtnText: { fontSize: 14, fontWeight: '700', color: colors.textDark },
   customBadge:      { fontSize: 10, fontWeight: '800', color: colors.green, backgroundColor: 'rgba(26,74,46,0.1)', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  addCourseRow:     { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs, marginBottom: spacing.sm },
+  addCourseLink:    { paddingVertical: 8 },
+  addCourseLinkText:{ fontSize: 13, color: colors.green, fontWeight: '600' },
 
   // Manual entry
   manualScanRow:  { marginBottom: spacing.sm },
