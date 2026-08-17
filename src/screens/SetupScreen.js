@@ -253,7 +253,7 @@ export default function SetupScreen() {
     });
   }
 
-  function startRound() {
+  async function startRound() {
     if (!canPlay) { setTrialExpiredVisible(true); return; }
     const players = names.slice(0, playerCount).map(n => n.trim());
     if (players.some(n => !n)) {
