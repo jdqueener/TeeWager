@@ -33,11 +33,15 @@ export default function App() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
     (async () => {
-      const Purchases = (await import('react-native-purchases')).default;
-      const { LOG_LEVEL } = await import('react-native-purchases');
-      Purchases.setLogLevel(LOG_LEVEL.ERROR);
-      const key = Platform.OS === 'ios' ? RC_IOS_KEY : RC_ANDROID_KEY;
-      if (key) Purchases.configure({ apiKey: key });
+      try {
+        const Purchases = (await import('react-native-purchases')).default;
+        const { LOG_LEVEL } = await import('react-native-purchases');
+        if (LOG_LEVEL) Purchases.setLogLevel(LOG_LEVEL.ERROR);
+        const key = Platform.OS === 'ios' ? RC_IOS_KEY : RC_ANDROID_KEY;
+        if (key) Purchases.configure({ apiKey: key });
+      } catch (_) {
+        // RevenueCat init failed — paywall unavailable but app continues
+      }
     })();
   }, []);
 
