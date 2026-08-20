@@ -10,9 +10,9 @@ import { grantPro } from '../utils/pro';
 import { supabase } from '../utils/supabase';
 
 // Web-only Stripe links (live — replace test links when ready)
-const STRIPE_MONTHLY  = 'https://buy.stripe.com/test_5kQ7sE8s28av5kSdn4dwc00';
-const STRIPE_ANNUAL   = 'https://buy.stripe.com/test_bJeaEQaAa1M7bJg96Odwc01';
-const STRIPE_LIFETIME = 'https://buy.stripe.com/test_aFa4gs23E0I3cNk0Aidwc02';
+const STRIPE_MONTHLY  = 'https://buy.stripe.com/6oU14g4dV94G8mNeu63AY00';
+const STRIPE_ANNUAL   = 'https://buy.stripe.com/8x24gsh0H4OqbyZbhU3AY01';
+const STRIPE_LIFETIME = 'https://buy.stripe.com/5kQ00cbGn6WyeLb1Hk3AY02';
 
 // RevenueCat product IDs
 const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';

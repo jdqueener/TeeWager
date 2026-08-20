@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useGame } from '../context/GameContext';
 import { colors, spacing, radius } from '../utils/theme';
 
-const STRIPE_PORTAL = 'https://billing.stripe.com/p/login/test_5kQ7sE8s28av5kSdn4dwc00';
+const STRIPE_PORTAL = 'https://billing.stripe.com/p/login/6oU14g4dV94G8mNeu63AY00';
 
 function initials(name) {
   if (!name) return '?';

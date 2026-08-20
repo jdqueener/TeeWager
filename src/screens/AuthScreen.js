@@ -9,9 +9,9 @@ import { supabase } from '../utils/supabase';
 import { colors, spacing, radius } from '../utils/theme';
 
 // Replace with real Stripe links when ready
-const STRIPE_ANNUAL   = 'https://buy.stripe.com/test_bJeaEQaAa1M7bJg96Odwc01';
-const STRIPE_MONTHLY  = 'https://buy.stripe.com/test_5kQ7sE8s28av5kSdn4dwc00';
-const STRIPE_LIFETIME = 'https://buy.stripe.com/test_bJeaEQaAa1M7bJg96Odwc01'; // TODO: replace with live lifetime link
+const STRIPE_ANNUAL   = 'https://buy.stripe.com/8x24gsh0H4OqbyZbhU3AY01';
+const STRIPE_MONTHLY  = 'https://buy.stripe.com/6oU14g4dV94G8mNeu63AY00';
+const STRIPE_LIFETIME = 'https://buy.stripe.com/5kQ00cbGn6WyeLb1Hk3AY02';
 
 const FREE_FEATURES = [
   { label: '3 free rounds', pro: false },
