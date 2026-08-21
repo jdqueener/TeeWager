@@ -62,7 +62,6 @@ export default function SetupScreen() {
 
   // On native first launch, show onboarding before auth
   useEffect(() => {
-    if (Platform.OS === 'web') return;
     hasOnboarded().then(done => {
       if (!done && !user) setOnboardingVisible(true);
     });
