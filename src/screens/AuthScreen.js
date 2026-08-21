@@ -313,6 +313,10 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
               <Text style={styles.termsLink} onPress={() => Linking.openURL('https://teewager.io/privacy')}>Privacy Policy</Text>.
             </Text>
           )}
+
+          <TouchableOpacity onPress={() => onSkip(true)} style={styles.guestLink} activeOpacity={0.7}>
+            <Text style={styles.guestLinkText}>Continue as Guest</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -563,6 +567,8 @@ const styles = StyleSheet.create({
 
   backLink:      { alignItems: 'center', marginTop: spacing.md },
   backLinkText:  { fontSize: 14, color: colors.green, fontWeight: '600' },
+  guestLink:     { alignItems: 'center', marginTop: spacing.lg, paddingBottom: spacing.sm },
+  guestLinkText: { fontSize: 14, color: colors.textMid },
 
   successWrap:  { backgroundColor: '#F0FDF4', borderRadius: radius.sm, borderWidth: 1, borderColor: '#86EFAC', padding: spacing.md, marginBottom: spacing.md },
   successText:  { fontSize: 14, color: '#15803D', lineHeight: 20 },

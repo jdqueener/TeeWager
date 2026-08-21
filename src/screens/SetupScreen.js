@@ -54,13 +54,14 @@ export default function SetupScreen() {
     if (Platform.OS !== 'web') return null;
     try { return (new URLSearchParams(window.location.search)).get('mode') ?? null; } catch { return null; }
   })();
+  const [guestMode, setGuestMode] = useState(false);
   const [authVisible, setAuthVisible] = useState(!user || urlMode === 'signin' || urlMode === 'signup');
   const [authInitialMode, setAuthInitialMode] = useState(urlMode === 'signup' ? 'signup' : 'signin');
 
-  // Show auth screen whenever user signs out
+  // Show auth screen when user signs out, unless they chose guest
   useEffect(() => {
-    if (!user) { setAuthInitialMode('signin'); setAuthVisible(true); }
-  }, [user]);
+    if (!user && !guestMode) { setAuthInitialMode('signin'); setAuthVisible(true); }
+  }, [user, guestMode]);
   const [savedPlayers, setSavedPlayers] = useState([]);
   const [pickerIdx, setPickerIdx] = useState(null);
   const [savePrompt, setSavePrompt] = useState(null);
@@ -320,8 +321,8 @@ export default function SetupScreen() {
           <Text style={styles.heroSub}>Set up your round</Text>
         </View>
 
-        <Modal visible={authVisible} animationType="slide" onRequestClose={() => setAuthVisible(false)}>
-          <AuthScreen onSkip={() => setAuthVisible(false)} initialMode={authInitialMode} />
+        <Modal visible={authVisible} animationType="slide" onRequestClose={() => { setGuestMode(true); setAuthVisible(false); }}>
+          <AuthScreen onSkip={(asGuest) => { if (asGuest) setGuestMode(true); setAuthVisible(false); }} initialMode={authInitialMode} />
         </Modal>
 
         {/* Course */}
