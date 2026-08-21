@@ -877,6 +877,11 @@ if (window.location.hash && window.location.hash.includes('access_token')) {
   window.location.replace('/app' + window.location.hash);
 }
 
+// If opened as installed PWA (standalone), skip landing and go straight to the app
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+  window.location.replace('/app');
+}
+
 // If user already has an active session, skip the landing page
 (function() {
   try {
