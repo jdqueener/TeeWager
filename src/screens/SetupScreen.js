@@ -11,7 +11,8 @@ import PaywallModal from '../components/PaywallModal';
 import ProBanner from '../components/ProBanner';
 import AccountMenu from '../components/AccountMenu';
 import AuthScreen from './AuthScreen';
-import { loadSavedPlayers, savePlayer, deleteSavedPlayer } from '../utils/storage';
+import OnboardingScreen from './OnboardingScreen';
+import { loadSavedPlayers, savePlayer, deleteSavedPlayer, hasOnboarded, setOnboarded } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
 import {
   searchCoursesByName,
@@ -57,6 +58,29 @@ export default function SetupScreen() {
   const [guestMode, setGuestMode] = useState(false);
   const [authVisible, setAuthVisible] = useState(!user || urlMode === 'signin' || urlMode === 'signup');
   const [authInitialMode, setAuthInitialMode] = useState(urlMode === 'signup' ? 'signup' : 'signin');
+  const [onboardingVisible, setOnboardingVisible] = useState(false);
+
+  // On native first launch, show onboarding before auth
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    hasOnboarded().then(done => {
+      if (!done && !user) setOnboardingVisible(true);
+    });
+  }, []);
+
+  function handleOnboardingDone(intent) {
+    setOnboarded();
+    setOnboardingVisible(false);
+    if (intent === 'guest') {
+      setGuestMode(true);
+    } else if (intent === 'signup') {
+      setAuthInitialMode('signup');
+      setAuthVisible(true);
+    } else if (intent === 'signin') {
+      setAuthInitialMode('signin');
+      setAuthVisible(true);
+    }
+  }
 
   // Show auth screen when user signs out, unless they chose guest
   useEffect(() => {
@@ -320,6 +344,10 @@ export default function SetupScreen() {
           <View style={styles.heroDivider} />
           <Text style={styles.heroSub}>Set up your round</Text>
         </View>
+
+        <Modal visible={onboardingVisible} animationType="fade">
+          <OnboardingScreen onDone={handleOnboardingDone} />
+        </Modal>
 
         <Modal visible={authVisible} animationType="slide" onRequestClose={() => { setGuestMode(true); setAuthVisible(false); }}>
           <AuthScreen onSkip={(asGuest) => { if (asGuest) setGuestMode(true); setAuthVisible(false); }} initialMode={authInitialMode} />

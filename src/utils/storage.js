@@ -10,6 +10,7 @@ const KEYS = {
   PLAYERS:       'teewager_players_v1',
   ROUNDS_PLAYED: 'teewager_rounds_played',
   TRIAL_USED:    'teewager_trial_used',
+  ONBOARDED:     'teewager_onboarded_v1',
 };
 
 export async function saveGame(state) {
@@ -102,6 +103,14 @@ export async function savePlayer(name) {
   await AsyncStorage.setItem(KEYS.PLAYERS, JSON.stringify(updated));
   const uid = await _getAuthedUserId();
   if (uid) pushPlayers(uid, updated).catch(() => {});
+}
+
+export async function hasOnboarded() {
+  return (await AsyncStorage.getItem(KEYS.ONBOARDED)) === '1';
+}
+
+export async function setOnboarded() {
+  await AsyncStorage.setItem(KEYS.ONBOARDED, '1');
 }
 
 export async function deleteSavedPlayer(name) {
