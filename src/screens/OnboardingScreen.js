@@ -11,12 +11,12 @@ const SLIDES = [
   {
     emoji: '⛳',
     title: 'Make every\nround count.',
-    body: 'TeeWager turns your regular round into a friendly competition. Set a bean value, track who earns what, and settle up at the bar — no math, no arguments, no IOUs.',
+    body: 'TeeWager turns your regular round into a friendly competition. Track who earns what hole by hole and settle up at the bar with one tap — no math, no arguments, no IOUs.',
   },
   {
     emoji: '🫘',
     title: 'Beans are\nthe currency.',
-    body: 'Earn beans for birdies, long drives, closest to the pin, 3-putts, skins, and more. Every hole is a chance to win — or lose — a few beans.',
+    body: 'Set your bean (wager) amount. Then earn beans for birdies, long drives, closest to the pin, 3-putts, skins, and more. Every hole is a chance to win — or lose — a few beans.',
   },
   {
     emoji: '🏆',
