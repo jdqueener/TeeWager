@@ -86,8 +86,10 @@ export function AuthProvider({ children }) {
     if (error) throw error;
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (result.type === 'success') {
-      const { url } = result;
-      await supabase.auth.exchangeCodeForSession(url);
+      await supabase.auth.exchangeCodeForSession(result.url);
+    } else {
+      // Browser dismissed without redirect — check if a session was set via deep link
+      await supabase.auth.getSession();
     }
   }
 

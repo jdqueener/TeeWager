@@ -86,10 +86,15 @@ export default function SetupScreen() {
     }
   }
 
-  // Show auth screen when user signs out, unless they chose guest
+  // Close auth modal on sign-in; reopen on sign-out unless guest
   useEffect(() => {
     if (!mountedRef.current) { mountedRef.current = true; return; }
-    if (!user && !guestModeRef.current) { setAuthInitialMode('signin'); setAuthVisible(true); }
+    if (user) {
+      setAuthVisible(false);
+    } else if (!guestModeRef.current) {
+      setAuthInitialMode('signin');
+      setAuthVisible(true);
+    }
   }, [user]);
   const [savedPlayers, setSavedPlayers] = useState([]);
   const [pickerIdx, setPickerIdx] = useState(null);
