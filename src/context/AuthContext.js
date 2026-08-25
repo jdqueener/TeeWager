@@ -110,6 +110,16 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   }
 
+  async function deleteAccount() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not signed in.');
+    // Call a Supabase Edge Function or RPC to delete the user server-side
+    const { error } = await supabase.rpc('delete_user');
+    if (error) throw error;
+    await clearLocalUserData();
+    await supabase.auth.signOut();
+  }
+
   async function updateProfile(fields) {
     if (!session?.user) return;
     const { data, error } = await supabase
@@ -127,7 +137,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       session, profile, loading,
       user: session?.user ?? null,
-      signUp, signIn, signOut, updateProfile, forgotPassword, signInWithGoogle, signInWithApple, updatePassword,
+      signUp, signIn, signOut, updateProfile, forgotPassword, signInWithGoogle, signInWithApple, updatePassword, deleteAccount,
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, Modal,
-  ScrollView, StyleSheet, ActivityIndicator, Linking, Platform,
+  ScrollView, StyleSheet, ActivityIndicator, Linking, Platform, Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useGame } from '../context/GameContext';
@@ -27,13 +27,14 @@ function Row({ label, value, hint }) {
 }
 
 export default function AccountMenu({ onSignIn, size = 36 }) {
-  const { user, profile, signOut, updateProfile } = useAuth();
+  const { user, profile, signOut, updateProfile, deleteAccount } = useAuth();
   const { dispatch } = useGame();
   const [visible, setVisible]   = useState(false);
   const [editing, setEditing]   = useState(false);
   const [busy, setBusy]         = useState(false);
   const [error, setError]       = useState('');
   const [saved, setSaved]       = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [fullName,     setFullName]     = useState('');
   const [scoringName,  setScoringName]  = useState('');
@@ -211,6 +212,42 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
             >
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
+
+            {/* Delete account */}
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              disabled={deleting}
+              activeOpacity={0.85}
+              onPress={() => {
+                Alert.alert(
+                  'Delete Account',
+                  'This will permanently delete your account and all your data. This cannot be undone.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete my account',
+                      style: 'destructive',
+                      onPress: async () => {
+                        setDeleting(true);
+                        try {
+                          await deleteAccount();
+                          setVisible(false);
+                          dispatch({ type: 'RESET' });
+                        } catch (e) {
+                          Alert.alert('Error', e.message || 'Could not delete account. Contact support@teewager.io.');
+                        } finally {
+                          setDeleting(false);
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              {deleting
+                ? <ActivityIndicator color="#DC2626" />
+                : <Text style={styles.deleteText}>Delete Account</Text>}
+            </TouchableOpacity>
           </ScrollView>
         </View>
       </Modal>
@@ -277,4 +314,7 @@ const styles = StyleSheet.create({
 
   signOutBtn:    { backgroundColor: '#FEF2F2', borderRadius: radius.md, paddingVertical: 15, alignItems: 'center', borderWidth: 1, borderColor: '#FCA5A5' },
   signOutText:   { fontSize: 16, fontWeight: '700', color: '#DC2626' },
+
+  deleteBtn:     { marginTop: spacing.sm, paddingVertical: 13, alignItems: 'center' },
+  deleteText:    { fontSize: 14, color: colors.textLight, textDecorationLine: 'underline' },
 });
