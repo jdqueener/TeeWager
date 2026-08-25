@@ -55,10 +55,12 @@ export default function SetupScreen() {
     if (Platform.OS !== 'web') return null;
     try { return (new URLSearchParams(window.location.search)).get('mode') ?? null; } catch { return null; }
   })();
-  const [guestMode, setGuestMode] = useState(false);
-  const guestModeRef = useRef(false);
+  const isGuest = () => { try { return sessionStorage.getItem('tw_guest') === '1'; } catch { return false; } };
+  const setGuest = () => { try { sessionStorage.setItem('tw_guest', '1'); } catch {} };
+  const [guestMode, setGuestMode] = useState(isGuest);
+  const guestModeRef = useRef(isGuest());
   const mountedRef = useRef(false);
-  const [authVisible, setAuthVisible] = useState(!user || urlMode === 'signin' || urlMode === 'signup');
+  const [authVisible, setAuthVisible] = useState(() => !user && !isGuest() || urlMode === 'signin' || urlMode === 'signup');
   const [authInitialMode, setAuthInitialMode] = useState(urlMode === 'signup' ? 'signup' : 'signin');
   const [onboardingVisible, setOnboardingVisible] = useState(false);
 
@@ -353,7 +355,7 @@ export default function SetupScreen() {
         </Modal>
 
         <Modal visible={authVisible} animationType="slide" onRequestClose={() => { setGuestMode(true); setAuthVisible(false); }}>
-          <AuthScreen onSkip={(asGuest) => { if (asGuest) { guestModeRef.current = true; setGuestMode(true); } setAuthVisible(false); }} initialMode={authInitialMode} />
+          <AuthScreen onSkip={(asGuest) => { if (asGuest) { setGuest(); guestModeRef.current = true; setGuestMode(true); } setAuthVisible(false); }} initialMode={authInitialMode} />
         </Modal>
 
         {/* Course */}
