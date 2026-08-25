@@ -57,6 +57,7 @@ export default function SetupScreen() {
   })();
   const [guestMode, setGuestMode] = useState(false);
   const guestModeRef = useRef(false);
+  const mountedRef = useRef(false);
   const [authVisible, setAuthVisible] = useState(!user || urlMode === 'signin' || urlMode === 'signup');
   const [authInitialMode, setAuthInitialMode] = useState(urlMode === 'signup' ? 'signup' : 'signin');
   const [onboardingVisible, setOnboardingVisible] = useState(false);
@@ -85,6 +86,7 @@ export default function SetupScreen() {
 
   // Show auth screen when user signs out, unless they chose guest
   useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return; }
     if (!user && !guestModeRef.current) { setAuthInitialMode('signin'); setAuthVisible(true); }
   }, [user]);
   const [savedPlayers, setSavedPlayers] = useState([]);
