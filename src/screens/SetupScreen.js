@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Switch, Modal, FlatList, ActivityIndicator, Platform, Linking, Image, Alert,
@@ -56,6 +56,7 @@ export default function SetupScreen() {
     try { return (new URLSearchParams(window.location.search)).get('mode') ?? null; } catch { return null; }
   })();
   const [guestMode, setGuestMode] = useState(false);
+  const guestModeRef = useRef(false);
   const [authVisible, setAuthVisible] = useState(!user || urlMode === 'signin' || urlMode === 'signup');
   const [authInitialMode, setAuthInitialMode] = useState(urlMode === 'signup' ? 'signup' : 'signin');
   const [onboardingVisible, setOnboardingVisible] = useState(false);
@@ -84,8 +85,8 @@ export default function SetupScreen() {
 
   // Show auth screen when user signs out, unless they chose guest
   useEffect(() => {
-    if (!user && !guestMode) { setAuthInitialMode('signin'); setAuthVisible(true); }
-  }, [user, guestMode]);
+    if (!user && !guestModeRef.current) { setAuthInitialMode('signin'); setAuthVisible(true); }
+  }, [user]);
   const [savedPlayers, setSavedPlayers] = useState([]);
   const [pickerIdx, setPickerIdx] = useState(null);
   const [savePrompt, setSavePrompt] = useState(null);
@@ -350,7 +351,7 @@ export default function SetupScreen() {
         </Modal>
 
         <Modal visible={authVisible} animationType="slide" onRequestClose={() => { setGuestMode(true); setAuthVisible(false); }}>
-          <AuthScreen onSkip={(asGuest) => { if (asGuest) setGuestMode(true); setAuthVisible(false); }} initialMode={authInitialMode} />
+          <AuthScreen onSkip={(asGuest) => { if (asGuest) { guestModeRef.current = true; setGuestMode(true); } setAuthVisible(false); }} initialMode={authInitialMode} />
         </Modal>
 
         {/* Course */}
