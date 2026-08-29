@@ -120,13 +120,6 @@ export default function BreakdownScreen() {
           <Text style={styles.summaryName}>{players[selectedPlayer]}</Text>
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryVal, grandTotal < 0 && styles.neg]}>
-                {grandTotal >= 0 ? `+${grandTotal}` : grandTotal}
-              </Text>
-              <Text style={styles.summaryLabel}>beans{spots[selectedPlayer] > 0 ? ` +${spots[selectedPlayer]} spot` : ''}</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
               <Text style={[styles.summaryVal, netDollars < 0 && styles.neg]}>
                 {netDollars >= 0 ? '+' : ''}${Math.abs(netDollars).toFixed(2)}
               </Text>
@@ -158,7 +151,10 @@ export default function BreakdownScreen() {
                   <Text style={styles.eventDesc}>{beanDesc(event)}</Text>
                 </View>
                 <Text style={[styles.eventBeans, event.beans < 0 && styles.neg]}>
-                  {event.beans >= 0 ? `+${event.beans}` : event.beans}
+                  {(() => {
+                    const total = event.incoming ? event.beans : event.beans * (n - 1);
+                    return total >= 0 ? `+${total}` : `${total}`;
+                  })()}
                 </Text>
               </View>
             ))}
