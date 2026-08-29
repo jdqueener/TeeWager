@@ -12,11 +12,15 @@ export default function LeaderboardScreen() {
   const { state, dispatch, pro, setPro, activeBeans } = useGame();
   const { players, scores, firstBonus, beanValue } = state;
 
+  const n = players.length;
   const ranked = players
     .map((name, i) => ({ name, i, beans: totalBeansForPlayer(i, scores, activeBeans, firstBonus) }))
     .sort((a, b) => b.beans - a.beans);
 
-  const pot = ranked.reduce((s, p) => s + Math.max(p.beans, 0), 0) * beanValue;
+  const totalBeans = ranked.reduce((s, p) => s + p.beans, 0);
+  // Actual net dollars per player (zero-sum across all players)
+  const nets = ranked.map(p => beanValue * (p.beans * n - totalBeans));
+  const pot = nets.reduce((s, v) => s + Math.max(v, 0), 0);
 
   return (
     <View style={styles.root}>
@@ -29,15 +33,15 @@ export default function LeaderboardScreen() {
         </View>
 
         {ranked.map((p, rank) => {
-          const dollars = p.beans * beanValue;
+          const collected = p.beans * (n - 1);
           return (
             <View key={p.i} style={[styles.row, rank === 0 && styles.rowFirst]}>
               <Text style={styles.medal}>{MEDALS[rank] || `${rank + 1}.`}</Text>
               <Avatar name={p.name} size={40} />
               <Text style={styles.name}>{p.name}</Text>
               <View style={styles.right}>
-                <Text style={[styles.beans, p.beans < 0 && styles.neg]}>
-                  {p.beans >= 0 ? `+${p.beans}` : p.beans} beans
+                <Text style={[styles.beans, collected < 0 && styles.neg]}>
+                  {collected >= 0 ? `+${collected}` : collected} beans
                 </Text>
               </View>
             </View>
