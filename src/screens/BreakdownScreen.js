@@ -73,6 +73,16 @@ export default function BreakdownScreen() {
     }
   }
 
+  // Gross earned from own events (collected from all opponents) and what was paid to others
+  let grossEarned = 0;
+  events.forEach(event => {
+    const effVal = getEffectiveBeanValue(beanValue, event.h, pressMode, presses, tenthPressed, tenthPressValue);
+    grossEarned += event.incoming
+      ? event.beans * effVal
+      : event.beans * (n - 1) * effVal;
+  });
+  const grossPaid = grossEarned - netDollars;
+
   function beanDesc(event) {
     const { bean, count, isFirst, incoming, from } = event;
     let label = bean.name;
@@ -120,15 +130,22 @@ export default function BreakdownScreen() {
           <Text style={styles.summaryName}>{players[selectedPlayer]}</Text>
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
+              <Text style={styles.summaryVal}>+${grossEarned.toFixed(2)}</Text>
+              <Text style={styles.summaryLabel}>earned</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryVal, grossPaid > 0 && styles.neg]}>
+                {grossPaid > 0 ? `-$${grossPaid.toFixed(2)}` : '$0.00'}
+              </Text>
+              <Text style={styles.summaryLabel}>paid</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
               <Text style={[styles.summaryVal, netDollars < 0 && styles.neg]}>
                 {netDollars >= 0 ? '+' : ''}${Math.abs(netDollars).toFixed(2)}
               </Text>
               <Text style={styles.summaryLabel}>net</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryVal}>{events.filter(e => !e.incoming).length}</Text>
-              <Text style={styles.summaryLabel}>{events.filter(e => !e.incoming).length === 1 ? 'event' : 'events'}</Text>
             </View>
           </View>
         </View>
