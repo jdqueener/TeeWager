@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer } from '../utils/beans';
+import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer, computePressSettleUp } from '../utils/beans';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -83,6 +83,16 @@ export default function BreakdownScreen() {
   });
   const grossPaid = grossEarned - netDollars;
 
+  // Per-player breakdown: who selectedPlayer pays (positive = selectedPlayer owes them)
+  const pressState = { pressMode, presses, tenthPressed, tenthPressValue, holePresses };
+  const allPayments = computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, [], holeCount, spots);
+  const paidTo = allPayments
+    .filter(p => p.from === selectedPlayer)
+    .map(p => ({ name: players[p.to].split(' ')[0], amt: p.amt }));
+  const receivedFrom = allPayments
+    .filter(p => p.to === selectedPlayer)
+    .map(p => ({ name: players[p.from].split(' ')[0], amt: p.amt }));
+
   function beanDesc(event) {
     const { bean, count, isFirst, incoming, from } = event;
     let label = bean.name;
@@ -138,7 +148,11 @@ export default function BreakdownScreen() {
               <Text style={[styles.summaryVal, grossPaid > 0 && styles.neg]}>
                 {grossPaid > 0 ? `-$${grossPaid.toFixed(2)}` : '$0.00'}
               </Text>
-              <Text style={styles.summaryLabel}>paid</Text>
+              <Text style={styles.summaryLabel}>
+                {paidTo.length > 0
+                  ? `to ${paidTo.map(p => `${p.name} $${p.amt.toFixed(2)}`).join(', ')}`
+                  : 'paid'}
+              </Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
