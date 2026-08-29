@@ -151,9 +151,6 @@ export default function SettleUpScreen() {
                 <Text style={[styles.val, beans < 0 && styles.neg]}>
                   {beans >= 0 ? `+${beans}` : beans} beans{spot > 0 ? ` +${spot} spot` : ''}
                 </Text>
-                <Text style={[styles.val, dollars < 0 && styles.neg]}>
-                  {dollars >= 0 ? `+$${dollars.toFixed(2)}` : `-$${Math.abs(dollars).toFixed(2)}`}
-                </Text>
               </View>
             </View>
           );

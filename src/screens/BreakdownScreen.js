@@ -159,18 +159,6 @@ export default function BreakdownScreen() {
                 </View>
                 <Text style={[styles.eventBeans, event.beans < 0 && styles.neg]}>
                   {event.beans >= 0 ? `+${event.beans}` : event.beans}
-                  {'\n'}
-                  <Text style={styles.eventDollar}>
-                    {(() => {
-                      const effVal = getEffectiveBeanValue(beanValue, event.h, pressMode, presses, tenthPressed, tenthPressValue);
-                      const holePress = pressMode === 'perHole' ? holePresses[event.h] : null;
-                      const pressBonus = holePress?.playerIdxs?.includes(selectedPlayer) ? (holePress.value ?? beanValue) : 0;
-                      const dollars = event.incoming
-                        ? event.beans * (effVal + pressBonus)
-                        : event.beans * (effVal + pressBonus) * (n - 1);
-                      return `${dollars >= 0 ? '+' : ''}$${Math.abs(dollars).toFixed(2)}`;
-                    })()}
-                  </Text>
                 </Text>
               </View>
             ))}
