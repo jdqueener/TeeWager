@@ -39,9 +39,6 @@ export default function LeaderboardScreen() {
                 <Text style={[styles.beans, p.beans < 0 && styles.neg]}>
                   {p.beans >= 0 ? `+${p.beans}` : p.beans} beans
                 </Text>
-                <Text style={[styles.dollars, dollars < 0 && styles.neg]}>
-                  {dollars >= 0 ? `+$${dollars.toFixed(2)}` : `-$${Math.abs(dollars).toFixed(2)}`}
-                </Text>
               </View>
             </View>
           );
