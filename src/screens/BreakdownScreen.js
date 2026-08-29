@@ -83,15 +83,18 @@ export default function BreakdownScreen() {
   });
   const grossPaid = grossEarned - netDollars;
 
-  // Per-player breakdown: who selectedPlayer pays (positive = selectedPlayer owes them)
-  const pressState = { pressMode, presses, tenthPressed, tenthPressValue, holePresses };
-  const allPayments = computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, [], holeCount, spots);
-  const paidTo = allPayments
-    .filter(p => p.from === selectedPlayer)
-    .map(p => ({ name: players[p.to].split(' ')[0], amt: p.amt }));
-  const receivedFrom = allPayments
-    .filter(p => p.to === selectedPlayer)
-    .map(p => ({ name: players[p.from].split(' ')[0], amt: p.amt }));
+  // Gross paid to each other player for their bean wins (before netting)
+  const paidToPlayers = players
+    .map((_, op) => {
+      if (op === selectedPlayer) return null;
+      let amt = 0;
+      for (let h = 0; h < holeCount; h++) {
+        const effVal = getEffectiveBeanValue(beanValue, h, pressMode, presses, tenthPressed, tenthPressValue);
+        amt += beansAtHoleForPlayer(op, h, scores, activeBeans, firstBonus, n) * effVal;
+      }
+      return amt > 0 ? { name: players[op].split(' ')[0], amt } : null;
+    })
+    .filter(Boolean);
 
   function beanDesc(event) {
     const { bean, count, isFirst, incoming, from } = event;
@@ -149,8 +152,8 @@ export default function BreakdownScreen() {
                 {grossPaid > 0 ? `-$${grossPaid.toFixed(2)}` : '$0.00'}
               </Text>
               <Text style={styles.summaryLabel}>
-                {paidTo.length > 0
-                  ? `to ${paidTo.map(p => `${p.name} $${p.amt.toFixed(2)}`).join(', ')}`
+                {paidToPlayers.length > 0
+                  ? `to ${paidToPlayers.map(p => `${p.name} $${p.amt.toFixed(2)}`).join(', ')}`
                   : 'paid'}
               </Text>
             </View>
