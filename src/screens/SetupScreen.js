@@ -683,45 +683,59 @@ export default function SetupScreen() {
               ))}
             </View>
 
-            {nassauFormat === 'teams' && playerCount === 4 && (
-              <>
-                <Text style={styles.label}>Team Assignment — tap to switch teams</Text>
-                <View style={styles.teamGrid}>
-                  <View style={[styles.teamColumn, styles.teamColumnA]}>
-                    <Text style={styles.teamColumnHeader}>Team A</Text>
-                    {names.slice(0, 4).filter((_, i) => teamAssign[i] === 0).map((name, _, arr) => (
-                      <Text key={name} style={styles.teamColumnPlayer} numberOfLines={1}>
-                        {name.trim() || '—'}
-                      </Text>
-                    ))}
+            {nassauFormat === 'teams' && playerCount === 4 && (() => {
+              const playerOptions = names.slice(0, 4).map((n, i) => ({ label: n.trim() || `Player ${i + 1}`, value: i }));
+              const teamAIdxs = [0,1,2,3].filter(i => teamAssign[i] === 0);
+              const teamBIdxs = [0,1,2,3].filter(i => teamAssign[i] === 1);
+              // each team has 2 slots; pad with fallback so selects always have a value
+              const slots = [
+                teamAIdxs[0] ?? 0, teamAIdxs[1] ?? 1,
+                teamBIdxs[0] ?? 2, teamBIdxs[1] ?? 3,
+              ];
+
+              function pickPlayer(slotIdx, newPi) {
+                // slotIdx 0,1 = Team A slots; 2,3 = Team B slots
+                const oldPi = slots[slotIdx];
+                if (oldPi === newPi) return;
+                // find the slot currently holding newPi and swap
+                const swapSlot = slots.findIndex(v => v === newPi);
+                const newSlots = [...slots];
+                newSlots[slotIdx] = newPi;
+                if (swapSlot >= 0) newSlots[swapSlot] = oldPi;
+                // rebuild teamAssign: slots 0,1 → team 0; slots 2,3 → team 1
+                const next = [0,0,0,0];
+                next[newSlots[0]] = 0; next[newSlots[1]] = 0;
+                next[newSlots[2]] = 1; next[newSlots[3]] = 1;
+                setTeamAssign(next);
+              }
+
+              const sel = { fontSize: 15, padding: '8px', borderRadius: 8, border: '1px solid #ccc', width: '100%', marginBottom: 8, backgroundColor: '#fff', cursor: 'pointer' };
+
+              return (
+                <>
+                  <Text style={styles.label}>Team Assignment</Text>
+                  <View style={styles.teamGrid}>
+                    <View style={[styles.teamColumn, styles.teamColumnA]}>
+                      <Text style={[styles.teamColumnHeader, { color: colors.green }]}>Team A</Text>
+                      {[0, 1].map(slot => (
+                        <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
+                          {playerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                        </select>
+                      ))}
+                    </View>
+                    <View style={[styles.teamColumn, styles.teamColumnB]}>
+                      <Text style={[styles.teamColumnHeader, { color: '#1d6fa4' }]}>Team B</Text>
+                      {[2, 3].map(slot => (
+                        <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
+                          {playerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                        </select>
+                      ))}
+                    </View>
                   </View>
-                  <View style={[styles.teamColumn, styles.teamColumnB]}>
-                    <Text style={styles.teamColumnHeader}>Team B</Text>
-                    {names.slice(0, 4).filter((_, i) => teamAssign[i] === 1).map((name) => (
-                      <Text key={name} style={styles.teamColumnPlayer} numberOfLines={1}>
-                        {name.trim() || '—'}
-                      </Text>
-                    ))}
-                  </View>
-                </View>
-                {names.slice(0, 4).map((name, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    style={[styles.teamAssignRow, teamAssign[i] === 0 ? styles.teamAssignRowA : styles.teamAssignRowB]}
-                    onPress={() => setTeamAssign(prev => { const next = [...prev]; next[i] = next[i] === 0 ? 1 : 0; return next; })}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={styles.teamAssignName} numberOfLines={1}>{name.trim() || `Player ${i + 1}`}</Text>
-                    <Text style={styles.teamAssignBadge}>
-                      {teamAssign[i] === 0 ? '🟢 Team A' : '🔵 Team B'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-                <Text style={styles.fieldHint}>
-                  Best ball: each team plays their lower score on each hole.
-                </Text>
-              </>
-            )}
+                  <Text style={styles.fieldHint}>Best ball: each team plays their lower score on each hole.</Text>
+                </>
+              );
+            })()}
             {nassauFormat === 'teams' && playerCount !== 4 && (
               <Text style={styles.fieldHint}>⚠️ Set player count to 4 to use 2v2 Teams.</Text>
             )}
