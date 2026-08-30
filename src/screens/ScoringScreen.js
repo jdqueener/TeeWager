@@ -1,3 +1,4 @@
+// v2
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useGame } from '../context/GameContext';
