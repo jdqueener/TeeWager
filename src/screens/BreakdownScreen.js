@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer, computePressSettleUp } from '../utils/beans';
+import { holeWinner } from '../utils/nassau';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -9,7 +10,9 @@ import PaywallModal from '../components/PaywallModal';
 export default function BreakdownScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const { players, scores, firstBonus, beanValue, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0,
-    pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {}, spots = [] } = state;
+    pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {}, spots = [],
+    gameMode = 'beans', nassauStake = 5.00, strokes = [] } = state;
+  const isNassau = gameMode === 'nassau';
   const [selectedPlayer, setSelectedPlayer] = useState(0);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -137,61 +140,114 @@ export default function BreakdownScreen() {
       </ScrollView>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Summary header */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryGlow} />
-          <Text style={styles.summaryName}>{players[selectedPlayer]}</Text>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryVal}>+${grossEarned.toFixed(2)}</Text>
-              <Text style={styles.summaryLabel}>earned</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryVal, grossPaid > 0 && styles.neg]}>
-                {grossPaid > 0 ? `-$${grossPaid.toFixed(2)}` : '$0.00'}
-              </Text>
-              <Text style={styles.summaryLabel}>
-                {paidToPlayers.length > 0
-                  ? `to ${paidToPlayers.map(p => `${p.name} $${p.amt.toFixed(2)}`).join(', ')}`
-                  : 'paid'}
-              </Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryVal, netDollars < 0 && styles.neg]}>
-                {netDollars >= 0 ? '+' : ''}${Math.abs(netDollars).toFixed(2)}
-              </Text>
-              <Text style={styles.summaryLabel}>net</Text>
-            </View>
-          </View>
-        </View>
-
-        {events.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <Text style={styles.emptyIcon}>⛳</Text>
-            <Text style={styles.empty}>No beans recorded yet for {players[selectedPlayer]}.</Text>
-          </View>
-        ) : (
+        {isNassau ? (
+          /* Nassau: hole-by-hole stroke comparison */
           <>
-            <Text style={styles.sectionLabel}>Bean by bean</Text>
-            {events.map((event, idx) => (
-              <View key={idx} style={[styles.eventRow, event.beans < 0 && styles.eventRowNeg]}>
-                <View style={styles.eventLeft}>
-                  <Text style={styles.eventHole}>Hole {event.holeNum}</Text>
-                  <Text style={styles.eventPar}>Par {event.par}</Text>
-                </View>
-                <View style={styles.eventMid}>
-                  <Text style={styles.eventDesc}>{beanDesc(event)}</Text>
-                </View>
-                <Text style={[styles.eventBeans, event.beans < 0 && styles.neg]}>
-                  {(() => {
-                    const total = event.incoming ? event.beans : event.beans * (n - 1);
-                    return total >= 0 ? `+${total}` : `${total}`;
-                  })()}
+            <View style={styles.nassauHeader}>
+              <Text style={styles.nassauHeaderName}>{players[selectedPlayer]}</Text>
+              <Text style={styles.nassauHeaderSub}>${nassauStake.toFixed(2)}/leg · hole-by-hole results</Text>
+            </View>
+            <View style={styles.nassauTableHeader}>
+              <Text style={[styles.nassauCol, styles.nassauColHole]}>HOLE</Text>
+              {players.map((name, pi) => (
+                <Text key={pi} style={[styles.nassauCol, pi === selectedPlayer && styles.nassauColActive]}>
+                  {name.split(' ')[0].toUpperCase()}
                 </Text>
+              ))}
+              <Text style={[styles.nassauCol, styles.nassauColResult]}>RESULT</Text>
+            </View>
+            {Array.from({ length: holeCount }, (_, h) => {
+              const par = getHolePar(h);
+              const playerIdxs = players.map((_, i) => i);
+              const winner = holeWinner(strokes, playerIdxs, h);
+              const allEntered = playerIdxs.every(pi => (strokes[pi]?.[h] ?? 0) > 0);
+              let resultText = '—';
+              let resultStyle = styles.nassauResultPending;
+              if (allEntered) {
+                if (winner === -1) { resultText = 'Halved'; resultStyle = styles.nassauResultHalve; }
+                else if (winner === selectedPlayer) { resultText = 'WIN'; resultStyle = styles.nassauResultWin; }
+                else { resultText = `${players[winner].split(' ')[0]} wins`; resultStyle = styles.nassauResultLoss; }
+              }
+              return (
+                <View key={h} style={styles.nassauTableRow}>
+                  <View style={styles.nassauColHoleCell}>
+                    <Text style={styles.nassauHoleNum}>{holeOffset + h + 1}</Text>
+                    <Text style={styles.nassauHolePar}>P{par}</Text>
+                  </View>
+                  {players.map((_, pi) => {
+                    const s = strokes[pi]?.[h] ?? 0;
+                    const relPar = s > 0 ? s - par : null;
+                    const isWin = allEntered && winner === pi;
+                    return (
+                      <Text key={pi} style={[styles.nassauCol, styles.nassauStroke, pi === selectedPlayer && styles.nassauColActive, isWin && styles.nassauStrokeWin]}>
+                        {s > 0 ? s : '—'}{relPar !== null ? ` (${relPar >= 0 ? '+' : ''}${relPar === 0 ? 'E' : relPar})` : ''}
+                      </Text>
+                    );
+                  })}
+                  <Text style={[styles.nassauCol, styles.nassauColResult, resultStyle]}>{resultText}</Text>
+                </View>
+              );
+            })}
+          </>
+        ) : (
+          /* Beans: existing view */
+          <>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryGlow} />
+              <Text style={styles.summaryName}>{players[selectedPlayer]}</Text>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryVal}>+${grossEarned.toFixed(2)}</Text>
+                  <Text style={styles.summaryLabel}>earned</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                  <Text style={[styles.summaryVal, grossPaid > 0 && styles.neg]}>
+                    {grossPaid > 0 ? `-$${grossPaid.toFixed(2)}` : '$0.00'}
+                  </Text>
+                  <Text style={styles.summaryLabel}>
+                    {paidToPlayers.length > 0
+                      ? `to ${paidToPlayers.map(p => `${p.name} $${p.amt.toFixed(2)}`).join(', ')}`
+                      : 'paid'}
+                  </Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}>
+                  <Text style={[styles.summaryVal, netDollars < 0 && styles.neg]}>
+                    {netDollars >= 0 ? '+' : ''}${Math.abs(netDollars).toFixed(2)}
+                  </Text>
+                  <Text style={styles.summaryLabel}>net</Text>
+                </View>
               </View>
-            ))}
+            </View>
+
+            {events.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyIcon}>⛳</Text>
+                <Text style={styles.empty}>No beans recorded yet for {players[selectedPlayer]}.</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.sectionLabel}>Bean by bean</Text>
+                {events.map((event, idx) => (
+                  <View key={idx} style={[styles.eventRow, event.beans < 0 && styles.eventRowNeg]}>
+                    <View style={styles.eventLeft}>
+                      <Text style={styles.eventHole}>Hole {event.holeNum}</Text>
+                      <Text style={styles.eventPar}>Par {event.par}</Text>
+                    </View>
+                    <View style={styles.eventMid}>
+                      <Text style={styles.eventDesc}>{beanDesc(event)}</Text>
+                    </View>
+                    <Text style={[styles.eventBeans, event.beans < 0 && styles.neg]}>
+                      {(() => {
+                        const total = event.incoming ? event.beans : event.beans * (n - 1);
+                        return total >= 0 ? `+${total}` : `${total}`;
+                      })()}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            )}
           </>
         )}
       </ScrollView>
@@ -237,4 +293,24 @@ const styles = StyleSheet.create({
   emptyWrap:     { alignItems: 'center', marginTop: 70, paddingHorizontal: spacing.xl },
   emptyIcon:     { fontSize: 52, marginBottom: spacing.md },
   empty:         { color: colors.textMid, textAlign: 'center', fontSize: 16, fontWeight: '600', lineHeight: 24 },
+
+  // Nassau breakdown
+  nassauHeader:       { backgroundColor: colors.green, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md },
+  nassauHeaderName:   { fontSize: 20, fontWeight: '900', color: colors.white },
+  nassauHeaderSub:    { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  nassauTableHeader:  { flexDirection: 'row', paddingHorizontal: spacing.sm, paddingBottom: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: spacing.xs },
+  nassauTableRow:     { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, marginBottom: 4, borderWidth: 0.5, borderColor: colors.border },
+  nassauCol:          { flex: 1, fontSize: 13, fontWeight: '700', color: colors.textMid, textAlign: 'center' },
+  nassauColActive:    { color: colors.green },
+  nassauColHole:      { flex: 0.7, textAlign: 'left' },
+  nassauColHoleCell:  { flex: 0.7, alignItems: 'flex-start' },
+  nassauColResult:    { flex: 1.4, textAlign: 'right' },
+  nassauHoleNum:      { fontSize: 14, fontWeight: '900', color: colors.textDark },
+  nassauHolePar:      { fontSize: 10, color: colors.textLight, fontWeight: '600' },
+  nassauStroke:       { fontSize: 13, color: colors.textDark },
+  nassauStrokeWin:    { color: colors.green, fontWeight: '900' },
+  nassauResultPending:{ color: colors.textLight, fontStyle: 'italic' },
+  nassauResultWin:    { color: colors.green, fontWeight: '900' },
+  nassauResultHalve:  { color: colors.gold, fontWeight: '700' },
+  nassauResultLoss:   { color: colors.red, fontWeight: '700' },
 });
