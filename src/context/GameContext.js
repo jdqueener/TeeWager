@@ -268,7 +268,9 @@ export function GameProvider({ children }) {
   useEffect(() => {
     (async () => {
       const [saved, customs] = await Promise.all([loadGame(), loadCustomDefs()]);
-      if (saved) dispatch({ type: 'LOAD', payload: { ...saved, customBeans: customs } });
+      // Discard saves from before gameMode was added — they would default to beans even for Nassau rounds
+      if (saved && saved.gameMode !== undefined) dispatch({ type: 'LOAD', payload: { ...saved, customBeans: customs } });
+      else if (saved) dispatch({ type: 'LOAD', payload: { ...INITIAL_SETUP, customBeans: customs } });
       else if (customs.length) dispatch({ type: 'LOAD', payload: { ...INITIAL_SETUP, customBeans: customs } });
 
       const { data: { session } } = await supabase.auth.getSession();
