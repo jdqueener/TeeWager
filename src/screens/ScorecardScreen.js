@@ -300,10 +300,6 @@ export default function ScorecardScreen() {
   const courseName = course?.name ?? '';
   const teeLabel   = course?.tee ? ` · ${course.tee}` : '';
 
-  if (gameMode === 'nassau') {
-    return <NassauScoring state={state} dispatch={dispatch} pro={pro} setPro={setPro} getHolePar={getHolePar} />;
-  }
-
   return (
     <View style={styles.root}>
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
@@ -350,7 +346,37 @@ export default function ScorecardScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Running totals */}
+          {/* Nassau match status bar */}
+          {gameMode === 'nassau' && (() => {
+            const playerIdxs = players.map((_, i) => i);
+            const frontRange = Array.from({ length: 9 }, (_, i) => i);
+            const backRange  = holeCount >= 18 ? Array.from({ length: 9 }, (_, i) => i + 9) : [];
+            const legs = [
+              { label: 'front', range: frontRange, title: 'Front 9' },
+              ...(holeCount >= 18 ? [{ label: 'back', range: backRange, title: 'Back 9' }] : []),
+              { label: 'total', range: Array.from({ length: holeCount }, (_, i) => i), title: 'Total' },
+            ];
+            function statusLine(range, label) {
+              if (players.length === 2) return legMatchStatus(strokes, playerIdxs, range, players);
+              const { wins } = nassauMatchSummary(strokes, players, holeCount)[label] || {};
+              if (!wins) return 'Not started';
+              const sorted = [...playerIdxs].sort((a, b) => (wins[b] || 0) - (wins[a] || 0));
+              return sorted.map(pi => `${players[pi].split(' ')[0]} ${wins[pi] || 0}W`).join(' · ');
+            }
+            return (
+              <View style={styles.nassauStatusBar}>
+                {legs.map(leg => (
+                  <View key={leg.label} style={styles.nassauLeg}>
+                    <Text style={styles.nassauLegTitle}>{leg.title}</Text>
+                    <Text style={styles.nassauLegStatus} numberOfLines={1}>{statusLine(leg.range, leg.label)}</Text>
+                  </View>
+                ))}
+              </View>
+            );
+          })()}
+
+          {/* Running totals (beans only) */}
+          {gameMode !== 'nassau' && (
           <View style={styles.totalsBar}>
             {players.map((name, pi) => {
               const t = playerTotalBeans(pi) + (state.spots?.[pi] || 0);
@@ -362,9 +388,10 @@ export default function ScorecardScreen() {
               );
             })}
           </View>
+          )}
 
-          {/* Press bar */}
-          {pressMode && (
+          {/* Press bar (beans only) */}
+          {gameMode !== 'nassau' && pressMode && (
             <View style={styles.pressBar}>
               <View style={{ flex: 1 }}>
                 {currentEffValue > beanValue && pressMode !== 'perHole' && (
@@ -391,7 +418,43 @@ export default function ScorecardScreen() {
           )}
 
           <ScrollView contentContainerStyle={styles.holeContent}>
-            {/* Stroke row */}
+            {/* Nassau stroke entry */}
+            {gameMode === 'nassau' && players.map((name, pi) => {
+              const val = strokes[pi]?.[hole] || 0;
+              return (
+                <View key={pi} style={styles.nassauStrokeRow}>
+                  <Text style={styles.nassauPlayerName} numberOfLines={1}>{name}</Text>
+                  <View style={styles.nassauStepper}>
+                    <TouchableOpacity
+                      style={styles.nassauStepBtn}
+                      onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: Math.max(1, val - 1) })}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={styles.nassauStepText}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.nassauStrokeVal}>{val || '—'}</Text>
+                    <TouchableOpacity
+                      style={styles.nassauStepBtn}
+                      onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: val + 1 })}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={styles.nassauStepText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={[styles.nassauRelPar, val === 0 && { opacity: 0 }]}>
+                    {val === 0 ? '—' : val === par ? 'E' : val < par ? `${val - par}` : `+${val - par}`}
+                  </Text>
+                </View>
+              );
+            })}
+            {gameMode === 'nassau' && (
+              <Text style={styles.nassauStakeNote}>
+                ${nassauStake.toFixed(2)} per leg · Max ${(nassauStake * (holeCount >= 18 ? 3 : 1)).toFixed(2)} at stake
+              </Text>
+            )}
+
+            {/* Stroke + bean cards (beans mode only) */}
+            {gameMode !== 'nassau' && (<>
             <View style={styles.strokesCard}>
               <Text style={styles.strokesLabel}>Strokes</Text>
               <View style={styles.strokesRow}>
@@ -514,6 +577,7 @@ export default function ScorecardScreen() {
                 ))}
               </>
             )}
+            </>)}
           </ScrollView>
         </>
       ) : (
@@ -723,115 +787,6 @@ export default function ScorecardScreen() {
           </View>
         </View>
       </Modal>
-    </View>
-  );
-}
-
-// ── Nassau Scoring ──────────────────────────────────────────────────────────
-
-function NassauScoring({ state, dispatch, pro, setPro, getHolePar }) {
-  const { players, strokes, currentHole, holeCount = 18, holeOffset = 0, nassauStake = 5 } = state;
-  const [paywallVisible, setPaywallVisible] = useState(false);
-  const hole     = currentHole;
-  const lastHole = holeCount - 1;
-  const par      = getHolePar(hole);
-
-  const playerIdxs = players.map((_, i) => i);
-  const frontRange = Array.from({ length: 9 }, (_, i) => i);
-  const backRange  = holeCount >= 18 ? Array.from({ length: 9 }, (_, i) => i + 9) : [];
-
-  function statusLine(range, label) {
-    if (players.length === 2) {
-      return legMatchStatus(strokes, playerIdxs, range, players);
-    }
-    const { wins } = nassauMatchSummary(strokes, players, holeCount)[label] || {};
-    if (!wins) return 'Not started';
-    const sorted = [...playerIdxs].sort((a, b) => (wins[b] || 0) - (wins[a] || 0));
-    return sorted.map(pi => `${players[pi].split(' ')[0]} ${wins[pi] || 0}W`).join(' · ');
-  }
-
-  const legs = [
-    { label: 'front', range: frontRange, title: 'Front 9' },
-    ...(holeCount >= 18 ? [{ label: 'back', range: backRange, title: 'Back 9' }] : []),
-    { label: 'total', range: Array.from({ length: holeCount }, (_, i) => i), title: 'Total' },
-  ];
-
-  return (
-    <View style={styles.root}>
-      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
-
-      {/* Hole nav */}
-      <View style={styles.holeNav}>
-        <TouchableOpacity
-          onPress={() => dispatch({ type: 'SET_HOLE', hole: Math.max(0, hole - 1) })}
-          disabled={hole === 0}
-          style={styles.navBtn}
-        >
-          <Text style={[styles.navArrow, hole === 0 && styles.navDisabled]}>‹</Text>
-        </TouchableOpacity>
-        <View style={styles.holeCenter}>
-          <Text style={styles.holeLabel}>Hole {holeOffset + hole + 1}</Text>
-          <Text style={styles.parLabel}>Par {par}</Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => hole < lastHole && dispatch({ type: 'SET_HOLE', hole: hole + 1 })}
-          disabled={hole === lastHole}
-          style={styles.navBtn}
-        >
-          <Text style={[styles.navArrow, hole === lastHole && styles.navDisabled]}>›</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Match status bar */}
-      <View style={styles.nassauStatusBar}>
-        {legs.map(leg => (
-          <View key={leg.label} style={styles.nassauLeg}>
-            <Text style={styles.nassauLegTitle}>{leg.title}</Text>
-            <Text style={styles.nassauLegStatus} numberOfLines={1}>
-              {statusLine(leg.range, leg.label)}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Stroke entry */}
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.nassauHoleLabel}>Enter strokes — Hole {holeOffset + hole + 1}</Text>
-        {players.map((name, pi) => {
-          const val = strokes[pi]?.[hole] || 0;
-          return (
-            <View key={pi} style={styles.nassauStrokeRow}>
-              <Text style={styles.nassauPlayerName} numberOfLines={1}>{name}</Text>
-              <View style={styles.nassauStepper}>
-                <TouchableOpacity
-                  style={styles.nassauStepBtn}
-                  onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: Math.max(1, val - 1) })}
-                  activeOpacity={0.75}
-                >
-                  <Text style={styles.nassauStepText}>−</Text>
-                </TouchableOpacity>
-                <Text style={styles.nassauStrokeVal}>{val || '—'}</Text>
-                <TouchableOpacity
-                  style={styles.nassauStepBtn}
-                  onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: val + 1 })}
-                  activeOpacity={0.75}
-                >
-                  <Text style={styles.nassauStepText}>+</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={[styles.nassauRelPar, val === 0 && { opacity: 0 }]}>
-                {val === 0 ? '—' : val === par ? 'E' : val < par ? `${val - par}` : `+${val - par}`}
-              </Text>
-            </View>
-          );
-        })}
-
-        <Text style={styles.nassauStakeNote}>
-          ${nassauStake.toFixed(2)} per leg · Max ${(nassauStake * (holeCount >= 18 ? 3 : 1)).toFixed(2)} at stake
-        </Text>
-      </ScrollView>
-
-      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
     </View>
   );
 }
