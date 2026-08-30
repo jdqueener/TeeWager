@@ -685,28 +685,40 @@ export default function SetupScreen() {
 
             {nassauFormat === 'teams' && playerCount === 4 && (
               <>
-                <Text style={styles.label}>Team Assignment</Text>
-                {names.slice(0, 4).map((name, i) => (
-                  <View key={i} style={styles.teamAssignRow}>
-                    <Text style={styles.teamAssignName} numberOfLines={1}>{name.trim() || `Player ${i + 1}`}</Text>
-                    <View style={styles.teamToggle}>
-                      {[{ idx: 0, label: 'Team A' }, { idx: 1, label: 'Team B' }].map(({ idx, label }) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={[styles.teamToggleBtn, teamAssign[i] === idx && (idx === 0 ? styles.teamToggleBtnA : styles.teamToggleBtnB)]}
-                          onPress={() => setTeamAssign(prev => prev.map((t, j) => j === i ? idx : t))}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={[styles.teamToggleBtnText, teamAssign[i] === idx && styles.teamToggleBtnTextActive]}>
-                            {label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                <Text style={styles.label}>Team Assignment — tap to switch teams</Text>
+                <View style={styles.teamGrid}>
+                  <View style={[styles.teamColumn, styles.teamColumnA]}>
+                    <Text style={styles.teamColumnHeader}>Team A</Text>
+                    {names.slice(0, 4).filter((_, i) => teamAssign[i] === 0).map((name, _, arr) => (
+                      <Text key={name} style={styles.teamColumnPlayer} numberOfLines={1}>
+                        {name.trim() || '—'}
+                      </Text>
+                    ))}
                   </View>
+                  <View style={[styles.teamColumn, styles.teamColumnB]}>
+                    <Text style={styles.teamColumnHeader}>Team B</Text>
+                    {names.slice(0, 4).filter((_, i) => teamAssign[i] === 1).map((name) => (
+                      <Text key={name} style={styles.teamColumnPlayer} numberOfLines={1}>
+                        {name.trim() || '—'}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+                {names.slice(0, 4).map((name, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[styles.teamAssignRow, teamAssign[i] === 0 ? styles.teamAssignRowA : styles.teamAssignRowB]}
+                    onPress={() => setTeamAssign(prev => { const next = [...prev]; next[i] = next[i] === 0 ? 1 : 0; return next; })}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.teamAssignName} numberOfLines={1}>{name.trim() || `Player ${i + 1}`}</Text>
+                    <Text style={styles.teamAssignBadge}>
+                      {teamAssign[i] === 0 ? '🟢 Team A' : '🔵 Team B'}
+                    </Text>
+                  </TouchableOpacity>
                 ))}
                 <Text style={styles.fieldHint}>
-                  Best ball: each team uses the lower score on every hole.
+                  Best ball: each team plays their lower score on each hole.
                 </Text>
               </>
             )}
@@ -998,8 +1010,17 @@ const styles = StyleSheet.create({
   gameModeBtnText:      { fontSize: 15, fontWeight: '700', color: colors.textMid },
   gameModeBtnTextActive:{ color: colors.white },
   fieldHint:            { fontSize: 12, color: colors.textLight, marginBottom: spacing.sm },
-  teamAssignRow:        { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.sm, marginBottom: spacing.xs, gap: spacing.sm },
+  teamGrid:             { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  teamColumn:           { flex: 1, borderRadius: radius.md, padding: spacing.sm, borderWidth: 1 },
+  teamColumnA:          { borderColor: colors.green, backgroundColor: 'rgba(34,139,34,0.08)' },
+  teamColumnB:          { borderColor: '#1d6fa4', backgroundColor: 'rgba(29,111,164,0.08)' },
+  teamColumnHeader:     { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+  teamColumnPlayer:     { fontSize: 13, fontWeight: '600', color: colors.textDark, paddingVertical: 1 },
+  teamAssignRow:        { flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, borderWidth: 1.5, padding: spacing.sm, marginBottom: spacing.xs },
+  teamAssignRowA:       { borderColor: colors.green, backgroundColor: 'rgba(34,139,34,0.06)' },
+  teamAssignRowB:       { borderColor: '#1d6fa4', backgroundColor: 'rgba(29,111,164,0.06)' },
   teamAssignName:       { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textDark },
+  teamAssignBadge:      { fontSize: 13, fontWeight: '700' },
   teamToggle:           { flexDirection: 'row', gap: 6 },
   teamToggleBtn:        { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.offWhite },
   teamToggleBtnA:       { borderColor: colors.green, backgroundColor: colors.green },
