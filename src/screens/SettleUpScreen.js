@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { totalBeansForPlayer, computePressSettleUp } from '../utils/beans';
+import { computeNassauSettleUp, legStandings, legMatchStatus } from '../utils/nassau';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
 import { saveStats, loadStats } from '../utils/storage';
@@ -13,7 +14,8 @@ import ShareCard from '../components/ShareCard';
 export default function SettleUpScreen() {
   const { state, dispatch, pro, setPro, activeBeans, refreshProfile } = useGame();
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18,
-    pressMode, presses, tenthPressed, tenthPressValue, holePresses, spots = [] } = state;
+    pressMode, presses, tenthPressed, tenthPressValue, holePresses, spots = [],
+    gameMode = 'beans', nassauStake = 5.00, strokes = [] } = state;
   const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const countedRef = useRef(false);
@@ -49,9 +51,24 @@ export default function SettleUpScreen() {
     if (kpCarryover > 0) dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
   }
 
+  const isNassau = gameMode === 'nassau';
+
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
   const pressState = { pressMode, presses, tenthPressed, tenthPressValue, holePresses };
-  const payments   = computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount, spots);
+  const payments = isNassau
+    ? computeNassauSettleUp(players, strokes, nassauStake, holeCount)
+    : computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount, spots);
+
+  // Nassau leg summaries
+  const playerIdxs = players.map((_, i) => i);
+  const frontRange = Array.from({ length: Math.min(9, holeCount) }, (_, i) => i);
+  const backRange  = holeCount >= 18 ? Array.from({ length: 9 }, (_, i) => i + 9) : [];
+  const totalRange = Array.from({ length: holeCount }, (_, i) => i);
+  const nassauLegs = isNassau ? [
+    { label: 'Front 9',  range: frontRange },
+    ...(holeCount >= 18 ? [{ label: 'Back 9', range: backRange }] : []),
+    { label: 'Total',    range: totalRange },
+  ] : [];
 
   async function saveToStats() {
     if (!pro) { setPaywallVisible(true); return; }
@@ -98,8 +115,8 @@ export default function SettleUpScreen() {
           <View style={styles.headingRule} />
         </View>
 
-        {/* Chip-Off */}
-        {needsChipOff && (
+        {/* Chip-Off (beans only) */}
+        {!isNassau && needsChipOff && (
           <>
             <Text style={styles.sectionLabel}>⛳ Chip-Off Required</Text>
             <View style={styles.chipOffCard}>
@@ -138,26 +155,55 @@ export default function SettleUpScreen() {
           </>
         )}
 
-        {/* Bean totals */}
-        <Text style={styles.sectionLabel}>Bean totals</Text>
-        {players.map((name, i) => {
-          const beans   = beanTotals[i];
-          const spot    = spots[i] || 0;
-          const dollars = beans * beanValue;
-          return (
-            <View key={i} style={styles.row}>
-              <Text style={styles.name}>{name}</Text>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[styles.val, beans < 0 && styles.neg]}>
-                  {beans >= 0 ? `+${beans}` : beans} beans{spot > 0 ? ` +${spot} spot` : ''}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
+        {/* Nassau leg standings OR bean totals */}
+        {isNassau ? (
+          <>
+            <Text style={styles.sectionLabel}>Match Results · ${nassauStake.toFixed(2)}/leg</Text>
+            {nassauLegs.map(({ label, range }) => {
+              const standing = legStandings(strokes, playerIdxs, range);
+              const status = players.length === 2
+                ? legMatchStatus(strokes, playerIdxs, range, players)
+                : null;
+              return (
+                <View key={label} style={styles.nassauLegCard}>
+                  <Text style={styles.nassauLegLabel}>{label}</Text>
+                  {status ? (
+                    <Text style={styles.nassauLegStatus}>{status}</Text>
+                  ) : (
+                    <View style={styles.nassauLegPlayers}>
+                      {players.map((name, pi) => (
+                        <Text key={pi} style={styles.nassauLegPlayer}>
+                          {name.split(' ')[0]}: {standing.wins[pi]}W {standing.halves[pi]}H {standing.losses[pi]}L
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </>
+        ) : (
+          <>
+            <Text style={styles.sectionLabel}>Bean totals</Text>
+            {players.map((name, i) => {
+              const beans = beanTotals[i];
+              const spot  = spots[i] || 0;
+              return (
+                <View key={i} style={styles.row}>
+                  <Text style={styles.name}>{name}</Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.val, beans < 0 && styles.neg]}>
+                      {beans >= 0 ? `+${beans}` : beans} beans{spot > 0 ? ` +${spot} spot` : ''}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </>
+        )}
 
-        {/* Wager results */}
-        {wagers.length > 0 && (
+        {/* Wager results (beans only) */}
+        {!isNassau && wagers.length > 0 && (
           <>
             <Text style={styles.sectionLabel}>Side Wagers {!pro && '🔒'}</Text>
             {wagers.map((w, wi) => (
@@ -288,6 +334,13 @@ const styles = StyleSheet.create({
   btnSaved:     { borderColor: colors.textLight },
   btnText:      { color: colors.white, fontWeight: '900', fontSize: 17 },
   btnSecText:   { color: colors.green, fontWeight: '700', fontSize: 15 },
+
+  // Nassau leg cards
+  nassauLegCard:    { backgroundColor: colors.white, borderRadius: radius.md, borderLeftWidth: 4, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.sm, ...shadow.sm },
+  nassauLegLabel:   { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
+  nassauLegStatus:  { fontSize: 17, fontWeight: '800', color: colors.textDark },
+  nassauLegPlayers: { gap: 4 },
+  nassauLegPlayer:  { fontSize: 15, fontWeight: '700', color: colors.textDark },
 
   // Confirm modal
   confirmOverlay:         { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
