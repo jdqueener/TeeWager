@@ -36,6 +36,8 @@ export default function SetupScreen() {
   const [holeCount, setHoleCount] = useState(18);
   const [nineChoice, setNineChoice] = useState('front'); // 'front' | 'back'
   const [names, setNames] = useState(['', '', '', '', '']);
+  const [gameMode, setGameMode] = useState('beans'); // 'beans' | 'nassau'
+  const [nassauStake, setNassauStake] = useState('5.00');
   const [beanValue, setBeanValue] = useState('1.00');
   const [enabledBeans, setEnabledBeans] = useState(
     new Set(BEAN_DEFS.map(b => b.id))
@@ -296,8 +298,13 @@ export default function SetupScreen() {
       return;
     }
     const val = parseFloat(beanValue);
-    if (isNaN(val) || val <= 0) {
+    if (gameMode === 'beans' && (isNaN(val) || val <= 0)) {
       setSavePrompt({ error: 'Enter a positive dollar amount per bean.' });
+      return;
+    }
+    const nassauVal = parseFloat(nassauStake);
+    if (gameMode === 'nassau' && (isNaN(nassauVal) || nassauVal <= 0)) {
+      setSavePrompt({ error: 'Enter a positive Nassau stake amount.' });
       return;
     }
 
@@ -331,7 +338,7 @@ export default function SetupScreen() {
     );
     dispatch({
       type: 'START_ROUND',
-      payload: { players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom, wagers: [], course, holeCount, holeOffset, pressMode: pressEnabled ? pressMode : null, spots: spotsEnabled ? spots.slice(0, players.length) : players.map(() => 0), ldCarryoverEnabled, kpCarryoverEnabled },
+      payload: { gameMode, nassauStake: nassauVal, players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom, wagers: [], course, holeCount, holeOffset, pressMode: pressEnabled ? pressMode : null, spots: spotsEnabled ? spots.slice(0, players.length) : players.map(() => 0), ldCarryoverEnabled, kpCarryoverEnabled },
     });
   }
 
@@ -608,6 +615,44 @@ export default function SetupScreen() {
           </View>
         ))}
 
+        {/* Game mode selector */}
+        <Text style={styles.label}>Game</Text>
+        <View style={styles.gameModeRow}>
+          {[
+            { id: 'beans',  label: '🫘 Beans' },
+            { id: 'nassau', label: '⛳ Nassau' },
+          ].map(({ id, label }) => (
+            <TouchableOpacity
+              key={id}
+              style={[styles.gameModeBtn, gameMode === id && styles.gameModeBtnActive]}
+              onPress={() => setGameMode(id)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.gameModeBtnText, gameMode === id && styles.gameModeBtnTextActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {gameMode === 'nassau' && (
+          <>
+            <Text style={styles.label}>$ per leg (front / back / total)</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="decimal-pad"
+              value={nassauStake}
+              onChangeText={setNassauStake}
+              placeholder="5.00"
+              placeholderTextColor={colors.textLight}
+            />
+            <Text style={styles.fieldHint}>
+              A $5 Nassau = $5 front nine + $5 back nine + $5 total — max $15 at stake.
+            </Text>
+          </>
+        )}
+
+        {gameMode === 'beans' && <>
         {/* Bean value */}
         <Text style={styles.label}>$ per bean</Text>
         <TextInput
@@ -752,6 +797,7 @@ export default function SetupScreen() {
         <TouchableOpacity style={styles.addCustomBtn} onPress={addCustomBean} activeOpacity={0.7}>
           <Text style={styles.addCustomText}>+ Add custom bean</Text>
         </TouchableOpacity>
+        </>}
 
         {!pro && (
           <View style={styles.trialBadgeWrap}>
@@ -866,6 +912,13 @@ export default function SetupScreen() {
 const styles = StyleSheet.create({
   root:    { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingBottom: 100 },
+
+  gameModeRow:          { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  gameModeBtn:          { flex: 1, paddingVertical: 13, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
+  gameModeBtnActive:    { borderColor: colors.green, backgroundColor: colors.green },
+  gameModeBtnText:      { fontSize: 15, fontWeight: '700', color: colors.textMid },
+  gameModeBtnTextActive:{ color: colors.white },
+  fieldHint:            { fontSize: 12, color: colors.textLight, marginBottom: spacing.sm },
 
   // Hero header
   hero:      { backgroundColor: colors.green, borderRadius: radius.xl, paddingVertical: spacing.xl, paddingHorizontal: spacing.md, marginBottom: spacing.lg, alignItems: 'center', overflow: 'hidden', ...shadow.green },

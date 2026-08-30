@@ -24,6 +24,8 @@ function makeFirstBonus() { return {}; }
 
 const INITIAL_SETUP = {
   phase: 'setup', // 'setup' | 'round'
+  gameMode: 'beans', // 'beans' | 'nassau'
+  nassauStake: 5.00, // dollar amount per Nassau leg (front/back/total)
   players: [],
   beanValue: 1.00,
   enabledBeans: BEAN_DEFS.filter(b => b.free).map(b => b.id),
@@ -60,10 +62,12 @@ function reducer(state, action) {
       return action.payload;
 
     case 'START_ROUND': {
-      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null, spots = [], ldCarryoverEnabled = true, kpCarryoverEnabled = true } = action.payload;
+      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null, spots = [], ldCarryoverEnabled = true, kpCarryoverEnabled = true, gameMode = 'beans', nassauStake = 5.00 } = action.payload;
       return {
         ...state,
         phase: 'round',
+        gameMode,
+        nassauStake,
         players,
         beanValue,
         enabledBeans,
