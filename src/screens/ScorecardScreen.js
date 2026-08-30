@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
+import { nassauMatchSummary, legMatchStatus } from '../utils/nassau';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -21,6 +22,7 @@ export default function ScorecardScreen() {
     holeCount = 18, holeOffset = 0, course,
     pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {},
     ldCarryoverEnabled = true, kpCarryoverEnabled = true,
+    gameMode = 'beans', nassauStake = 5.00,
   } = state;
 
   const strokes = state.strokes?.length === players.length
@@ -297,6 +299,10 @@ export default function ScorecardScreen() {
 
   const courseName = course?.name ?? '';
   const teeLabel   = course?.tee ? ` · ${course.tee}` : '';
+
+  if (gameMode === 'nassau') {
+    return <NassauScoring state={state} dispatch={dispatch} pro={pro} setPro={setPro} getHolePar={getHolePar} />;
+  }
 
   return (
     <View style={styles.root}>
@@ -721,6 +727,115 @@ export default function ScorecardScreen() {
   );
 }
 
+// ── Nassau Scoring ──────────────────────────────────────────────────────────
+
+function NassauScoring({ state, dispatch, pro, setPro, getHolePar }) {
+  const { players, strokes, currentHole, holeCount = 18, holeOffset = 0, nassauStake = 5 } = state;
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const hole     = currentHole;
+  const lastHole = holeCount - 1;
+  const par      = getHolePar(hole);
+
+  const playerIdxs = players.map((_, i) => i);
+  const frontRange = Array.from({ length: 9 }, (_, i) => i);
+  const backRange  = holeCount >= 18 ? Array.from({ length: 9 }, (_, i) => i + 9) : [];
+
+  function statusLine(range, label) {
+    if (players.length === 2) {
+      return legMatchStatus(strokes, playerIdxs, range, players);
+    }
+    const { wins } = nassauMatchSummary(strokes, players, holeCount)[label] || {};
+    if (!wins) return 'Not started';
+    const sorted = [...playerIdxs].sort((a, b) => (wins[b] || 0) - (wins[a] || 0));
+    return sorted.map(pi => `${players[pi].split(' ')[0]} ${wins[pi] || 0}W`).join(' · ');
+  }
+
+  const legs = [
+    { label: 'front', range: frontRange, title: 'Front 9' },
+    ...(holeCount >= 18 ? [{ label: 'back', range: backRange, title: 'Back 9' }] : []),
+    { label: 'total', range: Array.from({ length: holeCount }, (_, i) => i), title: 'Total' },
+  ];
+
+  return (
+    <View style={styles.root}>
+      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
+
+      {/* Hole nav */}
+      <View style={styles.holeNav}>
+        <TouchableOpacity
+          onPress={() => dispatch({ type: 'SET_HOLE', hole: Math.max(0, hole - 1) })}
+          disabled={hole === 0}
+          style={styles.navBtn}
+        >
+          <Text style={[styles.navArrow, hole === 0 && styles.navDisabled]}>‹</Text>
+        </TouchableOpacity>
+        <View style={styles.holeCenter}>
+          <Text style={styles.holeLabel}>Hole {holeOffset + hole + 1}</Text>
+          <Text style={styles.parLabel}>Par {par}</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => hole < lastHole && dispatch({ type: 'SET_HOLE', hole: hole + 1 })}
+          disabled={hole === lastHole}
+          style={styles.navBtn}
+        >
+          <Text style={[styles.navArrow, hole === lastHole && styles.navDisabled]}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Match status bar */}
+      <View style={styles.nassauStatusBar}>
+        {legs.map(leg => (
+          <View key={leg.label} style={styles.nassauLeg}>
+            <Text style={styles.nassauLegTitle}>{leg.title}</Text>
+            <Text style={styles.nassauLegStatus} numberOfLines={1}>
+              {statusLine(leg.range, leg.label)}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Stroke entry */}
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.nassauHoleLabel}>Enter strokes — Hole {holeOffset + hole + 1}</Text>
+        {players.map((name, pi) => {
+          const val = strokes[pi]?.[hole] || 0;
+          return (
+            <View key={pi} style={styles.nassauStrokeRow}>
+              <Text style={styles.nassauPlayerName} numberOfLines={1}>{name}</Text>
+              <View style={styles.nassauStepper}>
+                <TouchableOpacity
+                  style={styles.nassauStepBtn}
+                  onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: Math.max(1, val - 1) })}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.nassauStepText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.nassauStrokeVal}>{val || '—'}</Text>
+                <TouchableOpacity
+                  style={styles.nassauStepBtn}
+                  onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: val + 1 })}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.nassauStepText}>+</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.nassauRelPar, val === 0 && { opacity: 0 }]}>
+                {val === 0 ? '—' : val === par ? 'E' : val < par ? `${val - par}` : `+${val - par}`}
+              </Text>
+            </View>
+          );
+        })}
+
+        <Text style={styles.nassauStakeNote}>
+          ${nassauStake.toFixed(2)} per leg · Max ${(nassauStake * (holeCount >= 18 ? 3 : 1)).toFixed(2)} at stake
+        </Text>
+      </ScrollView>
+
+      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
+    </View>
+  );
+}
+
 // ── Press amount picker ───────────────────────────────────────────────────
 function PressAmountPicker({ beanValue, currentValue, chosen, custom, onChoose, onCustomChange }) {
   const multiples = [2, 3, 4, 5].map(m => parseFloat((beanValue * m).toFixed(2)));
@@ -1063,6 +1178,21 @@ const styles = StyleSheet.create({
   carryoverBtn:       { marginTop: spacing.sm, borderTopWidth: 0.5, borderTopColor: colors.border, paddingTop: spacing.sm, alignItems: 'center' },
   carryoverBtnText:   { color: colors.gold, fontWeight: '700', fontSize: 13 },
   skinsHint:          { fontSize: 12, color: colors.textMid, marginBottom: spacing.sm, fontStyle: 'italic' },
+
+  // Nassau
+  nassauStatusBar:    { flexDirection: 'row', backgroundColor: colors.green, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, gap: spacing.sm },
+  nassauLeg:          { flex: 1, alignItems: 'center' },
+  nassauLegTitle:     { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  nassauLegStatus:    { fontSize: 12, fontWeight: '700', color: colors.white, textAlign: 'center' },
+  nassauHoleLabel:    { fontSize: 13, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm },
+  nassauStrokeRow:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm },
+  nassauPlayerName:   { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
+  nassauStepper:      { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  nassauStepBtn:      { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  nassauStepText:     { fontSize: 20, fontWeight: '300', color: colors.textDark, lineHeight: 24 },
+  nassauStrokeVal:    { fontSize: 22, fontWeight: '900', color: colors.textDark, minWidth: 32, textAlign: 'center' },
+  nassauRelPar:       { fontSize: 14, fontWeight: '700', color: colors.textMid, minWidth: 28, textAlign: 'right', marginLeft: spacing.sm },
+  nassauStakeNote:    { fontSize: 12, color: colors.textLight, textAlign: 'center', marginTop: spacing.md },
   playerBtnLeader:    { backgroundColor: '#d4edda', borderColor: colors.green },
   skinsStokeText:     { fontSize: 11, color: colors.textMid, fontWeight: '700', marginLeft: 2 },
 
