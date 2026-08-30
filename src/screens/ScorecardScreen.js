@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
-import { nassauMatchSummary, legMatchStatus, canPressLeg, activeLegStatus } from '../utils/nassau';
+import { nassauMatchSummary, legMatchStatus, canPressLeg, activeLegStatus,
+         legMatchStatusTeam, canPressTeam, activeLegStatusTeam } from '../utils/nassau';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -24,6 +25,7 @@ export default function ScorecardScreen() {
     ldCarryoverEnabled = true, kpCarryoverEnabled = true,
     gameMode = 'beans', nassauStake = 5.00,
     nassauPresses = { front: [], back: [], total: [] },
+    nassauTeams = null,
   } = state;
 
   const strokes = state.strokes?.length === players.length
@@ -350,6 +352,12 @@ export default function ScorecardScreen() {
           {/* Nassau match status bar + press buttons */}
           {gameMode === 'nassau' && (() => {
             const playerIdxs = players.map((_, i) => i);
+            const isTeams = !!nassauTeams;
+            const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
+            const teamNames = isTeams
+              ? [teamA.map(i => players[i]?.split(' ')[0]).join(' & '),
+                 teamB.map(i => players[i]?.split(' ')[0]).join(' & ')]
+              : [];
             const frontRange = Array.from({ length: 9 }, (_, i) => i);
             const backRange  = holeCount >= 18 ? Array.from({ length: 9 }, (_, i) => i + 9) : [];
             const legs = [
@@ -359,22 +367,30 @@ export default function ScorecardScreen() {
             ];
             function statusLine(leg) {
               const legPresses = nassauPresses[leg.label] || [];
-              if (players.length === 2) {
-                return activeLegStatus(strokes, playerIdxs, leg.range, legPresses, players);
-              }
+              if (isTeams) return activeLegStatusTeam(strokes, teamA, teamB, leg.range, legPresses, teamNames);
+              if (players.length === 2) return activeLegStatus(strokes, playerIdxs, leg.range, legPresses, players);
               const { wins } = nassauMatchSummary(strokes, players, holeCount)[leg.label] || {};
               if (!wins) return 'Not started';
               const sorted = [...playerIdxs].sort((a, b) => (wins[b] || 0) - (wins[a] || 0));
               return sorted.map(pi => `${players[pi].split(' ')[0]} ${wins[pi] || 0}W`).join(' · ');
             }
-            const pressableLegs = players.length === 2
-              ? legs.filter(leg => {
-                  if (!leg.range.includes(hole)) return false; // current hole not in this leg
-                  return canPressLeg(strokes, playerIdxs, leg.range, nassauPresses[leg.label] || [], hole);
-                })
-              : [];
+            const pressableLegs = legs.filter(leg => {
+              if (!leg.range.includes(hole)) return false;
+              if (isTeams) return canPressTeam(strokes, teamA, teamB, leg.range, nassauPresses[leg.label] || [], hole);
+              if (players.length === 2) return canPressLeg(strokes, playerIdxs, leg.range, nassauPresses[leg.label] || [], hole);
+              return false;
+            });
             return (
               <>
+                {isTeams && (
+                  <View style={styles.nassauTeamBanner}>
+                    <Text style={styles.nassauTeamLabel} numberOfLines={1}>
+                      <Text style={styles.nassauTeamA}>{teamNames[0]}</Text>
+                      {'  vs  '}
+                      <Text style={styles.nassauTeamB}>{teamNames[1]}</Text>
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.nassauStatusBar}>
                   {legs.map(leg => {
                     const legPresses = nassauPresses[leg.label] || [];
@@ -1167,6 +1183,10 @@ const styles = StyleSheet.create({
   skinsHint:          { fontSize: 12, color: colors.textMid, marginBottom: spacing.sm, fontStyle: 'italic' },
 
   // Nassau
+  nassauTeamBanner:   { backgroundColor: '#1a3a2a', paddingVertical: 5, paddingHorizontal: spacing.md, alignItems: 'center' },
+  nassauTeamLabel:    { fontSize: 13, fontWeight: '700', color: colors.white },
+  nassauTeamA:        { color: '#7ee8a2' },
+  nassauTeamB:        { color: '#7ec8f0' },
   nassauStatusBar:    { flexDirection: 'row', backgroundColor: colors.green, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, gap: spacing.sm },
   nassauLeg:          { flex: 1, alignItems: 'center' },
   nassauLegTitle:     { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },

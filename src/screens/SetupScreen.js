@@ -38,6 +38,8 @@ export default function SetupScreen() {
   const [names, setNames] = useState(['', '', '', '', '']);
   const [gameMode, setGameMode] = useState('beans'); // 'beans' | 'nassau'
   const [nassauStake, setNassauStake] = useState('5.00');
+  const [nassauFormat, setNassauFormat] = useState('individual'); // 'individual' | 'teams'
+  const [teamAssign, setTeamAssign] = useState([0, 0, 1, 1]); // team index per player slot
   const [beanValue, setBeanValue] = useState('1.00');
   const [enabledBeans, setEnabledBeans] = useState(
     new Set(BEAN_DEFS.map(b => b.id))
@@ -307,6 +309,18 @@ export default function SetupScreen() {
       setSavePrompt({ error: 'Enter a positive Nassau stake amount.' });
       return;
     }
+    if (gameMode === 'nassau' && nassauFormat === 'teams' && players.length !== 4) {
+      setSavePrompt({ error: '2v2 Teams requires exactly 4 players.' });
+      return;
+    }
+    if (gameMode === 'nassau' && nassauFormat === 'teams') {
+      const aCount = teamAssign.slice(0, players.length).filter(t => t === 0).length;
+      const bCount = teamAssign.slice(0, players.length).filter(t => t === 1).length;
+      if (aCount !== 2 || bCount !== 2) {
+        setSavePrompt({ error: 'Assign exactly 2 players to each team.' });
+        return;
+      }
+    }
 
     const holeOffset = holeCount === 9 && nineChoice === 'back' ? 9 : 0;
 
@@ -338,7 +352,20 @@ export default function SetupScreen() {
     );
     dispatch({
       type: 'START_ROUND',
-      payload: { gameMode, nassauStake: nassauVal, players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom, wagers: [], course, holeCount, holeOffset, pressMode: pressEnabled ? pressMode : null, spots: spotsEnabled ? spots.slice(0, players.length) : players.map(() => 0), ldCarryoverEnabled, kpCarryoverEnabled },
+      payload: {
+        gameMode, nassauStake: nassauVal,
+        nassauTeams: (gameMode === 'nassau' && nassauFormat === 'teams')
+          ? [
+              players.map((_, i) => i).filter(i => teamAssign[i] === 0),
+              players.map((_, i) => i).filter(i => teamAssign[i] === 1),
+            ]
+          : null,
+        players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom,
+        wagers: [], course, holeCount, holeOffset,
+        pressMode: pressEnabled ? pressMode : null,
+        spots: spotsEnabled ? spots.slice(0, players.length) : players.map(() => 0),
+        ldCarryoverEnabled, kpCarryoverEnabled,
+      },
     });
   }
 
@@ -637,6 +664,56 @@ export default function SetupScreen() {
 
         {gameMode === 'nassau' && (
           <>
+            <Text style={styles.label}>Format</Text>
+            <View style={styles.gameModeRow}>
+              {[
+                { id: 'individual', label: '👤 Individual' },
+                { id: 'teams',      label: '👥 2v2 Teams' },
+              ].map(({ id, label }) => (
+                <TouchableOpacity
+                  key={id}
+                  style={[styles.gameModeBtn, nassauFormat === id && styles.gameModeBtnActive]}
+                  onPress={() => setNassauFormat(id)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.gameModeBtnText, nassauFormat === id && styles.gameModeBtnTextActive]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {nassauFormat === 'teams' && playerCount === 4 && (
+              <>
+                <Text style={styles.label}>Team Assignment</Text>
+                {names.slice(0, 4).map((name, i) => (
+                  <View key={i} style={styles.teamAssignRow}>
+                    <Text style={styles.teamAssignName} numberOfLines={1}>{name.trim() || `Player ${i + 1}`}</Text>
+                    <View style={styles.teamToggle}>
+                      {[{ idx: 0, label: 'Team A' }, { idx: 1, label: 'Team B' }].map(({ idx, label }) => (
+                        <TouchableOpacity
+                          key={idx}
+                          style={[styles.teamToggleBtn, teamAssign[i] === idx && (idx === 0 ? styles.teamToggleBtnA : styles.teamToggleBtnB)]}
+                          onPress={() => setTeamAssign(prev => prev.map((t, j) => j === i ? idx : t))}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[styles.teamToggleBtnText, teamAssign[i] === idx && styles.teamToggleBtnTextActive]}>
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                ))}
+                <Text style={styles.fieldHint}>
+                  Best ball: each team uses the lower score on every hole.
+                </Text>
+              </>
+            )}
+            {nassauFormat === 'teams' && playerCount !== 4 && (
+              <Text style={styles.fieldHint}>⚠️ Set player count to 4 to use 2v2 Teams.</Text>
+            )}
+
             <Text style={styles.label}>$ per leg (front / back / total)</Text>
             <TextInput
               style={styles.input}
@@ -647,7 +724,9 @@ export default function SetupScreen() {
               placeholderTextColor={colors.textLight}
             />
             <Text style={styles.fieldHint}>
-              A $5 Nassau = $5 front nine + $5 back nine + $5 total — max $15 at stake.
+              {nassauFormat === 'teams'
+                ? `A $5 Nassau = $5/leg — winning team collects $5 total ($2.50 each).`
+                : `A $5 Nassau = $5 front nine + $5 back nine + $5 total — max $15 at stake.`}
             </Text>
           </>
         )}
@@ -919,6 +998,14 @@ const styles = StyleSheet.create({
   gameModeBtnText:      { fontSize: 15, fontWeight: '700', color: colors.textMid },
   gameModeBtnTextActive:{ color: colors.white },
   fieldHint:            { fontSize: 12, color: colors.textLight, marginBottom: spacing.sm },
+  teamAssignRow:        { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.sm, marginBottom: spacing.xs, gap: spacing.sm },
+  teamAssignName:       { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textDark },
+  teamToggle:           { flexDirection: 'row', gap: 6 },
+  teamToggleBtn:        { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.offWhite },
+  teamToggleBtnA:       { borderColor: colors.green, backgroundColor: colors.green },
+  teamToggleBtnB:       { borderColor: '#1d6fa4', backgroundColor: '#1d6fa4' },
+  teamToggleBtnText:    { fontSize: 12, fontWeight: '700', color: colors.textMid },
+  teamToggleBtnTextActive: { color: colors.white },
 
   // Hero header
   hero:      { backgroundColor: colors.green, borderRadius: radius.xl, paddingVertical: spacing.xl, paddingHorizontal: spacing.md, marginBottom: spacing.lg, alignItems: 'center', overflow: 'hidden', ...shadow.green },

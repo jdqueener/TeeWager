@@ -86,6 +86,101 @@ export function legMatchStatus(strokes, playerIdxs, holeRange, playerNames) {
   return `${name} ${margin} UP (${remaining} to play)`;
 }
 
+// ─── Team (2v2) best-ball logic ─────────────────────────────────────────────
+
+// Best ball for a team on a single hole — lowest score among players who have entered.
+export function teamBestBall(strokes, teamPlayers, holeIdx) {
+  const valid = teamPlayers.filter(pi => (strokes[pi]?.[holeIdx] ?? 0) > 0);
+  if (valid.length === 0) return null;
+  return Math.min(...valid.map(pi => strokes[pi][holeIdx]));
+}
+
+// Hole-by-hole best-ball standings for two teams over a hole range.
+export function legStandingsTeam(strokes, teamA, teamB, holeRange) {
+  let winsA = 0, winsB = 0, halves = 0, holesPlayed = 0;
+  for (const h of holeRange) {
+    const bbA = teamBestBall(strokes, teamA, h);
+    const bbB = teamBestBall(strokes, teamB, h);
+    if (bbA === null || bbB === null) continue;
+    holesPlayed++;
+    if (bbA < bbB) winsA++;
+    else if (bbB < bbA) winsB++;
+    else halves++;
+  }
+  return { winsA, winsB, halves, holesPlayed };
+}
+
+// Human-readable match status for a 2v2 team leg.
+// teamNames: [nameForTeamA, nameForTeamB]
+export function legMatchStatusTeam(strokes, teamA, teamB, holeRange, teamNames) {
+  const { winsA, winsB, holesPlayed } = legStandingsTeam(strokes, teamA, teamB, holeRange);
+  const diff = winsA - winsB;
+  const remaining = holeRange.length - holesPlayed;
+  if (holesPlayed === 0) return 'Not started';
+  if (diff === 0) return 'All Square';
+  const leader = diff > 0 ? teamNames[0] : teamNames[1];
+  const margin = Math.abs(diff);
+  if (remaining === 0) return `${leader} wins ${margin} UP`;
+  if (margin > remaining) return `${leader} ${margin} UP (closed)`;
+  return `${leader} ${margin} UP (${remaining} to play)`;
+}
+
+// Press eligibility for a 2v2 team leg.
+export function canPressTeam(strokes, teamA, teamB, legRange, legPresses, currentHole) {
+  const remaining = legRange.filter(h => h >= currentHole).length;
+  if (remaining <= 0) return false;
+  const lastPress = legPresses[legPresses.length - 1];
+  const activeStart = lastPress ? lastPress.startHole : legRange[0];
+  const completedRange = legRange.filter(h => h >= activeStart && h < currentHole);
+  if (completedRange.length === 0) return false;
+  const { winsA, winsB } = legStandingsTeam(strokes, teamA, teamB, completedRange);
+  return Math.abs(winsA - winsB) >= 2;
+}
+
+// Status of the current active match (last press range, or full leg) for teams.
+export function activeLegStatusTeam(strokes, teamA, teamB, legRange, legPresses, teamNames) {
+  const lastPress = legPresses[legPresses.length - 1];
+  const activeStart = lastPress ? lastPress.startHole : legRange[0];
+  const activeRange = legRange.filter(h => h >= activeStart);
+  return legMatchStatusTeam(strokes, teamA, teamB, activeRange, teamNames);
+}
+
+// Settlement for team Nassau. Each leg winner team collects nassauStake total;
+// each member of the winning team receives stake/2, each loser pays stake/2.
+export function computeNassauSettleUpTeam(players, teams, strokes, nassauStake, holeCount = 18, nassauPresses = {}) {
+  const [teamA, teamB] = teams;
+  const frontRange = Array.from({ length: 9 }, (_, i) => i);
+  const backRange  = Array.from({ length: Math.min(9, holeCount - 9) }, (_, i) => i + 9);
+  const totalRange = Array.from({ length: holeCount }, (_, i) => i);
+  const legDefs = holeCount >= 18
+    ? [['front', frontRange], ['back', backRange], ['total', totalRange]]
+    : [['front', frontRange]];
+
+  const net = new Array(players.length).fill(0);
+
+  function settleTeamRange(range, stake) {
+    const { winsA, winsB } = legStandingsTeam(strokes, teamA, teamB, range);
+    const diff = winsA - winsB;
+    if (diff > 0) {
+      for (const pi of teamA) net[pi] += stake / 2;
+      for (const pi of teamB) net[pi] -= stake / 2;
+    } else if (diff < 0) {
+      for (const pi of teamB) net[pi] += stake / 2;
+      for (const pi of teamA) net[pi] -= stake / 2;
+    }
+  }
+
+  for (const [legKey, range] of legDefs) {
+    settleTeamRange(range, nassauStake);
+    for (const press of (nassauPresses[legKey] || [])) {
+      const pressRange = range.filter(h => h >= press.startHole);
+      if (pressRange.length > 0) settleTeamRange(pressRange, nassauStake);
+    }
+  }
+
+  return minimumCashFlowNassau(players, net);
+}
+
 // ─── Press helpers ───────────────────────────────────────────────────────────
 
 // Returns true if any player in a 2-player match can press the leg.
