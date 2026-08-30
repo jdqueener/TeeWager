@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
-import { nassauMatchSummary, legMatchStatus } from '../utils/nassau';
+import { nassauMatchSummary, legMatchStatus, canPressLeg, activeLegStatus } from '../utils/nassau';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -23,6 +23,7 @@ export default function ScorecardScreen() {
     pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {},
     ldCarryoverEnabled = true, kpCarryoverEnabled = true,
     gameMode = 'beans', nassauStake = 5.00,
+    nassauPresses = { front: [], back: [], total: [] },
   } = state;
 
   const strokes = state.strokes?.length === players.length
@@ -346,7 +347,7 @@ export default function ScorecardScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Nassau match status bar */}
+          {/* Nassau match status bar + press buttons */}
           {gameMode === 'nassau' && (() => {
             const playerIdxs = players.map((_, i) => i);
             const frontRange = Array.from({ length: 9 }, (_, i) => i);
@@ -356,22 +357,53 @@ export default function ScorecardScreen() {
               ...(holeCount >= 18 ? [{ label: 'back', range: backRange, title: 'Back 9' }] : []),
               { label: 'total', range: Array.from({ length: holeCount }, (_, i) => i), title: 'Total' },
             ];
-            function statusLine(range, label) {
-              if (players.length === 2) return legMatchStatus(strokes, playerIdxs, range, players);
-              const { wins } = nassauMatchSummary(strokes, players, holeCount)[label] || {};
+            function statusLine(leg) {
+              const legPresses = nassauPresses[leg.label] || [];
+              if (players.length === 2) {
+                return activeLegStatus(strokes, playerIdxs, leg.range, legPresses, players);
+              }
+              const { wins } = nassauMatchSummary(strokes, players, holeCount)[leg.label] || {};
               if (!wins) return 'Not started';
               const sorted = [...playerIdxs].sort((a, b) => (wins[b] || 0) - (wins[a] || 0));
               return sorted.map(pi => `${players[pi].split(' ')[0]} ${wins[pi] || 0}W`).join(' · ');
             }
+            const pressableLegs = players.length === 2
+              ? legs.filter(leg => {
+                  if (!leg.range.includes(hole)) return false; // current hole not in this leg
+                  return canPressLeg(strokes, playerIdxs, leg.range, nassauPresses[leg.label] || [], hole);
+                })
+              : [];
             return (
-              <View style={styles.nassauStatusBar}>
-                {legs.map(leg => (
-                  <View key={leg.label} style={styles.nassauLeg}>
-                    <Text style={styles.nassauLegTitle}>{leg.title}</Text>
-                    <Text style={styles.nassauLegStatus} numberOfLines={1}>{statusLine(leg.range, leg.label)}</Text>
+              <>
+                <View style={styles.nassauStatusBar}>
+                  {legs.map(leg => {
+                    const legPresses = nassauPresses[leg.label] || [];
+                    return (
+                      <View key={leg.label} style={styles.nassauLeg}>
+                        <Text style={styles.nassauLegTitle}>
+                          {leg.title}{legPresses.length > 0 ? ` · P${legPresses.length}` : ''}
+                        </Text>
+                        <Text style={styles.nassauLegStatus} numberOfLines={1}>{statusLine(leg)}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+                {pressableLegs.length > 0 && (
+                  <View style={styles.nassauPressBar}>
+                    <Text style={styles.nassauPressBarLabel}>🤝 Press available:</Text>
+                    {pressableLegs.map(leg => (
+                      <TouchableOpacity
+                        key={leg.label}
+                        style={styles.nassauPressBtn}
+                        onPress={() => dispatch({ type: 'NASSAU_PRESS', leg: leg.label, startHole: hole })}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={styles.nassauPressBtnText}>Press {leg.title}</Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                ))}
-              </View>
+                )}
+              </>
             );
           })()}
 
@@ -1148,6 +1180,10 @@ const styles = StyleSheet.create({
   nassauStrokeVal:    { fontSize: 22, fontWeight: '900', color: colors.textDark, minWidth: 32, textAlign: 'center' },
   nassauRelPar:       { fontSize: 14, fontWeight: '700', color: colors.textMid, minWidth: 28, textAlign: 'right', marginLeft: spacing.sm },
   nassauStakeNote:    { fontSize: 12, color: colors.textLight, textAlign: 'center', marginTop: spacing.md },
+  nassauPressBar:     { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.xs, backgroundColor: '#1a3a2a', paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
+  nassauPressBarLabel:{ fontSize: 12, color: 'rgba(255,255,255,0.65)', fontWeight: '600' },
+  nassauPressBtn:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4 },
+  nassauPressBtnText: { fontSize: 12, color: colors.white, fontWeight: '800' },
   playerBtnLeader:    { backgroundColor: '#d4edda', borderColor: colors.green },
   skinsStokeText:     { fontSize: 11, color: colors.textMid, fontWeight: '700', marginLeft: 2 },
 

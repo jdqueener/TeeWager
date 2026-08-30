@@ -36,6 +36,7 @@ const INITIAL_SETUP = {
   currentHole: 0,
   progressHole: 0,
   strokes: [],
+  nassauPresses: { front: [], back: [], total: [] },
   ldCarryover: 0,
   ldCarryoverLastHole: -1,
   kpCarryover: 0,
@@ -78,6 +79,7 @@ function reducer(state, action) {
         holeOffset,
         scores: makeEmptyScores(players.length),
         strokes: makeEmptyStrokes(players.length),
+        nassauPresses: { front: [], back: [], total: [] },
         firstBonus: makeFirstBonus(),
         currentHole: 0,
         progressHole: 0,
@@ -241,6 +243,12 @@ function reducer(state, action) {
     case 'SET_BONUS_DESC': {
       const { holeIdx, desc } = action;
       return { ...state, bonusBeanDescs: { ...state.bonusBeanDescs, [holeIdx]: desc } };
+    }
+
+    case 'NASSAU_PRESS': {
+      const { leg, startHole } = action;
+      const legPresses = [...(state.nassauPresses[leg] || []), { startHole }];
+      return { ...state, nassauPresses: { ...state.nassauPresses, [leg]: legPresses } };
     }
 
     case 'RESET':

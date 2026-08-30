@@ -15,7 +15,8 @@ export default function SettleUpScreen() {
   const { state, dispatch, pro, setPro, activeBeans, refreshProfile } = useGame();
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18,
     pressMode, presses, tenthPressed, tenthPressValue, holePresses, spots = [],
-    gameMode = 'beans', nassauStake = 5.00, strokes = [] } = state;
+    gameMode = 'beans', nassauStake = 5.00, strokes = [],
+    nassauPresses = { front: [], back: [], total: [] } } = state;
   const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const countedRef = useRef(false);
@@ -56,7 +57,7 @@ export default function SettleUpScreen() {
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
   const pressState = { pressMode, presses, tenthPressed, tenthPressValue, holePresses };
   const payments = isNassau
-    ? computeNassauSettleUp(players, strokes, nassauStake, holeCount)
+    ? computeNassauSettleUp(players, strokes, nassauStake, holeCount, nassauPresses)
     : computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount, spots);
 
   // Nassau leg summaries

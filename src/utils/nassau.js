@@ -86,17 +86,66 @@ export function legMatchStatus(strokes, playerIdxs, holeRange, playerNames) {
   return `${name} ${margin} UP (${remaining} to play)`;
 }
 
+// ─── Press helpers ───────────────────────────────────────────────────────────
+
+// Returns true if any player in a 2-player match can press the leg.
+// legPresses: array of { startHole } already declared for this leg.
+// currentHole: 0-based index of the hole being played NOW (not yet scored).
+export function canPressLeg(strokes, playerIdxs, legRange, legPresses, currentHole) {
+  if (playerIdxs.length !== 2) return false;
+  const remaining = legRange.filter(h => h >= currentHole).length;
+  if (remaining <= 0) return false;
+
+  // Active match runs from the last press start (or leg start) up through
+  // holes already completed (< currentHole).
+  const lastPress = legPresses[legPresses.length - 1];
+  const activeStart = lastPress ? lastPress.startHole : legRange[0];
+  const completedRange = legRange.filter(h => h >= activeStart && h < currentHole);
+  if (completedRange.length === 0) return false;
+
+  const { wins } = legStandings(strokes, playerIdxs, completedRange);
+  const [a, b] = playerIdxs;
+  return Math.abs(wins[a] - wins[b]) >= 2;
+}
+
+// Returns the human-readable status of the CURRENT active match for a leg,
+// i.e. from the last press start (or full leg start) to end of leg.
+export function activeLegStatus(strokes, playerIdxs, legRange, legPresses, playerNames) {
+  const lastPress = legPresses[legPresses.length - 1];
+  const activeStart = lastPress ? lastPress.startHole : legRange[0];
+  const activeRange = legRange.filter(h => h >= activeStart);
+  return legMatchStatus(strokes, playerIdxs, activeRange, playerNames);
+}
+
 // ─── Settlement ──────────────────────────────────────────────────────────────
 
-// Computes net dollar transfers for a Nassau round.
-// Returns same shape as computePressSettleUp: [{ from, to, amt }]
-//
-// For 2 players: straightforward — each leg winner collects stake from loser.
-// For 3-4 players (round-robin): each head-to-head pair settles each leg
-//   independently. This means up to n*(n-1)/2 * 3 individual payments,
-//   collapsed via minimumCashFlow.
+// Settles a single range (original leg or a press slice) into net[].
+function settleLegRange(net, strokes, playerIdxs, range, stake) {
+  const n = playerIdxs.length;
+  if (n === 2) {
+    const { wins } = legStandings(strokes, playerIdxs, range);
+    const [a, b] = playerIdxs;
+    const diff = wins[a] - wins[b];
+    if (diff > 0) { net[a] += stake; net[b] -= stake; }
+    else if (diff < 0) { net[b] += stake; net[a] -= stake; }
+  } else {
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const { wins } = legStandings(strokes, [i, j], range);
+        const diff = wins[i] - wins[j];
+        if (diff > 0) { net[i] += stake; net[j] -= stake; }
+        else if (diff < 0) { net[j] += stake; net[i] -= stake; }
+      }
+    }
+  }
+}
 
-export function computeNassauSettleUp(players, strokes, nassauStake, holeCount = 18) {
+// Computes net dollar transfers for a Nassau round, including any presses.
+// nassauPresses: { front: [{startHole}], back: [...], total: [...] }
+//
+// Each press creates an additional bet covering startHole → end of leg,
+// settled at the same nassauStake as the original leg.
+export function computeNassauSettleUp(players, strokes, nassauStake, holeCount = 18, nassauPresses = {}) {
   const n = players.length;
   const playerIdxs = players.map((_, i) => i);
 
@@ -104,31 +153,19 @@ export function computeNassauSettleUp(players, strokes, nassauStake, holeCount =
   const backRange  = Array.from({ length: Math.min(9, holeCount - 9) }, (_, i) => i + 9);
   const totalRange = Array.from({ length: holeCount }, (_, i) => i);
 
-  // Only include back range if playing 18
-  const legs = holeCount >= 18
-    ? [frontRange, backRange, totalRange]
-    : [frontRange]; // 9-hole Nassau = front leg only
+  const legDefs = holeCount >= 18
+    ? [['front', frontRange], ['back', backRange], ['total', totalRange]]
+    : [['front', frontRange]];
 
   const net = new Array(n).fill(0);
 
-  for (const range of legs) {
-    if (n === 2) {
-      const { wins } = legStandings(strokes, playerIdxs, range);
-      const [a, b] = playerIdxs;
-      const diff = wins[a] - wins[b];
-      if (diff > 0) { net[a] += nassauStake; net[b] -= nassauStake; }
-      else if (diff < 0) { net[b] += nassauStake; net[a] -= nassauStake; }
-      // diff === 0: halved leg, no money moves
-    } else {
-      // Round-robin pairs
-      for (let i = 0; i < n; i++) {
-        for (let j = i + 1; j < n; j++) {
-          const { wins } = legStandings(strokes, [i, j], range);
-          const diff = wins[i] - wins[j];
-          if (diff > 0) { net[i] += nassauStake; net[j] -= nassauStake; }
-          else if (diff < 0) { net[j] += nassauStake; net[i] -= nassauStake; }
-        }
-      }
+  for (const [legKey, range] of legDefs) {
+    // Original leg
+    settleLegRange(net, strokes, playerIdxs, range, nassauStake);
+    // Each press
+    for (const press of (nassauPresses[legKey] || [])) {
+      const pressRange = range.filter(h => h >= press.startHole);
+      if (pressRange.length > 0) settleLegRange(net, strokes, playerIdxs, pressRange, nassauStake);
     }
   }
 
