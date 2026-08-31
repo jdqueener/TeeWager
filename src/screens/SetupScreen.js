@@ -827,7 +827,11 @@ export default function SetupScreen() {
               </View>
               {bean.id === 'longDrive' && on && (
                 <View style={styles.carryoverRow}>
-                  <Text style={styles.carryoverLabel}>Carry over Long Drive</Text>
+                  <Text style={styles.carryoverIcon}>↩</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.carryoverLabel}>Carry over Long Drive</Text>
+                    <Text style={styles.carryoverDesc}>No winner = bean rolls to next hole</Text>
+                  </View>
                   <Switch
                     value={ldCarryoverEnabled}
                     onValueChange={setLdCarryoverEnabled}
@@ -837,7 +841,11 @@ export default function SetupScreen() {
               )}
               {bean.id === 'kp' && on && (
                 <View style={styles.carryoverRow}>
-                  <Text style={styles.carryoverLabel}>Carry over KP</Text>
+                  <Text style={styles.carryoverIcon}>↩</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.carryoverLabel}>Carry over KP</Text>
+                    <Text style={styles.carryoverDesc}>No winner = bean rolls to next hole</Text>
+                  </View>
                   <Switch
                     value={kpCarryoverEnabled}
                     onValueChange={setKpCarryoverEnabled}
@@ -1032,8 +1040,10 @@ const styles = StyleSheet.create({
   altBtn:          { flex: 1, paddingVertical: 13, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
   altBtnText:      { fontSize: 14, color: colors.textMid, fontWeight: '600' },
   courseError:     { fontSize: 13, color: colors.red, marginTop: spacing.xs, marginBottom: spacing.xs },
-  carryoverRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: spacing.md, marginBottom: 4, backgroundColor: colors.surface, borderRadius: 8, marginLeft: 24 },
-  carryoverLabel:  { fontSize: 13, color: colors.textMid },
+  carryoverRow:    { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 10, paddingHorizontal: spacing.md, marginBottom: 6, marginLeft: 16, backgroundColor: '#eef6ee', borderRadius: 10, borderLeftWidth: 3, borderLeftColor: colors.green },
+  carryoverIcon:   { fontSize: 16, color: colors.green, fontWeight: '700', width: 20, textAlign: 'center' },
+  carryoverLabel:  { fontSize: 14, fontWeight: '700', color: colors.textDark },
+  carryoverDesc:   { fontSize: 12, color: colors.textMid, marginTop: 1 },
   recentLabel:     { fontSize: 11, color: colors.textLight, fontWeight: '700', marginTop: spacing.sm, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   recentRow:       { flexDirection: 'row', alignItems: 'center' },
   recentName:      { flex: 1 },
