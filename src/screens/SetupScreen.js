@@ -1098,7 +1098,7 @@ const styles = StyleSheet.create({
   pickerBtnText:  { color: colors.white, fontSize: 18, fontWeight: '700' },
 
   // Bean rows
-  beanRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderLeftWidth: 5, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm, ...shadow.sm },
+  beanRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderLeftWidth: 3, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm, ...shadow.sm },
   beanDot:      { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   beanName:     { fontSize: 15, fontWeight: '700', color: colors.textDark },
   beanProBadge: { fontSize: 10, fontWeight: '800', color: colors.gold, letterSpacing: 0.5 },
@@ -1106,7 +1106,7 @@ const styles = StyleSheet.create({
   neg:          { color: colors.red },
   beanDesc:     { fontSize: 12, color: colors.textLight, marginTop: 2 },
   customBeanInput: { fontSize: 15, fontWeight: '700', color: colors.textDark, padding: 0, marginBottom: 2 },
-  addCustomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: spacing.md, marginBottom: spacing.sm, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.green, borderStyle: 'dashed' },
+  addCustomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: spacing.md, marginBottom: spacing.sm, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.green, borderStyle: 'dashed', backgroundColor: colors.greenPale },
   addCustomText: { fontSize: 14, fontWeight: '700', color: colors.green },
 
   // Spots

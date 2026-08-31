@@ -1096,7 +1096,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
 
   // Mode toggle
-  modeBar:           { flexDirection: 'row', backgroundColor: colors.white, borderBottomWidth: 0.5, borderBottomColor: colors.border, padding: 6, gap: 4 },
+  modeBar:           { flexDirection: 'row', backgroundColor: colors.white, borderBottomWidth: 0.5, borderBottomColor: colors.border, padding: spacing.xs, gap: spacing.xs },
   modeBtn:           { flex: 1, paddingVertical: 11, borderRadius: radius.pill, alignItems: 'center' },
   modeBtnActive:     { backgroundColor: colors.green, ...shadow.green },
   modeBtnText:       { fontSize: 14, fontWeight: '800', color: colors.textMid },
@@ -1126,7 +1126,7 @@ const styles = StyleSheet.create({
   strokePlayer:  { alignItems: 'center', gap: 6, paddingVertical: spacing.xs },
   strokeName:    { fontSize: 12, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.3 },
   strokeCounter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  strokeBtn:     { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center', ...shadow.green },
+  strokeBtn:     { width: 46, height: 46, borderRadius: radius.sm, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center', ...shadow.green },
   strokeBtnText: { color: colors.white, fontSize: 24, fontWeight: '300', lineHeight: 30 },
   strokeVal:     { width: 50, height: 50, borderRadius: radius.sm, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },
   strokeNum:     { fontSize: 22, fontWeight: '800', color: colors.textDark },
@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
   skinsHint:          { fontSize: 12, color: colors.textMid, marginBottom: spacing.sm, fontStyle: 'italic' },
 
   // Nassau
-  nassauTeamBanner:   { backgroundColor: '#1a3a2a', paddingVertical: 5, paddingHorizontal: spacing.md, alignItems: 'center' },
+  nassauTeamBanner:   { backgroundColor: colors.green, paddingVertical: 5, paddingHorizontal: spacing.md, alignItems: 'center' },
   nassauTeamLabel:    { fontSize: 13, fontWeight: '700', color: colors.white },
   nassauTeamA:        { color: '#7ee8a2' },
   nassauTeamB:        { color: '#7ec8f0' },
@@ -1174,7 +1174,7 @@ const styles = StyleSheet.create({
   nassauStrokeVal:    { fontSize: 22, fontWeight: '900', color: colors.textDark, minWidth: 32, textAlign: 'center' },
   nassauRelPar:       { fontSize: 14, fontWeight: '700', color: colors.textMid, minWidth: 28, textAlign: 'right', marginLeft: spacing.sm },
   nassauStakeNote:    { fontSize: 12, color: colors.textLight, textAlign: 'center', marginTop: spacing.md },
-  nassauPressBar:     { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.xs, backgroundColor: '#1a3a2a', paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
+  nassauPressBar:     { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.xs, backgroundColor: colors.green, paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
   nassauPressBarLabel:{ fontSize: 12, color: 'rgba(255,255,255,0.65)', fontWeight: '600' },
   nassauPressBtn:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4 },
   nassauPressBtnText: { fontSize: 12, color: colors.white, fontWeight: '800' },
@@ -1183,7 +1183,7 @@ const styles = StyleSheet.create({
 
   // Grid mode
   gridContent:       { padding: spacing.sm, paddingBottom: 80 },
-  gridTitle:         { fontSize: 15, fontWeight: '800', color: colors.textDark, padding: spacing.sm, paddingBottom: 4 },
+  gridTitle:         { fontSize: 15, fontWeight: '800', color: colors.textDark, padding: spacing.sm, paddingTop: spacing.md, paddingBottom: 4 },
   gridCard:          { backgroundColor: colors.white, borderRadius: radius.md, marginBottom: spacing.sm, overflow: 'hidden', ...shadow.sm },
   gridRow:           { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: colors.border },
   gridRowAlt:        { backgroundColor: colors.offWhite },

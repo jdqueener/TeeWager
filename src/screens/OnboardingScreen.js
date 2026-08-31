@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   slide:        { width, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, paddingTop: 80 },
   emoji:        { fontSize: 72, marginBottom: spacing.lg },
   title:        { fontSize: 36, fontWeight: '900', color: colors.white, textAlign: 'center', lineHeight: 42, marginBottom: spacing.md },
-  body:         { fontSize: 16, color: 'rgba(255,255,255,0.75)', textAlign: 'center', lineHeight: 24 },
+  body:         { fontSize: 16, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 24 },
 
   dots:         { flexDirection: 'row', gap: 8, marginBottom: spacing.lg },
   dot:          { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
@@ -129,11 +129,11 @@ const styles = StyleSheet.create({
   nextBtn:      { marginBottom: 48, backgroundColor: colors.white, paddingVertical: 16, paddingHorizontal: 48, borderRadius: radius.pill },
   nextBtnText:  { color: colors.green, fontSize: 17, fontWeight: '800' },
 
-  finalBtns:    { width: '100%', paddingHorizontal: spacing.xl, marginBottom: 48, gap: spacing.sm },
+  finalBtns:    { width: '100%', paddingHorizontal: spacing.xl, marginBottom: 48, gap: spacing.sm, flexDirection: 'column' },
   primaryBtn:   { backgroundColor: colors.white, borderRadius: radius.pill, paddingVertical: 16, alignItems: 'center' },
   primaryBtnText: { color: colors.green, fontSize: 16, fontWeight: '800' },
   secondaryBtn: { borderRadius: radius.pill, paddingVertical: 15, alignItems: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)' },
   secondaryBtnText: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  guestBtn:     { alignItems: 'center', paddingVertical: spacing.sm },
-  guestText:    { color: 'rgba(255,255,255,0.55)', fontSize: 14 },
+  guestBtn:     { alignItems: 'center', paddingVertical: spacing.sm, marginTop: spacing.sm },
+  guestText:    { color: 'rgba(255,255,255,0.72)', fontSize: 14 },
 });

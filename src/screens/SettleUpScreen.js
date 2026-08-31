@@ -290,8 +290,8 @@ export default function SettleUpScreen() {
 const styles = StyleSheet.create({
   root:         { flex: 1, backgroundColor: colors.background },
   content:      { padding: spacing.md, paddingBottom: 100 },
-  headingWrap:  { marginBottom: spacing.sm },
-  heading:      { fontSize: 34, fontWeight: '900', color: colors.textDark, letterSpacing: -0.8 },
+  headingWrap:  { marginBottom: spacing.md },
+  heading:      { fontSize: 28, fontWeight: '900', color: colors.textDark, letterSpacing: -0.8 },
   headingRule:  { width: 46, height: 4, borderRadius: 2, backgroundColor: colors.gold, marginTop: spacing.sm },
   sectionLabel: { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 1, marginTop: spacing.lg, marginBottom: spacing.sm },
 
@@ -331,8 +331,8 @@ const styles = StyleSheet.create({
   bold:        { fontWeight: '700' },
 
   // Buttons
-  btn:          { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 17, alignItems: 'center', marginTop: spacing.sm, ...shadow.green },
-  btnSecondary: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.green, shadowOpacity: 0, elevation: 0 },
+  btn:          { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 20, alignItems: 'center', marginTop: spacing.sm, ...shadow.green },
+  btnSecondary: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.green, shadowOpacity: 0, elevation: 0, paddingVertical: 15 },
   btnSaved:     { borderColor: colors.textLight },
   btnText:      { color: colors.white, fontWeight: '900', fontSize: 17 },
   btnSecText:   { color: colors.green, fontWeight: '700', fontSize: 15 },

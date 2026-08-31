@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform, Modal, 
 import { useFocusEffect } from '@react-navigation/native';
 import { useGame } from '../context/GameContext';
 import { loadStats, saveStats } from '../utils/storage';
-import { colors, spacing, radius } from '../utils/theme';
+import { colors, spacing, radius, shadow } from '../utils/theme';
 import Avatar from '../components/Avatar';
 import PaywallModal from '../components/PaywallModal';
 import ProBanner from '../components/ProBanner';
@@ -60,7 +60,10 @@ export default function StatsScreen() {
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headingRow}>
-          <Text style={styles.heading}>Lifetime Stats</Text>
+          <View>
+            <Text style={styles.heading}>Lifetime Stats</Text>
+            <View style={styles.headingRule} />
+          </View>
           {sorted.length > 0 && (
             <TouchableOpacity onPress={confirmReset}>
               <Text style={styles.resetLink}>Reset</Text>
@@ -142,7 +145,8 @@ const styles = StyleSheet.create({
   root:         { flex: 1, backgroundColor: colors.background },
   content:      { padding: spacing.md, paddingBottom: 80 },
   headingRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
-  heading:      { fontSize: 26, fontWeight: '900', color: colors.textDark },
+  heading:      { fontSize: 28, fontWeight: '900', color: colors.textDark },
+  headingRule:  { width: 46, height: 4, borderRadius: 2, backgroundColor: colors.gold, marginTop: 6, marginBottom: spacing.sm },
   resetLink:    { fontSize: 14, color: colors.red, fontWeight: '600' },
 
   emptyWrap:    { alignItems: 'center', marginTop: 60 },
@@ -150,7 +154,7 @@ const styles = StyleSheet.create({
   empty:        { fontSize: 18, fontWeight: '700', color: colors.textMid },
   emptySub:     { fontSize: 14, color: colors.textLight, textAlign: 'center', marginTop: spacing.sm, maxWidth: 280, lineHeight: 20 },
 
-  card:         { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, marginBottom: spacing.sm, overflow: 'hidden' },
+  card:         { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, marginBottom: spacing.sm, overflow: 'hidden', ...shadow.sm },
   cardHeader:   { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm },
   rank:         { fontSize: 18, fontWeight: '900', color: colors.textLight, width: 28 },
   name:         { fontSize: 16, fontWeight: '700', color: colors.textDark },
@@ -161,7 +165,7 @@ const styles = StyleSheet.create({
   statRow:      { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: colors.border, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
   bestDate:     { fontSize: 12, color: colors.textLight, textAlign: 'center', paddingBottom: spacing.sm },
 
-  lockScreen:   { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, marginTop: -40 },
+  lockScreen:   { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   lockEmoji:    { fontSize: 48, marginBottom: spacing.md },
   lockTitle:    { fontSize: 22, fontWeight: '800', color: colors.textDark, textAlign: 'center' },
   lockSub:      { fontSize: 15, color: colors.textMid, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.lg },
