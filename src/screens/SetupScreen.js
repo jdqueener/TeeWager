@@ -799,36 +799,6 @@ export default function SetupScreen() {
           </View>
         )}
 
-        {/* Press */}
-        <Text style={styles.label}>Press</Text>
-        <View style={[styles.beanRow, { borderLeftColor: colors.gold }]}>
-          <View style={[styles.beanDot, { backgroundColor: colors.gold }]} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.beanName}>Enable press</Text>
-            <Text style={styles.beanDesc}>Allow players to increase the wager mid-round</Text>
-          </View>
-          <Switch value={pressEnabled} onValueChange={setPressEnabled} trackColor={{ true: colors.gold }} />
-        </View>
-        {pressEnabled && (
-          <View style={styles.pressOptions}>
-            {[
-              { key: 'anytime', label: 'Press anytime', desc: 'Doubles beans from that hole, stays for the rest of the round' },
-              { key: 'tenth', label: 'Before hole 10 only', desc: 'One press available — doubles beans for the back 9' },
-              { key: 'perHole', label: 'Per-hole side bet', desc: 'Pick players each hole — just for that hole (2-player presses allowed)' },
-            ].map(opt => (
-              <TouchableOpacity key={opt.key} style={styles.pressOption} onPress={() => setPressMode(opt.key)} activeOpacity={0.75}>
-                <View style={[styles.pressRadio, pressMode === opt.key && styles.pressRadioActive]}>
-                  {pressMode === opt.key && <View style={styles.pressRadioDot} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.pressOptionLabel, pressMode === opt.key && { color: colors.gold }]}>{opt.label}</Text>
-                  <Text style={styles.pressOptionDesc}>{opt.desc}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
         {/* Bean list */}
         <Text style={styles.label}>Beans</Text>
         {BEAN_DEFS.filter(b => !b.impromptu).map(bean => {

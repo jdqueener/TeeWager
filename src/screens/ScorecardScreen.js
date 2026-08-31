@@ -438,32 +438,6 @@ export default function ScorecardScreen() {
           </View>
           )}
 
-          {/* Press bar (beans only) */}
-          {gameMode !== 'nassau' && pressMode && (
-            <View style={styles.pressBar}>
-              <View style={{ flex: 1 }}>
-                {currentEffValue > beanValue && pressMode !== 'perHole' && (
-                  <Text style={styles.pressActive}>🤝 Press active — ${currentEffValue.toFixed(2)}/bean</Text>
-                )}
-                {pressMode === 'perHole' && holePresses[hole] && (
-                  <Text style={styles.pressActive}>
-                    🤝 Press ${holePresses[hole].value?.toFixed(2)}/bean: {holePresses[hole].playerIdxs?.map(pi => players[pi]?.split(' ')[0]).join(' vs ')}
-                  </Text>
-                )}
-              </View>
-              {showPressBtn && (
-                <TouchableOpacity style={styles.pressBtn} onPress={handlePress} activeOpacity={0.85}>
-                  <Text style={styles.pressBtnText}>
-                    {pressMode === 'anytime'
-                      ? currentEffValue > beanValue ? '🤝 Press again' : '🤝 Press'
-                      : pressMode === 'tenth'
-                      ? '🤝 Press (back 9)'
-                      : holePresses[hole] ? '🤝 Edit press' : '🤝 Press this hole'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
 
           <ScrollView contentContainerStyle={styles.holeContent}>
             {/* Nassau stroke entry */}

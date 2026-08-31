@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { totalBeansForPlayer, computePressSettleUp } from '../utils/beans';
+import { totalBeansForPlayer, computeSettleUp } from '../utils/beans';
 import { computeNassauSettleUp, computeNassauSettleUpTeam, legStandings, legMatchStatus } from '../utils/nassau';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
@@ -14,8 +14,7 @@ import ShareCard from '../components/ShareCard';
 export default function SettleUpScreen() {
   const { state, dispatch, pro, setPro, activeBeans, refreshProfile } = useGame();
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18,
-    pressMode, presses, tenthPressed, tenthPressValue, holePresses, spots = [],
-    gameMode = 'beans', nassauStake = 5.00, strokes = [],
+    spots = [], gameMode = 'beans', nassauStake = 5.00, strokes = [],
     nassauPresses = { front: [], back: [], total: [] },
     nassauTeams = null } = state;
   const lastHole = holeCount - 1;
@@ -56,12 +55,11 @@ export default function SettleUpScreen() {
   const isNassau = gameMode === 'nassau';
 
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
-  const pressState = { pressMode, presses, tenthPressed, tenthPressValue, holePresses };
   const payments = isNassau
     ? (nassauTeams
         ? computeNassauSettleUpTeam(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses)
         : computeNassauSettleUp(players, strokes, nassauStake, holeCount, nassauPresses))
-    : computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount, spots);
+    : computeSettleUp(players, beanTotals, beanValue, wagers);
 
   // Nassau leg summaries
   const playerIdxs = players.map((_, i) => i);
