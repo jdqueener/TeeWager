@@ -102,7 +102,7 @@ export default function BreakdownScreen() {
   function beanDesc(event) {
     const { bean, count, isFirst, incoming, from } = event;
     let label = bean.name;
-    if (bean.id === 'lowBall')   label = 'Low Ball (skin)';
+    if (bean.id === 'lowBall')   label = 'Skins';
     if (bean.id === 'longDrive') label = 'Long Drive';
     if (bean.id === 'kp')        label = 'Closest to Pin';
     if (bean.id === 'bonusBean') {

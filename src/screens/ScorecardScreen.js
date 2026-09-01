@@ -197,8 +197,8 @@ export default function ScorecardScreen() {
       const leaderName = players[hLeaders.indexOf(true)].split(' ')[0];
       const winnerName = players[winner].split(' ')[0];
       confirm(
-        'Low Ball Conflict',
-        `${winnerName} is awarded Low Ball but ${leaderName} has the low score (${minS}). Advance anyway?`
+        'Skins Conflict',
+        `${winnerName} is awarded Skins but ${leaderName} has the low score (${minS}). Advance anyway?`
       );
       return;
     }
@@ -948,14 +948,14 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
     if (tappedStroke > 0 && minSoFar !== null && tappedStroke > minSoFar) {
       const currentLeaderIdx = strokes.indexOf(minSoFar);
       const leaderName = currentLeaderIdx >= 0 ? players[currentLeaderIdx].split(' ')[0] : 'another player';
-      const msg = `${players[pi].split(' ')[0]} has ${tappedStroke} strokes — ${leaderName} currently has the low score (${minSoFar}). Award Low Ball to ${players[pi].split(' ')[0]} anyway?`;
+      const msg = `${players[pi].split(' ')[0]} has ${tappedStroke} strokes — ${leaderName} currently has the low score (${minSoFar}). Award Skins to ${players[pi].split(' ')[0]} anyway?`;
       if (Platform.OS !== 'web') {
-        Alert.alert('Override Low Ball?', msg, [
+        Alert.alert('Override Skins?', msg, [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Award Anyway', style: 'destructive', onPress: () => onAward(pi) },
         ]);
       } else {
-        onShowConflict('Override Low Ball?', msg, () => onAward(pi));
+        onShowConflict('Override Skins?', msg, () => onAward(pi));
       }
       return;
     }
@@ -966,7 +966,7 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <Text style={styles.beanName}>Low Ball</Text>
+          <Text style={styles.beanName}>Skins</Text>
           {carryover > 0 && (
             <View style={styles.carryoverBadge}>
               <Text style={styles.carryoverBadgeText}>×{pot}</Text>
