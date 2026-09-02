@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { colors, spacing, radius } from '../utils/theme';
 
 // Replace with real Stripe links when ready
@@ -300,10 +301,24 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
             <Text style={styles.googleBtnText}>Continue with Google</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.appleBtn} onPress={signInWithApple} activeOpacity={0.85}>
-            <Text style={styles.appleBtnIcon}></Text>
-            <Text style={styles.appleBtnText}>Continue with Apple</Text>
-          </TouchableOpacity>
+          {Platform.OS !== 'web' ? (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={radius.pill}
+              style={{ width: '100%', height: 50, marginTop: spacing.sm }}
+              onPress={async () => {
+                try { await signInWithApple(); } catch (e) {
+                  if (e?.code !== 'ERR_REQUEST_CANCELED') setBusy_error(e.message || 'Apple sign-in failed.');
+                }
+              }}
+            />
+          ) : (
+            <TouchableOpacity style={styles.appleBtn} onPress={signInWithApple} activeOpacity={0.85}>
+              <Text style={styles.appleBtnIcon}></Text>
+              <Text style={styles.appleBtnText}>Continue with Apple</Text>
+            </TouchableOpacity>
+          )}
 
           {isSignUp && (
             <Text style={styles.terms}>
