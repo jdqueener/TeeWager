@@ -407,15 +407,12 @@
         </label>
       </div>
       <div id="outreach-print-opts" style="margin-bottom:12px;">
-        <label style="font-size:12px;font-weight:700;color:#555;">Material type</label>
-        <select id="outreach-material-type" multiple style="margin-top:5px;padding:8px 12px;border:1.5px solid #E0E0D8;border-radius:8px;font-size:14px;background:#fff;width:100%;cursor:pointer;min-height:100px;">
-          <option value="Register Placard" selected>Register Placard</option>
-          <option value="Table Top Tent">Table Top Tent</option>
-          <option value="On-Course Ground Sign">On-Course Ground Sign</option>
-          <option value="Cart Barn Poster">Cart Barn Poster</option>
-          <option value="Scorecard Insert">Scorecard Insert</option>
-        </select>
-        <div style="font-size:11px;color:#888;margin-top:4px;">Hold Ctrl / Cmd to select multiple</div>
+        <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px;">Materials &amp; quantities</div>
+        <div style="border:1.5px solid #E0E0D8;border-radius:8px;overflow:hidden;background:#fff;">
+          <div id="outreach-materials-list">
+            <!-- rows injected by buildMaterialRows() -->
+          </div>
+        </div>
       </div>
       <div id="outreach-email-opts" style="display:none;margin-bottom:12px;">
         <label style="font-size:12px;font-weight:700;color:#555;">Email template</label>
@@ -1293,6 +1290,7 @@ function setOutreachStage(id, stage) {
 function openOutreachModal() {
   document.getElementById('outreach-filter-status').value = 'prospect';
   renderOutreachList();
+  buildMaterialRows();
   updateOutreachAction();
   document.getElementById('outreach-error').style.display = 'none';
   document.getElementById('outreach-modal').classList.add('open');
@@ -1351,6 +1349,42 @@ function updateOutreachCount() {
     document.querySelectorAll('.outreach-check:checked').length;
 }
 
+const MATERIAL_TYPES = [
+  'Register Placard',
+  'Table Top Tent',
+  'On-Course Ground Sign',
+  'Cart Barn Poster',
+  'Scorecard Insert',
+];
+
+function buildMaterialRows() {
+  const container = document.getElementById('outreach-materials-list');
+  container.innerHTML = MATERIAL_TYPES.map((name, i) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #F0F0EB;">
+      <input type="checkbox" id="mat-check-${i}" value="${esc(name)}" checked
+        style="width:16px;height:16px;accent-color:#1A4A2E;flex-shrink:0;cursor:pointer;"
+        onchange="this.closest('div').querySelector('input[type=number]').disabled=!this.checked" />
+      <label for="mat-check-${i}" style="flex:1;font-size:14px;font-weight:600;cursor:pointer;">${esc(name)}</label>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:12px;color:#888;">Qty</label>
+        <input type="number" id="mat-qty-${i}" value="1" min="1" max="999"
+          style="width:64px;padding:5px 8px;border:1.5px solid #E0E0D8;border-radius:6px;font-size:14px;font-weight:700;text-align:center;" />
+      </div>
+    </div>`).join('').replace(/<div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #F0F0EB;">(?=[\s\S]*?$)/, s =>
+    s.replace('border-bottom:1px solid #F0F0EB;', 'border-bottom:none;'));
+  // Fix last row border
+  const rows = container.querySelectorAll('div[style*="border-bottom"]');
+  if (rows.length) rows[rows.length - 1].style.borderBottom = 'none';
+}
+
+function getSelectedMaterials() {
+  return MATERIAL_TYPES.map((name, i) => {
+    const checked = document.getElementById(`mat-check-${i}`)?.checked;
+    const qty     = parseInt(document.getElementById(`mat-qty-${i}`)?.value) || 1;
+    return checked ? { name, qty } : null;
+  }).filter(Boolean);
+}
+
 function updateOutreachAction() {
   const action = document.querySelector('input[name="outreach-action"]:checked')?.value || 'print';
   document.getElementById('outreach-print-opts').style.display = action === 'print' ? 'block' : 'none';
@@ -1374,7 +1408,7 @@ async function executeOutreach() {
   const partners = allPartners.filter(p => selectedIds.includes(p.id));
 
   if (action === 'print') {
-    const materials = [...document.querySelectorAll('#outreach-material-type option:checked')].map(o => o.value);
+    const materials = getSelectedMaterials();
     printOutreachPacket(partners, materials);
   } else {
     openEmailComposer(partners, template);
@@ -1472,7 +1506,7 @@ function printOutreachPacket(partners, materials = []) {
           ${p.email ? `<div style="font-size:13px;margin-bottom:2px;"><strong>Email:</strong> ${esc(p.email)}</div>` : ''}
           ${p.phone ? `<div style="font-size:13px;margin-bottom:2px;"><strong>Phone:</strong> ${esc(p.phone)}</div>` : ''}
           ${p.mailing_address ? `<div style="font-size:13px;margin-bottom:8px;"><strong>Address:</strong> ${esc(p.mailing_address)}</div>` : ''}
-          ${materials.length ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid #E0E0D8;"><div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Materials requested</div>${materials.map(m=>`<div style="display:inline-block;background:#EFF6FF;color:#1D4ED8;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;margin:2px;">${esc(m)}</div>`).join('')}</div>` : ''}
+          ${materials.length ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid #E0E0D8;"><div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Materials requested</div>${materials.map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:13px;"><span>${esc(m.name)}</span><span style="font-weight:800;background:#EFF6FF;color:#1D4ED8;border-radius:4px;padding:1px 8px;">Qty: ${m.qty}</span></div>`).join('')}</div>` : ''}
           <div style="font-size:12px;color:#888;margin-top:8px;font-family:monospace;">Ref: ${esc(p.referral_code||'—')}</div>
           <div style="font-size:11px;color:#aaa;margin-top:2px;">QR → teewager.io/app?ref=${esc(p.referral_code||'')}</div>
         </div>
@@ -1489,7 +1523,7 @@ function printOutreachPacket(partners, materials = []) {
   @media print { button { display:none; } }
 </style></head><body>
 <h2>⛳ TeeWager — Outreach Packet</h2>
-<p>Generated ${new Date().toLocaleDateString()} · ${partners.length} course${partners.length!==1?'s':''} · Materials: ${materials.length ? materials.join(', ') : 'not specified'} · Send to print shop</p>
+<p>Generated ${new Date().toLocaleDateString()} · ${partners.length} course${partners.length!==1?'s':''} · ${materials.length ? materials.map(m=>`${m.name} ×${m.qty}`).join(', ') : 'No materials specified'} · Send to print shop</p>
 <button onclick="window.print()" style="margin-bottom:24px;padding:10px 24px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨 Print</button>
 ${cards}
 </body></html>`);
