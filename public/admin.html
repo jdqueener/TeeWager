@@ -67,9 +67,14 @@
   .course-code { font-size: 12px; color: #888; margin-top: 1px; font-family: monospace; }
 
   .badge { display: inline-block; padding: 3px 10px; border-radius: 50px; font-size: 11px; font-weight: 700; }
-  .badge-active   { background: #DCFCE7; color: #166534; }
-  .badge-pending  { background: #FEF9C3; color: #854D0E; }
-  .badge-inactive { background: #F3F4F6; color: #6B7280; }
+  .badge-active    { background: #DCFCE7; color: #166534; }
+  .badge-pending   { background: #FEF9C3; color: #854D0E; }
+  .badge-inactive  { background: #F3F4F6; color: #6B7280; }
+  .badge-prospect  { background: #EFF6FF; color: #1D4ED8; }
+  .badge-targeted  { background: #FFF7ED; color: #C2410C; }
+  .badge-contacted { background: #F5F3FF; color: #6D28D9; }
+
+  .outreach-stage { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #F5F3FF; color: #6D28D9; margin-top: 2px; }
 
   .payout-amount { font-weight: 800; color: #1A4A2E; }
   .payout-zero   { color: #ccc; }
@@ -212,6 +217,9 @@
       <input class="search-input" id="search" placeholder="Search course name or code…" oninput="renderTable()" />
       <select class="filter-select" id="status-filter" onchange="renderTable()">
         <option value="">All statuses</option>
+        <option value="prospect">Prospect</option>
+        <option value="targeted">Targeted</option>
+        <option value="contacted">Contacted</option>
         <option value="pending">Pending</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
@@ -221,6 +229,7 @@
       <button class="add-partner-btn" onclick="openAddModal()">+ Add Partner</button>
       <button class="import-btn" onclick="openBulkModal()">⬆ Bulk Import</button>
       <button class="import-btn" onclick="openQRSheetModal()" style="border-color:#B8860B;color:#B8860B;">🖨 Print QR Sheet</button>
+      <button class="import-btn" onclick="openOutreachModal()" style="border-color:#6D28D9;color:#6D28D9;">📬 Outreach</button>
     </div>
 
     <div class="table-wrap">
@@ -233,11 +242,12 @@
             <th class="sortable" onclick="sort('payout')">Payout ↕</th>
             <th>Status</th>
             <th class="sortable" onclick="sort('created_at')">Added ↕</th>
+            <th>Outreach</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="table-body">
-          <tr><td colspan="7" class="loading">Loading…</td></tr>
+          <tr><td colspan="8" class="loading">Loading…</td></tr>
         </tbody>
       </table>
     </div>
@@ -286,6 +296,22 @@
         <label>Contact email</label>
         <input type="email" id="add-email" placeholder="john@pinesgolf.com" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
+      <div class="modal-field">
+        <label>Contact phone</label>
+        <input type="tel" id="add-phone" placeholder="(541) 555-1234" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div class="modal-field" style="grid-column:1/-1">
+        <label>Mailing address (for print packets)</label>
+        <input type="text" id="add-address" placeholder="123 Fairway Dr, Bend OR 97701" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div class="modal-field" style="grid-column:1/-1">
+        <label>Status</label>
+        <select id="add-status">
+          <option value="prospect">Prospect</option>
+          <option value="targeted">Targeted</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
     </div>
 
     <div id="add-result" style="display:none">
@@ -318,7 +344,7 @@
 <div class="modal-overlay" id="bulk-modal">
   <div class="modal">
     <h3>Bulk Import Partners</h3>
-    <p class="modal-sub">Paste a list of courses — one per line — or upload a CSV. Format: <code>Course Name, City, State</code> (state optional).</p>
+    <p class="modal-sub">Paste a list of courses — one per line — or upload a CSV. Format: <code>Course Name, City, State, Contact Name, Email, Phone, Address</code> (only Course Name required).</p>
 
     <div class="modal-field">
       <label>Paste course list</label>
@@ -346,6 +372,61 @@
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeBulkModal()">Cancel</button>
       <button class="modal-submit" id="bulk-submit-btn" onclick="submitBulk()" style="display:none">Import all →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Outreach Modal ── -->
+<div class="modal-overlay" id="outreach-modal">
+  <div class="modal" style="max-width:720px;">
+    <h3>📬 Outreach Manager</h3>
+    <p class="modal-sub">Select partners to target, then generate a print packet for your print shop or compose an email.</p>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+      <button type="button" onclick="outreachSelectAll(true)" style="padding:6px 14px;border:1.5px solid #E0E0D8;border-radius:6px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;">Select all</button>
+      <button type="button" onclick="outreachSelectAll(false)" style="padding:6px 14px;border:1.5px solid #E0E0D8;border-radius:6px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;">Deselect all</button>
+      <select id="outreach-filter-status" onchange="renderOutreachList()" style="padding:6px 12px;border:1.5px solid #E0E0D8;border-radius:6px;font-size:13px;background:#fff;cursor:pointer;">
+        <option value="">All statuses</option>
+        <option value="prospect">Prospects only</option>
+        <option value="targeted">Targeted only</option>
+        <option value="contacted">Contacted only</option>
+      </select>
+      <span style="font-size:13px;color:#888;margin-left:4px;"><span id="outreach-selected-count">0</span> selected</span>
+    </div>
+
+    <div id="outreach-list" style="max-height:280px;overflow-y:auto;border:1.5px solid #E0E0D8;border-radius:10px;background:#fff;margin-bottom:16px;"></div>
+
+    <div style="border-top:1.5px solid #E0E0D8;padding-top:16px;margin-bottom:4px;">
+      <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Action</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;cursor:pointer;">
+          <input type="radio" name="outreach-action" value="print" checked onchange="updateOutreachAction()" /> 🖨 Print packet (for print shop)
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;cursor:pointer;">
+          <input type="radio" name="outreach-action" value="email" onchange="updateOutreachAction()" /> ✉️ Email
+        </label>
+      </div>
+      <div id="outreach-email-opts" style="display:none;margin-bottom:12px;">
+        <label style="font-size:12px;font-weight:700;color:#555;">Email template</label>
+        <select id="outreach-email-template" style="margin-top:5px;padding:8px 12px;border:1.5px solid #E0E0D8;border-radius:8px;font-size:14px;background:#fff;width:100%;cursor:pointer;">
+          <option value="initial">Initial outreach</option>
+          <option value="followup1">Follow-up #1 (1 week)</option>
+          <option value="followup2">Follow-up #2 (2 weeks)</option>
+        </select>
+      </div>
+      <div id="outreach-mark-opts" style="margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#555;cursor:pointer;">
+          <input type="checkbox" id="outreach-mark-status" checked style="accent-color:#1A4A2E;" />
+          Mark selected partners as <strong style="margin-left:4px;" id="outreach-mark-label">Targeted</strong> after generating
+        </label>
+      </div>
+    </div>
+
+    <div id="outreach-error" style="display:none;color:#DC2626;font-size:13px;margin-bottom:10px;"></div>
+
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" onclick="closeOutreachModal()">Cancel</button>
+      <button type="button" class="modal-submit" onclick="executeOutreach()">Generate →</button>
     </div>
   </div>
 </div>
@@ -382,6 +463,9 @@
     <div class="drawer-section-title">Status</div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <select class="status-select" id="drawer-status">
+        <option value="prospect">Prospect</option>
+        <option value="targeted">Targeted</option>
+        <option value="contacted">Contacted</option>
         <option value="pending">Pending</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
@@ -520,7 +604,7 @@ async function sbFetch(path) {
 }
 
 async function loadData() {
-  document.getElementById('table-body').innerHTML = '<tr><td colspan="7" class="loading">Loading…</td></tr>';
+  document.getElementById('table-body').innerHTML = '<tr><td colspan="8" class="loading">Loading…</td></tr>';
   try {
     const [partners, profiles] = await Promise.all([
       sbFetch('partners?select=*&order=created_at.desc'),
@@ -532,7 +616,7 @@ async function loadData() {
     renderTable();
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
   } catch(e) {
-    document.getElementById('table-body').innerHTML = `<tr><td colspan="7" class="empty">Error loading data: ${e.message}</td></tr>`;
+    document.getElementById('table-body').innerHTML = `<tr><td colspan="8" class="empty">Error loading data: ${e.message}</td></tr>`;
   }
 }
 
@@ -606,11 +690,14 @@ function renderTable() {
   });
 
   if (!rows.length) {
-    document.getElementById('table-body').innerHTML = '<tr><td colspan="7" class="empty">No partners found.</td></tr>';
+    document.getElementById('table-body').innerHTML = '<tr><td colspan="8" class="empty">No partners found.</td></tr>';
     return;
   }
 
-  document.getElementById('table-body').innerHTML = rows.map(r => `
+  document.getElementById('table-body').innerHTML = rows.map(r => {
+    const stage = getOutreachStage(r.id);
+    const stageHtml = stage ? `<div class="outreach-stage">${esc(stage)}</div>` : '<span style="color:#ccc;font-size:12px;">—</span>';
+    return `
     <tr>
       <td>
         <div class="course-name">${esc(r.course_name)}</div>
@@ -624,9 +711,10 @@ function renderTable() {
         ${formatDate(r.created_at)}
         ${r.portal_password ? '<br><span style="font-size:11px;color:#166534;font-weight:700;">✓ Self-registered</span>' : '<br><span style="font-size:11px;color:#888;">Admin added</span>'}
       </td>
+      <td>${stageHtml}</td>
       <td><button class="action-btn" onclick="openDrawer('${r.id}')">View</button></td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 // ── Drawer ────────────────────────────────────────────────────────────────────
@@ -883,6 +971,9 @@ function openAddModal() {
   document.getElementById('add-state').value = '';
   document.getElementById('add-contact').value = '';
   document.getElementById('add-email').value = '';
+  document.getElementById('add-phone').value = '';
+  document.getElementById('add-address').value = '';
+  document.getElementById('add-status').value = 'prospect';
   document.getElementById('add-result').style.display = 'none';
   document.getElementById('add-error').style.display = 'none';
   const btn = document.getElementById('add-submit-btn');
@@ -932,15 +1023,21 @@ async function submitAddPartner() {
   const [firstName, ...rest] = contact.split(' ');
   const lastName = rest.join(' ');
 
+  const phone   = document.getElementById('add-phone').value.trim();
+  const address = document.getElementById('add-address').value.trim();
+  const status  = document.getElementById('add-status').value || 'prospect';
+
   const payload = {
-    course_name:   name,
+    course_name:     name,
     city,
     state,
-    referral_code: refCode,
-    status:        'pending',
-    first_name:    firstName || null,
-    last_name:     lastName  || null,
-    email:         email     || null,
+    referral_code:   refCode,
+    status,
+    first_name:      firstName || null,
+    last_name:       lastName  || null,
+    email:           email     || null,
+    phone:           phone     || null,
+    mailing_address: address   || null,
   };
 
   try {
@@ -1021,13 +1118,17 @@ function loadBulkFile() {
 }
 
 function parseBulkLine(line) {
-  const parts = line.split(',').map(s => s.trim()).filter(Boolean);
+  const parts = line.split(',').map(s => s.trim());
   if (!parts.length || !parts[0]) return null;
   return {
-    course_name: parts[0],
-    city:        parts[1] || '',
-    state:       parts[2] || '',
-    refCode:     generateRefCode(parts[0], parts[2] || ''),
+    course_name:  parts[0],
+    city:         parts[1] || '',
+    state:        parts[2] || '',
+    contact_name: parts[3] || '',
+    email:        parts[4] || '',
+    phone:        parts[5] || '',
+    address:      parts[6] || '',
+    refCode:      generateRefCode(parts[0], parts[2] || ''),
   };
 }
 
@@ -1073,11 +1174,16 @@ async function submitBulk() {
           'Prefer': 'return=minimal',
         },
         body: JSON.stringify({
-          course_name:   r.course_name,
-          city:          r.city,
-          state:         r.state,
-          referral_code: r.refCode,
-          status:        'pending',
+          course_name:     r.course_name,
+          city:            r.city,
+          state:           r.state,
+          referral_code:   r.refCode,
+          status:          'prospect',
+          first_name:      r.contact_name ? r.contact_name.split(' ')[0] : null,
+          last_name:       r.contact_name ? r.contact_name.split(' ').slice(1).join(' ') || null : null,
+          email:           r.email  || null,
+          phone:           r.phone  || null,
+          mailing_address: r.address || null,
         }),
       });
       if (res.ok) done++; else { console.error('Bulk import row failed', r.course_name, await res.text()); failed++; }
@@ -1152,6 +1258,264 @@ function printQRSheet() {
 <p>Generated ${new Date().toLocaleDateString()} · ${partners.length} course${partners.length!==1?'s':''} · Verify each QR matches its course before printing</p>
 <button onclick="window.print()" style="margin-bottom:20px;padding:10px 24px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨 Print</button>
 <div class="grid">${cards}</div>
+</body></html>`);
+  win.document.close();
+}
+
+// ── Outreach ──────────────────────────────────────────────────────────────────
+const OUTREACH_KEY = 'tw_outreach_stages';
+
+function getOutreachData() {
+  try { return JSON.parse(localStorage.getItem(OUTREACH_KEY) || '{}'); } catch { return {}; }
+}
+
+function getOutreachStage(id) {
+  return getOutreachData()[id] || null;
+}
+
+function setOutreachStage(id, stage) {
+  const data = getOutreachData();
+  data[id] = stage;
+  localStorage.setItem(OUTREACH_KEY, JSON.stringify(data));
+}
+
+function openOutreachModal() {
+  document.getElementById('outreach-filter-status').value = 'prospect';
+  renderOutreachList();
+  updateOutreachAction();
+  document.getElementById('outreach-error').style.display = 'none';
+  document.getElementById('outreach-modal').classList.add('open');
+}
+
+function closeOutreachModal() {
+  document.getElementById('outreach-modal').classList.remove('open');
+}
+
+function renderOutreachList() {
+  const filterStatus = document.getElementById('outreach-filter-status').value;
+  let partners = allPartners;
+  if (filterStatus) partners = partners.filter(p => (p.status || 'pending') === filterStatus);
+
+  const list = document.getElementById('outreach-list');
+  if (!partners.length) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa;font-size:13px;">No partners match this filter.</div>';
+    updateOutreachCount();
+    return;
+  }
+
+  const outreach = getOutreachData();
+  list.innerHTML = partners.map(p => {
+    const stage = outreach[p.id] || '';
+    const stageTag = stage ? `<span class="outreach-stage" style="margin-left:6px;">${esc(stage)}</span>` : '';
+    const hasAddress = p.mailing_address ? '📮' : '';
+    const hasEmail   = p.email ? '✉️' : '';
+    return `
+      <label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #F0F0EB;cursor:pointer;">
+        <input type="checkbox" class="outreach-check" value="${esc(p.id)}" checked
+          onchange="updateOutreachCount()"
+          style="width:16px;height:16px;accent-color:#6D28D9;flex-shrink:0;" />
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;">${esc(p.course_name)}${stageTag}</div>
+          <div style="font-size:12px;color:#888;margin-top:1px;">
+            ${esc(p.city||'')}${p.city&&p.state?', ':''}${esc(p.state||'')}
+            ${p.first_name ? ` · ${esc([p.first_name,p.last_name].filter(Boolean).join(' '))}` : ''}
+            ${hasAddress} ${hasEmail}
+          </div>
+          ${p.mailing_address ? `<div style="font-size:11px;color:#555;margin-top:1px;">📮 ${esc(p.mailing_address)}</div>` : ''}
+          ${p.email ? `<div style="font-size:11px;color:#555;margin-top:1px;">✉️ ${esc(p.email)}</div>` : ''}
+        </div>
+        <span class="badge badge-${p.status||'pending'}" style="flex-shrink:0;">${esc(p.status||'pending')}</span>
+      </label>`;
+  }).join('');
+  updateOutreachCount();
+}
+
+function outreachSelectAll(val) {
+  document.querySelectorAll('.outreach-check').forEach(c => c.checked = val);
+  updateOutreachCount();
+}
+
+function updateOutreachCount() {
+  document.getElementById('outreach-selected-count').textContent =
+    document.querySelectorAll('.outreach-check:checked').length;
+}
+
+function updateOutreachAction() {
+  const action = document.querySelector('input[name="outreach-action"]:checked')?.value || 'print';
+  document.getElementById('outreach-email-opts').style.display = action === 'email' ? 'block' : 'none';
+  document.getElementById('outreach-mark-label').textContent = action === 'email' ? 'Contacted' : 'Targeted';
+}
+
+async function executeOutreach() {
+  const selectedIds = [...document.querySelectorAll('.outreach-check:checked')].map(c => c.value);
+  if (!selectedIds.length) {
+    document.getElementById('outreach-error').textContent = 'Select at least one partner.';
+    document.getElementById('outreach-error').style.display = 'block';
+    return;
+  }
+  document.getElementById('outreach-error').style.display = 'none';
+
+  const action   = document.querySelector('input[name="outreach-action"]:checked')?.value || 'print';
+  const template = document.getElementById('outreach-email-template').value;
+  const markStatus = document.getElementById('outreach-mark-status').checked;
+  const newStage = action === 'email' ? 'Contacted' : 'Targeted';
+  const partners = allPartners.filter(p => selectedIds.includes(p.id));
+
+  if (action === 'print') {
+    printOutreachPacket(partners);
+  } else {
+    openEmailComposer(partners, template);
+  }
+
+  if (markStatus) {
+    const dbStatus = action === 'email' ? 'contacted' : 'targeted';
+    for (const p of partners) {
+      setOutreachStage(p.id, newStage);
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${p.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ status: dbStatus }),
+        });
+        const idx = allPartners.findIndex(x => x.id === p.id);
+        if (idx >= 0) allPartners[idx] = { ...allPartners[idx], status: dbStatus };
+      } catch(e) { console.warn('Status update failed for', p.course_name, e); }
+    }
+    renderTable();
+    updateStats();
+  }
+
+  closeOutreachModal();
+}
+
+const EMAIL_TEMPLATES = {
+  initial: {
+    subject: 'Partner with TeeWager — Your Course. Your Players. Extra Revenue.',
+    body: (p) => `Hi ${p.first_name || 'there'},
+
+I'm reaching out from TeeWager — a golf wagering app that lets players track beans, Nassau, skins, and more right from their phone during a round.
+
+We're building a local partner network and I'd love to feature ${p.course_name || 'your course'} as a TeeWager partner. It's completely free to join, and every player who signs up through your course earns you $1/signup.
+
+Here's how it works:
+  • We provide a printed QR-code placard for your pro shop or cart barn
+  • Players scan it to download TeeWager
+  • You earn $1 for every signup — paid monthly
+
+No software, no maintenance, no cost.
+
+Would you be open to a quick call to learn more? Or I can send a one-page overview.
+
+Cheers,
+[Your name]
+TeeWager
+teewager.io
+`,
+  },
+  followup1: {
+    subject: 'Following up — TeeWager Partner Program',
+    body: (p) => `Hi ${p.first_name || 'there'},
+
+Just following up on my note from last week about the TeeWager partner program.
+
+I know things get busy at the course — wanted to make sure my email didn't get buried. The program is completely free to join, takes minutes to set up, and pays $1/signup every month.
+
+Happy to send a quick one-pager if that's easier than a call. Just say the word.
+
+Thanks,
+[Your name]
+TeeWager
+`,
+  },
+  followup2: {
+    subject: 'Last note — TeeWager at ${p.course_name}',
+    body: (p) => `Hi ${p.first_name || 'there'},
+
+One last note — I don't want to keep showing up in your inbox if the timing isn't right.
+
+If you're ever curious about TeeWager or want to get your course on the partner map, you can always reach out at partners@teewager.io or visit teewager.io.
+
+We'd love to have ${p.course_name || 'your course'} in the network when the time is right.
+
+All the best,
+[Your name]
+TeeWager
+`,
+  },
+};
+
+function printOutreachPacket(partners) {
+  const cards = partners.map(p => {
+    const qrUrl  = `https://www.teewager.io/app?ref=${p.referral_code}`;
+    const imgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=1A4A2E&data=${encodeURIComponent(qrUrl)}`;
+    const contact = [p.first_name, p.last_name].filter(Boolean).join(' ');
+    return `
+      <div style="break-inside:avoid;border:1.5px solid #ccc;border-radius:10px;padding:20px;margin-bottom:20px;display:flex;gap:20px;align-items:flex-start;">
+        <img src="${imgSrc}" width="160" height="160" style="border-radius:6px;flex-shrink:0;" />
+        <div style="flex:1;">
+          <div style="font-size:16px;font-weight:800;color:#1A4A2E;margin-bottom:4px;">${esc(p.course_name)}</div>
+          <div style="font-size:13px;color:#555;margin-bottom:8px;">${esc(p.city||'')}${p.city&&p.state?', ':''}${esc(p.state||'')}</div>
+          ${contact ? `<div style="font-size:13px;margin-bottom:2px;"><strong>Contact:</strong> ${esc(contact)}</div>` : ''}
+          ${p.email ? `<div style="font-size:13px;margin-bottom:2px;"><strong>Email:</strong> ${esc(p.email)}</div>` : ''}
+          ${p.phone ? `<div style="font-size:13px;margin-bottom:2px;"><strong>Phone:</strong> ${esc(p.phone)}</div>` : ''}
+          ${p.mailing_address ? `<div style="font-size:13px;margin-bottom:8px;"><strong>Address:</strong> ${esc(p.mailing_address)}</div>` : ''}
+          <div style="font-size:12px;color:#888;margin-top:8px;font-family:monospace;">Ref: ${esc(p.referral_code||'—')}</div>
+          <div style="font-size:11px;color:#aaa;margin-top:2px;">QR → teewager.io/app?ref=${esc(p.referral_code||'')}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html><head><title>TeeWager — Outreach Packet</title>
+<style>
+  body { font-family: -apple-system, sans-serif; padding: 28px; color: #1A1A1A; }
+  h2 { color: #1A4A2E; margin-bottom: 4px; }
+  p { color: #888; font-size: 13px; margin-bottom: 24px; }
+  @media print { button { display:none; } }
+</style></head><body>
+<h2>⛳ TeeWager — Outreach Packet</h2>
+<p>Generated ${new Date().toLocaleDateString()} · ${partners.length} course${partners.length!==1?'s':''} · Send to print shop or use for internal reference</p>
+<button onclick="window.print()" style="margin-bottom:24px;padding:10px 24px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨 Print</button>
+${cards}
+</body></html>`);
+  win.document.close();
+}
+
+function openEmailComposer(partners, templateKey) {
+  const tpl = EMAIL_TEMPLATES[templateKey] || EMAIL_TEMPLATES.initial;
+  const emailCards = partners.map(p => {
+    const to = p.email || '(no email on file)';
+    const subject = typeof tpl.subject === 'function' ? tpl.subject(p) : tpl.subject.replace('${p.course_name}', p.course_name || '');
+    const body = tpl.body(p);
+    const mailtoLink = p.email ? `mailto:${encodeURIComponent(p.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` : null;
+    return `
+      <div style="break-inside:avoid;border:1.5px solid #ccc;border-radius:10px;padding:20px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:12px;">
+          <div>
+            <div style="font-size:15px;font-weight:800;color:#1A4A2E;">${esc(p.course_name)}</div>
+            <div style="font-size:13px;color:#555;margin-top:2px;"><strong>To:</strong> ${esc(to)}</div>
+            <div style="font-size:13px;color:#555;margin-top:2px;"><strong>Subject:</strong> ${esc(subject)}</div>
+          </div>
+          ${mailtoLink ? `<a href="${mailtoLink}" style="padding:8px 16px;background:#1A4A2E;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;white-space:nowrap;flex-shrink:0;">Open in Mail</a>` : '<span style="font-size:12px;color:#DC2626;">No email on file</span>'}
+        </div>
+        <pre style="font-size:13px;line-height:1.6;background:#F8FAF8;border:1px solid #E0E0D8;border-radius:6px;padding:14px;white-space:pre-wrap;word-break:break-word;">${esc(body)}</pre>
+      </div>`;
+  }).join('');
+
+  const templateNames = { initial: 'Initial Outreach', followup1: 'Follow-up #1', followup2: 'Follow-up #2' };
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html><head><title>TeeWager — Email Outreach</title>
+<style>
+  body { font-family: -apple-system, sans-serif; padding: 28px; color: #1A1A1A; max-width: 800px; margin: 0 auto; }
+  h2 { color: #1A4A2E; margin-bottom: 4px; }
+  p { color: #888; font-size: 13px; margin-bottom: 24px; }
+  @media print { button { display:none; } }
+</style></head><body>
+<h2>✉️ TeeWager — Email Outreach: ${esc(templateNames[templateKey] || templateKey)}</h2>
+<p>Generated ${new Date().toLocaleDateString()} · ${partners.length} recipient${partners.length!==1?'s':''} · Click "Open in Mail" to send each email</p>
+${emailCards}
 </body></html>`);
   win.document.close();
 }
