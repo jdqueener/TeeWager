@@ -446,23 +446,31 @@ export default function ScorecardScreen() {
               return (
                 <View key={pi} style={styles.nassauStrokeRow}>
                   <Text style={styles.nassauPlayerName} numberOfLines={1}>{name}</Text>
-                  <View style={styles.nassauStepper}>
-                    <TouchableOpacity
-                      style={styles.nassauStepBtn}
-                      onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: Math.max(1, val - 1) })}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.nassauStepText}>−</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.nassauStrokeVal}>{val || '—'}</Text>
-                    <TouchableOpacity
-                      style={styles.nassauStepBtn}
-                      onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: val + 1 })}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.nassauStepText}>+</Text>
-                    </TouchableOpacity>
-                  </View>
+                  {Platform.OS === 'web' ? (
+                    <StrokePicker
+                      value={val}
+                      par={par}
+                      onChange={v => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: v })}
+                    />
+                  ) : (
+                    <View style={styles.nassauStepper}>
+                      <TouchableOpacity
+                        style={styles.nassauStepBtn}
+                        onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: Math.max(1, val - 1) })}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={styles.nassauStepText}>−</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.nassauStrokeVal}>{val || '—'}</Text>
+                      <TouchableOpacity
+                        style={styles.nassauStepBtn}
+                        onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: val + 1 })}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={styles.nassauStepText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                   <Text style={[styles.nassauRelPar, val === 0 && { opacity: 0 }]}>
                     {val === 0 ? '—' : val === par ? 'E' : val < par ? `${val - par}` : `+${val - par}`}
                   </Text>
