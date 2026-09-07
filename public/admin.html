@@ -406,6 +406,17 @@
           <input type="radio" name="outreach-action" value="email" onchange="updateOutreachAction()" /> ✉️ Email
         </label>
       </div>
+      <div id="outreach-print-opts" style="margin-bottom:12px;">
+        <label style="font-size:12px;font-weight:700;color:#555;">Material type</label>
+        <select id="outreach-material-type" multiple style="margin-top:5px;padding:8px 12px;border:1.5px solid #E0E0D8;border-radius:8px;font-size:14px;background:#fff;width:100%;cursor:pointer;min-height:100px;">
+          <option value="Register Placard" selected>Register Placard</option>
+          <option value="Table Top Tent">Table Top Tent</option>
+          <option value="On-Course Ground Sign">On-Course Ground Sign</option>
+          <option value="Cart Barn Poster">Cart Barn Poster</option>
+          <option value="Scorecard Insert">Scorecard Insert</option>
+        </select>
+        <div style="font-size:11px;color:#888;margin-top:4px;">Hold Ctrl / Cmd to select multiple</div>
+      </div>
       <div id="outreach-email-opts" style="display:none;margin-bottom:12px;">
         <label style="font-size:12px;font-weight:700;color:#555;">Email template</label>
         <select id="outreach-email-template" style="margin-top:5px;padding:8px 12px;border:1.5px solid #E0E0D8;border-radius:8px;font-size:14px;background:#fff;width:100%;cursor:pointer;">
@@ -1342,6 +1353,7 @@ function updateOutreachCount() {
 
 function updateOutreachAction() {
   const action = document.querySelector('input[name="outreach-action"]:checked')?.value || 'print';
+  document.getElementById('outreach-print-opts').style.display = action === 'print' ? 'block' : 'none';
   document.getElementById('outreach-email-opts').style.display = action === 'email' ? 'block' : 'none';
   document.getElementById('outreach-mark-label').textContent = action === 'email' ? 'Contacted' : 'Targeted';
 }
@@ -1362,7 +1374,8 @@ async function executeOutreach() {
   const partners = allPartners.filter(p => selectedIds.includes(p.id));
 
   if (action === 'print') {
-    printOutreachPacket(partners);
+    const materials = [...document.querySelectorAll('#outreach-material-type option:checked')].map(o => o.value);
+    printOutreachPacket(partners, materials);
   } else {
     openEmailComposer(partners, template);
   }
@@ -1444,7 +1457,7 @@ TeeWager
   },
 };
 
-function printOutreachPacket(partners) {
+function printOutreachPacket(partners, materials = []) {
   const cards = partners.map(p => {
     const qrUrl  = `https://www.teewager.io/app?ref=${p.referral_code}`;
     const imgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=1A4A2E&data=${encodeURIComponent(qrUrl)}`;
@@ -1459,6 +1472,7 @@ function printOutreachPacket(partners) {
           ${p.email ? `<div style="font-size:13px;margin-bottom:2px;"><strong>Email:</strong> ${esc(p.email)}</div>` : ''}
           ${p.phone ? `<div style="font-size:13px;margin-bottom:2px;"><strong>Phone:</strong> ${esc(p.phone)}</div>` : ''}
           ${p.mailing_address ? `<div style="font-size:13px;margin-bottom:8px;"><strong>Address:</strong> ${esc(p.mailing_address)}</div>` : ''}
+          ${materials.length ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid #E0E0D8;"><div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Materials requested</div>${materials.map(m=>`<div style="display:inline-block;background:#EFF6FF;color:#1D4ED8;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;margin:2px;">${esc(m)}</div>`).join('')}</div>` : ''}
           <div style="font-size:12px;color:#888;margin-top:8px;font-family:monospace;">Ref: ${esc(p.referral_code||'—')}</div>
           <div style="font-size:11px;color:#aaa;margin-top:2px;">QR → teewager.io/app?ref=${esc(p.referral_code||'')}</div>
         </div>
@@ -1475,7 +1489,7 @@ function printOutreachPacket(partners) {
   @media print { button { display:none; } }
 </style></head><body>
 <h2>⛳ TeeWager — Outreach Packet</h2>
-<p>Generated ${new Date().toLocaleDateString()} · ${partners.length} course${partners.length!==1?'s':''} · Send to print shop or use for internal reference</p>
+<p>Generated ${new Date().toLocaleDateString()} · ${partners.length} course${partners.length!==1?'s':''} · Materials: ${materials.length ? materials.join(', ') : 'not specified'} · Send to print shop</p>
 <button onclick="window.print()" style="margin-bottom:24px;padding:10px 24px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨 Print</button>
 ${cards}
 </body></html>`);
