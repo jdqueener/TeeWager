@@ -478,6 +478,20 @@
   </div>
 
   <div class="drawer-section">
+    <div class="drawer-section-title">Outreach Stage</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <select class="status-select" id="drawer-outreach-stage">
+        <option value="">— None —</option>
+        <option value="Targeted">Targeted</option>
+        <option value="Contacted">Contacted</option>
+        <option value="Declined">Declined</option>
+      </select>
+      <button class="save-status-btn" onclick="saveOutreachStage()">Save</button>
+    </div>
+    <div id="drawer-outreach-meta" style="margin-top:8px;font-size:13px;color:#888;"></div>
+  </div>
+
+  <div class="drawer-section">
     <div class="drawer-section-title">Contact</div>
     <div id="drawer-contact"></div>
   </div>
@@ -727,7 +741,9 @@ function openDrawer(id) {
 
   document.getElementById('drawer-title').textContent = p.course_name;
   document.getElementById('drawer-meta').textContent  = `${p.city||''}${p.city&&p.state?', ':''}${p.state||''} · Registered ${formatDate(p.created_at)}`;
-  document.getElementById('drawer-status').value      = p.status || 'pending';
+  document.getElementById('drawer-status').value         = p.status || 'pending';
+  document.getElementById('drawer-outreach-stage').value = p.outreach_stage || '';
+  document.getElementById('drawer-outreach-meta').textContent = p.outreach_last_date ? 'Last outreach: ' + formatDate(p.outreach_last_date) : '';
 
   document.getElementById('drawer-contact').innerHTML = rows([
     ['Name',           `${p.first_name||''} ${p.last_name||''}`.trim()],
@@ -735,7 +751,6 @@ function openDrawer(id) {
     ['Email',          p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : '—'],
     ['Phone',          p.phone],
     ['Mailing address',p.mailing_address],
-    ['Outreach stage', p.outreach_stage ? `<span class="outreach-stage">${esc(p.outreach_stage)}</span> <button type="button" onclick="clearOutreachStage()" style="margin-left:8px;padding:2px 8px;border:1px solid #E0E0D8;border-radius:4px;font-size:11px;cursor:pointer;background:#fff;">Clear</button>` : '—'],
     ['Last outreach',  p.outreach_last_date ? formatDate(p.outreach_last_date) : '—'],
   ]);
 
@@ -1289,10 +1304,21 @@ async function setOutreachStage(id, stage) {
   if (idx >= 0) allPartners[idx] = { ...allPartners[idx], outreach_stage: stage, outreach_last_date: now };
 }
 
+async function saveOutreachStage() {
+  if (!currentDrawerPartner) return;
+  const stage = document.getElementById('drawer-outreach-stage').value || null;
+  await setOutreachStage(currentDrawerPartner.id, stage);
+  currentDrawerPartner.outreach_stage = stage;
+  currentDrawerPartner.outreach_last_date = stage ? new Date().toISOString() : null;
+  document.getElementById('drawer-outreach-meta').textContent = stage && currentDrawerPartner.outreach_last_date ? 'Last outreach: ' + formatDate(currentDrawerPartner.outreach_last_date) : '';
+  renderTable();
+}
+
 async function clearOutreachStage() {
   if (!currentDrawerPartner) return;
   await setOutreachStage(currentDrawerPartner.id, null);
   currentDrawerPartner.outreach_stage = null;
+  currentDrawerPartner.outreach_last_date = null;
   openDrawer(currentDrawerPartner.id);
   renderTable();
 }
