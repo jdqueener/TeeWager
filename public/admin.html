@@ -217,9 +217,6 @@
       <input class="search-input" id="search" placeholder="Search course name or code…" oninput="renderTable()" />
       <select class="filter-select" id="status-filter" onchange="renderTable()">
         <option value="">All statuses</option>
-        <option value="prospect">Prospect</option>
-        <option value="targeted">Targeted</option>
-        <option value="contacted">Contacted</option>
         <option value="pending">Pending</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
@@ -386,10 +383,10 @@
       <button type="button" onclick="outreachSelectAll(true)" style="padding:6px 14px;border:1.5px solid #E0E0D8;border-radius:6px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;">Select all</button>
       <button type="button" onclick="outreachSelectAll(false)" style="padding:6px 14px;border:1.5px solid #E0E0D8;border-radius:6px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;">Deselect all</button>
       <select id="outreach-filter-status" onchange="renderOutreachList()" style="padding:6px 12px;border:1.5px solid #E0E0D8;border-radius:6px;font-size:13px;background:#fff;cursor:pointer;">
-        <option value="">All statuses</option>
-        <option value="prospect">Prospects only</option>
-        <option value="targeted">Targeted only</option>
-        <option value="contacted">Contacted only</option>
+        <option value="">All partners</option>
+        <option value="Targeted">Targeted</option>
+        <option value="Contacted">Contacted</option>
+        <option value="none">Not yet outreached</option>
       </select>
       <span style="font-size:13px;color:#888;margin-left:4px;"><span id="outreach-selected-count">0</span> selected</span>
     </div>
@@ -471,9 +468,6 @@
     <div class="drawer-section-title">Status</div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <select class="status-select" id="drawer-status">
-        <option value="prospect">Prospect</option>
-        <option value="targeted">Targeted</option>
-        <option value="contacted">Contacted</option>
         <option value="pending">Pending</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
@@ -1301,9 +1295,11 @@ function closeOutreachModal() {
 }
 
 function renderOutreachList() {
-  const filterStatus = document.getElementById('outreach-filter-status').value;
+  const filterStage = document.getElementById('outreach-filter-status').value;
+  const outreach = getOutreachData();
   let partners = allPartners;
-  if (filterStatus) partners = partners.filter(p => (p.status || 'pending') === filterStatus);
+  if (filterStage === 'none') partners = partners.filter(p => !outreach[p.id]);
+  else if (filterStage) partners = partners.filter(p => outreach[p.id] === filterStage);
 
   const list = document.getElementById('outreach-list');
   if (!partners.length) {
@@ -1312,7 +1308,6 @@ function renderOutreachList() {
     return;
   }
 
-  const outreach = getOutreachData();
   list.innerHTML = partners.map(p => {
     const stage = outreach[p.id] || '';
     const stageTag = stage ? `<span class="outreach-stage" style="margin-left:6px;">${esc(stage)}</span>` : '';
@@ -1415,21 +1410,10 @@ async function executeOutreach() {
   }
 
   if (markStatus) {
-    const dbStatus = action === 'email' ? 'contacted' : 'targeted';
     for (const p of partners) {
       setOutreachStage(p.id, newStage);
-      try {
-        await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${p.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ status: dbStatus }),
-        });
-        const idx = allPartners.findIndex(x => x.id === p.id);
-        if (idx >= 0) allPartners[idx] = { ...allPartners[idx], status: dbStatus };
-      } catch(e) { console.warn('Status update failed for', p.course_name, e); }
     }
     renderTable();
-    updateStats();
   }
 
   closeOutreachModal();
