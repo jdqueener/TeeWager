@@ -736,6 +736,7 @@ function openDrawer(id) {
     ['Phone',          p.phone],
     ['Mailing address',p.mailing_address],
     ['Outreach stage', p.outreach_stage ? `<span class="outreach-stage">${esc(p.outreach_stage)}</span> <button type="button" onclick="clearOutreachStage()" style="margin-left:8px;padding:2px 8px;border:1px solid #E0E0D8;border-radius:4px;font-size:11px;cursor:pointer;background:#fff;">Clear</button>` : '—'],
+    ['Last outreach',  p.outreach_last_date ? formatDate(p.outreach_last_date) : '—'],
   ]);
 
   document.getElementById('drawer-course-info').innerHTML = rows([
@@ -1273,6 +1274,7 @@ function getOutreachStage(id) {
 }
 
 async function setOutreachStage(id, stage) {
+  const now = stage ? new Date().toISOString() : null;
   await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${id}`, {
     method: 'PATCH',
     headers: {
@@ -1281,10 +1283,10 @@ async function setOutreachStage(id, stage) {
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'Prefer': 'return=minimal',
     },
-    body: JSON.stringify({ outreach_stage: stage }),
+    body: JSON.stringify({ outreach_stage: stage, outreach_last_date: now }),
   });
   const idx = allPartners.findIndex(x => x.id === id);
-  if (idx >= 0) allPartners[idx] = { ...allPartners[idx], outreach_stage: stage };
+  if (idx >= 0) allPartners[idx] = { ...allPartners[idx], outreach_stage: stage, outreach_last_date: now };
 }
 
 async function clearOutreachStage() {
@@ -1340,6 +1342,7 @@ function renderOutreachList() {
           </div>
           ${p.mailing_address ? `<div style="font-size:11px;color:#555;margin-top:1px;">📮 ${esc(p.mailing_address)}</div>` : ''}
           ${p.email ? `<div style="font-size:11px;color:#555;margin-top:1px;">✉️ ${esc(p.email)}</div>` : ''}
+          ${p.outreach_last_date ? `<div style="font-size:11px;color:#888;margin-top:1px;">Last outreach: ${formatDate(p.outreach_last_date)}</div>` : ''}
         </div>
         <span class="badge badge-${p.status||'pending'}" style="flex-shrink:0;">${esc(p.status||'pending')}</span>
       </label>`;
