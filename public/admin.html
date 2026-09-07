@@ -730,10 +730,12 @@ function openDrawer(id) {
   document.getElementById('drawer-status').value      = p.status || 'pending';
 
   document.getElementById('drawer-contact').innerHTML = rows([
-    ['Name',  `${p.first_name||''} ${p.last_name||''}`.trim()],
-    ['Title', p.title],
-    ['Email', p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : '—'],
-    ['Phone', p.phone],
+    ['Name',           `${p.first_name||''} ${p.last_name||''}`.trim()],
+    ['Title',          p.title],
+    ['Email',          p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : '—'],
+    ['Phone',          p.phone],
+    ['Mailing address',p.mailing_address],
+    ['Outreach stage', p.outreach_stage ? `<span class="outreach-stage">${esc(p.outreach_stage)}</span> <button type="button" onclick="clearOutreachStage()" style="margin-left:8px;padding:2px 8px;border:1px solid #E0E0D8;border-radius:4px;font-size:11px;cursor:pointer;background:#fff;">Clear</button>` : '—'],
   ]);
 
   document.getElementById('drawer-course-info').innerHTML = rows([
@@ -1265,20 +1267,32 @@ function printQRSheet() {
 }
 
 // ── Outreach ──────────────────────────────────────────────────────────────────
-const OUTREACH_KEY = 'tw_outreach_stages';
-
-function getOutreachData() {
-  try { return JSON.parse(localStorage.getItem(OUTREACH_KEY) || '{}'); } catch { return {}; }
-}
-
 function getOutreachStage(id) {
-  return getOutreachData()[id] || null;
+  const p = allPartners.find(x => x.id === id);
+  return p?.outreach_stage || null;
 }
 
-function setOutreachStage(id, stage) {
-  const data = getOutreachData();
-  data[id] = stage;
-  localStorage.setItem(OUTREACH_KEY, JSON.stringify(data));
+async function setOutreachStage(id, stage) {
+  await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify({ outreach_stage: stage }),
+  });
+  const idx = allPartners.findIndex(x => x.id === id);
+  if (idx >= 0) allPartners[idx] = { ...allPartners[idx], outreach_stage: stage };
+}
+
+async function clearOutreachStage() {
+  if (!currentDrawerPartner) return;
+  await setOutreachStage(currentDrawerPartner.id, null);
+  currentDrawerPartner.outreach_stage = null;
+  openDrawer(currentDrawerPartner.id);
+  renderTable();
 }
 
 function openOutreachModal() {
@@ -1296,10 +1310,9 @@ function closeOutreachModal() {
 
 function renderOutreachList() {
   const filterStage = document.getElementById('outreach-filter-status').value;
-  const outreach = getOutreachData();
   let partners = allPartners;
-  if (filterStage === 'none') partners = partners.filter(p => !outreach[p.id]);
-  else if (filterStage) partners = partners.filter(p => outreach[p.id] === filterStage);
+  if (filterStage === 'none') partners = partners.filter(p => !p.outreach_stage);
+  else if (filterStage) partners = partners.filter(p => p.outreach_stage === filterStage);
 
   const list = document.getElementById('outreach-list');
   if (!partners.length) {
@@ -1309,7 +1322,7 @@ function renderOutreachList() {
   }
 
   list.innerHTML = partners.map(p => {
-    const stage = outreach[p.id] || '';
+    const stage = p.outreach_stage || '';
     const stageTag = stage ? `<span class="outreach-stage" style="margin-left:6px;">${esc(stage)}</span>` : '';
     const hasAddress = p.mailing_address ? '📮' : '';
     const hasEmail   = p.email ? '✉️' : '';
@@ -1410,9 +1423,7 @@ async function executeOutreach() {
   }
 
   if (markStatus) {
-    for (const p of partners) {
-      setOutreachStage(p.id, newStage);
-    }
+    await Promise.all(partners.map(p => setOutreachStage(p.id, newStage)));
     renderTable();
   }
 
