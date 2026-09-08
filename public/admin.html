@@ -108,6 +108,12 @@
   .status-select { padding: 6px 10px; border: 1.5px solid #E0E0D8; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; background: #fff; }
   .save-status-btn { padding: 6px 14px; background: #1A4A2E; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; margin-left: 8px; }
 
+  /* Nav tabs */
+  .nav-tabs { background: #143d24; display: flex; gap: 2px; padding: 0 28px; }
+  .nav-tab { padding: 10px 18px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.55); text-decoration: none; border-bottom: 3px solid transparent; transition: color .15s, border-color .15s; }
+  .nav-tab:hover { color: rgba(255,255,255,0.85); }
+  .nav-tab.active { color: #fff; border-bottom-color: #5DB075; }
+
   @media (max-width: 700px) {
     .stats-row { grid-template-columns: repeat(2, 1fr); }
     th:nth-child(4), td:nth-child(4),
@@ -173,13 +179,17 @@
   <div class="topbar">
     <div>
       <div class="topbar-title">⛳ TeeWager — Partner Admin</div>
-      <div class="topbar-sub">Partner signups & referral payouts</div>
+      <div class="topbar-sub">Sales CRM &amp; Outreach Pipeline</div>
     </div>
     <div class="topbar-right">
       <span id="last-updated" style="font-size:12px;opacity:0.6;"></span>
       <button class="signout-btn" onclick="signOut()">Sign out</button>
     </div>
   </div>
+  <nav class="nav-tabs">
+    <a href="/admin" class="nav-tab active">📋 CRM</a>
+    <a href="/dashboard" class="nav-tab">📊 Partner Dashboard</a>
+  </nav>
 
   <div class="container">
     <!-- Stats -->
@@ -214,12 +224,30 @@
     </div>
 
     <div class="controls">
-      <input class="search-input" id="search" placeholder="Search course name or code…" oninput="renderTable()" />
+      <input class="search-input" id="search" placeholder="Search course, city, name…" oninput="renderTable()" />
       <select class="filter-select" id="status-filter" onchange="renderTable()">
         <option value="">All statuses</option>
         <option value="pending">Pending</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
+      </select>
+      <select class="filter-select" id="outreach-stage-filter" onchange="renderTable()">
+        <option value="">All outreach</option>
+        <option value="Prospect">Prospect</option>
+        <option value="Targeted">Targeted</option>
+        <option value="Contacted">Contacted</option>
+        <option value="Declined">Declined</option>
+        <option value="No Response">No Response</option>
+        <option value="none">No stage set</option>
+      </select>
+      <select class="filter-select" id="state-filter" onchange="renderTable()">
+        <option value="">All states</option>
+      </select>
+      <select class="filter-select" id="contact-filter" onchange="renderTable()">
+        <option value="">All contacts</option>
+        <option value="email">Has email</option>
+        <option value="address">Has address</option>
+        <option value="both">Has both</option>
       </select>
       <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
       <button class="export-btn" onclick="exportCSV()">Export CSV</button>
@@ -489,6 +517,11 @@
     <div id="drawer-reg-status" style="margin-top:10px;font-size:13px;"></div>
   </div>
 
+  <div class="drawer-section" id="drawer-convert-section" style="display:none;">
+    <button type="button" onclick="convertToPartner()" style="width:100%;padding:11px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">✓ Convert to Active Partner →</button>
+    <div style="font-size:12px;color:#888;margin-top:6px;text-align:center;">Sets status to Active · clears outreach stage · moves to Dashboard</div>
+  </div>
+
   <div class="drawer-section">
     <div class="drawer-section-title">Outreach Stage</div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -642,6 +675,7 @@ async function loadData() {
     ]);
     allPartners = partners;
     allProfiles = profiles;
+    populateStateFilter();
     updateStats();
     renderTable();
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -681,6 +715,14 @@ function updateStats() {
   document.getElementById('stat-payout-sub').textContent = `@ $${PAYOUT_PER_SIGNUP.toFixed(2)}/signup`;
 }
 
+function populateStateFilter() {
+  const sel = document.getElementById('state-filter');
+  const current = sel.value;
+  const states = [...new Set(allPartners.map(p => p.state).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All states</option>' +
+    states.map(s => `<option value="${s}"${s===current?' selected':''}>${s}</option>`).join('');
+}
+
 // ── Table ─────────────────────────────────────────────────────────────────────
 function sort(key) {
   if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
@@ -696,8 +738,11 @@ function setPeriod(p, el) {
 }
 
 function renderTable() {
-  const search = document.getElementById('search').value.toLowerCase();
-  const statusF = document.getElementById('status-filter').value;
+  const search   = document.getElementById('search').value.toLowerCase();
+  const statusF  = document.getElementById('status-filter').value;
+  const stageF   = document.getElementById('outreach-stage-filter').value;
+  const stateF   = document.getElementById('state-filter').value;
+  const contactF = document.getElementById('contact-filter').value;
 
   let rows = allPartners.map(p => ({
     ...p,
@@ -708,9 +753,17 @@ function renderTable() {
   if (search) rows = rows.filter(r =>
     (r.course_name||'').toLowerCase().includes(search) ||
     (r.referral_code||'').toLowerCase().includes(search) ||
-    (r.city||'').toLowerCase().includes(search)
+    (r.city||'').toLowerCase().includes(search) ||
+    (r.first_name||'').toLowerCase().includes(search) ||
+    (r.last_name||'').toLowerCase().includes(search)
   );
   if (statusF) rows = rows.filter(r => r.status === statusF);
+  if (stageF === 'none') rows = rows.filter(r => !r.outreach_stage);
+  else if (stageF) rows = rows.filter(r => r.outreach_stage === stageF);
+  if (stateF) rows = rows.filter(r => r.state === stateF);
+  if (contactF === 'email')   rows = rows.filter(r => r.email);
+  if (contactF === 'address') rows = rows.filter(r => r.mailing_address);
+  if (contactF === 'both')    rows = rows.filter(r => r.email && r.mailing_address);
 
   rows.sort((a, b) => {
     let av = a[sortKey] ?? '', bv = b[sortKey] ?? '';
@@ -758,6 +811,9 @@ function openDrawer(id) {
   document.getElementById('drawer-status').value         = p.status || 'pending';
   document.getElementById('drawer-outreach-stage').value = p.outreach_stage || '';
   document.getElementById('drawer-outreach-meta').textContent = p.outreach_last_date ? 'Last outreach: ' + formatDate(p.outreach_last_date) : '';
+  // Show convert button for prospects not yet active
+  document.getElementById('drawer-convert-section').style.display =
+    (p.outreach_stage && p.status !== 'active') ? 'block' : 'none';
 
   document.getElementById('drawer-contact').innerHTML = rows([
     ['Name',           `${p.first_name||''} ${p.last_name||''}`.trim()],
@@ -982,6 +1038,26 @@ async function saveStatus() {
     alert('Status updated.');
   } else {
     alert('Failed to update status.');
+  }
+}
+
+async function convertToPartner() {
+  if (!currentDrawerPartner) return;
+  if (!confirm(`Convert "${currentDrawerPartner.course_name}" to an Active Partner? This will set status to Active and clear the outreach stage.`)) return;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ status: 'active', outreach_stage: null, outreach_last_date: null }),
+  });
+  if (r.ok) {
+    allPartners = allPartners.map(p => p.id === currentDrawerPartner.id
+      ? { ...p, status: 'active', outreach_stage: null, outreach_last_date: null } : p);
+    closeDrawer();
+    renderTable();
+    updateStats();
+    if (confirm('Partner activated! Go to Partner Dashboard now?')) window.location.href = '/dashboard';
+  } else {
+    alert('Failed: ' + await r.text());
   }
 }
 
