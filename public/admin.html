@@ -314,6 +314,16 @@
           <option>WI</option><option>WY</option>
         </select>
       </div>
+      <div style="grid-column:1/-1;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:-4px;">Contact 1</div>
+      <div class="modal-field">
+        <label>Contact type</label>
+        <select id="add-contact-type" onkeydown="if(event.key==='Enter')event.preventDefault()">
+          <option value="">— Select —</option>
+          <option>General Manager</option><option>Head Golf Pro</option><option>PGA Pro</option>
+          <option>Owner</option><option>Pro Shop Manager</option><option>Director of Golf</option>
+          <option>Assistant Pro</option><option>Other</option>
+        </select>
+      </div>
       <div class="modal-field">
         <label>Contact name</label>
         <input type="text" id="add-contact" placeholder="John Smith" onkeydown="if(event.key==='Enter')event.preventDefault()" />
@@ -325,6 +335,28 @@
       <div class="modal-field">
         <label>Contact phone</label>
         <input type="tel" id="add-phone" placeholder="(541) 555-1234" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div style="grid-column:1/-1;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:-4px;margin-top:4px;">Contact 2 (optional)</div>
+      <div class="modal-field">
+        <label>Contact type</label>
+        <select id="add-contact2-type" onkeydown="if(event.key==='Enter')event.preventDefault()">
+          <option value="">— Select —</option>
+          <option>General Manager</option><option>Head Golf Pro</option><option>PGA Pro</option>
+          <option>Owner</option><option>Pro Shop Manager</option><option>Director of Golf</option>
+          <option>Assistant Pro</option><option>Other</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Contact name</label>
+        <input type="text" id="add-contact2" placeholder="Jane Doe" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div class="modal-field">
+        <label>Contact email</label>
+        <input type="email" id="add-email2" placeholder="jane@pinesgolf.com" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div class="modal-field">
+        <label>Contact phone</label>
+        <input type="tel" id="add-phone2" placeholder="(541) 555-5678" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div class="modal-field" style="grid-column:1/-1">
         <label>Mailing address (for print packets)</label>
@@ -594,6 +626,16 @@
           <input type="text" id="edit-state" maxlength="2" onkeydown="if(event.key==='Enter')event.preventDefault()" />
         </div>
       </div>
+      <div style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Contact 1</div>
+      <div class="modal-field">
+        <label>Contact type</label>
+        <select id="edit-contact-type">
+          <option value="">— Select —</option>
+          <option>General Manager</option><option>Head Golf Pro</option><option>PGA Pro</option>
+          <option>Owner</option><option>Pro Shop Manager</option><option>Director of Golf</option>
+          <option>Assistant Pro</option><option>Other</option>
+        </select>
+      </div>
       <div class="modal-field">
         <label>Contact name</label>
         <input type="text" id="edit-contact-name" onkeydown="if(event.key==='Enter')event.preventDefault()" />
@@ -605,6 +647,28 @@
       <div class="modal-field">
         <label>Contact phone</label>
         <input type="text" id="edit-contact-phone" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Contact 2</div>
+      <div class="modal-field">
+        <label>Contact type</label>
+        <select id="edit-contact2-type">
+          <option value="">— Select —</option>
+          <option>General Manager</option><option>Head Golf Pro</option><option>PGA Pro</option>
+          <option>Owner</option><option>Pro Shop Manager</option><option>Director of Golf</option>
+          <option>Assistant Pro</option><option>Other</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Contact name</label>
+        <input type="text" id="edit-contact2-name" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div class="modal-field">
+        <label>Contact email</label>
+        <input type="email" id="edit-contact2-email" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div class="modal-field">
+        <label>Contact phone</label>
+        <input type="text" id="edit-contact2-phone" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div id="edit-msg" style="display:none;font-size:13px;margin-top:4px;"></div>
       <button type="button" id="edit-save-btn" onclick="saveEdit()" style="padding:10px 20px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;align-self:flex-start;">Save changes</button>
@@ -819,13 +883,19 @@ function openDrawer(id) {
   document.getElementById('drawer-convert-section').style.display =
     (p.outreach_stage && p.status !== 'active') ? 'block' : 'none';
 
+  const c1name = `${p.first_name||''} ${p.last_name||''}`.trim();
+  const c2name = `${p.contact2_first_name||''} ${p.contact2_last_name||''}`.trim();
   document.getElementById('drawer-contact').innerHTML = rows([
-    ['Name',           `${p.first_name||''} ${p.last_name||''}`.trim()],
-    ['Title',          p.title],
-    ['Email',          p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : '—'],
-    ['Phone',          p.phone],
-    ['Mailing address',p.mailing_address],
-    ['Last outreach',  p.outreach_last_date ? formatDate(p.outreach_last_date) : '—'],
+    ['Contact 1 type',  p.title || '—'],
+    ['Contact 1 name',  c1name || '—'],
+    ['Email',           p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : '—'],
+    ['Phone',           p.phone],
+    ['Contact 2 type',  p.contact2_type || '—'],
+    ['Contact 2 name',  c2name || '—'],
+    ['Email',           p.contact2_email ? `<a href="mailto:${esc(p.contact2_email)}">${esc(p.contact2_email)}</a>` : '—'],
+    ['Phone',           p.contact2_phone],
+    ['Mailing address', p.mailing_address],
+    ['Last outreach',   p.outreach_last_date ? formatDate(p.outreach_last_date) : '—'],
   ]);
 
   document.getElementById('drawer-course-info').innerHTML = rows([
@@ -878,10 +948,15 @@ function openDrawer(id) {
   document.getElementById('edit-course-name').value  = p.course_name || '';
   document.getElementById('edit-city').value         = p.city || '';
   document.getElementById('edit-state').value        = p.state || '';
-  document.getElementById('edit-contact-name').value = [p.first_name, p.last_name].filter(Boolean).join(' ');
-  document.getElementById('edit-contact-email').value= p.email || '';
-  document.getElementById('edit-contact-phone').value= p.phone || '';
-  document.getElementById('edit-msg').style.display  = 'none';
+  document.getElementById('edit-contact-type').value  = p.title || '';
+  document.getElementById('edit-contact-name').value  = [p.first_name, p.last_name].filter(Boolean).join(' ');
+  document.getElementById('edit-contact-email').value = p.email || '';
+  document.getElementById('edit-contact-phone').value = p.phone || '';
+  document.getElementById('edit-contact2-type').value  = p.contact2_type || '';
+  document.getElementById('edit-contact2-name').value  = [p.contact2_first_name, p.contact2_last_name].filter(Boolean).join(' ');
+  document.getElementById('edit-contact2-email').value = p.contact2_email || '';
+  document.getElementById('edit-contact2-phone').value = p.contact2_phone || '';
+  document.getElementById('edit-msg').style.display   = 'none';
 
   document.getElementById('drawer-overlay').classList.add('open');
   document.getElementById('drawer').style.display = 'block';
@@ -959,15 +1034,22 @@ async function saveEdit() {
   btn.disabled = true;
   btn.textContent = 'Saving…';
 
-  const nameParts = document.getElementById('edit-contact-name').value.trim().split(' ');
+  const nameParts  = document.getElementById('edit-contact-name').value.trim().split(' ');
+  const name2Parts = document.getElementById('edit-contact2-name').value.trim().split(' ');
   const fields = {
-    course_name: document.getElementById('edit-course-name').value.trim() || null,
-    city:        document.getElementById('edit-city').value.trim() || null,
-    state:       document.getElementById('edit-state').value.trim().toUpperCase() || null,
-    first_name:  nameParts[0] || null,
-    last_name:   nameParts.slice(1).join(' ') || null,
-    email:       document.getElementById('edit-contact-email').value.trim() || null,
-    phone:       document.getElementById('edit-contact-phone').value.trim() || null,
+    course_name:          document.getElementById('edit-course-name').value.trim() || null,
+    city:                 document.getElementById('edit-city').value.trim() || null,
+    state:                document.getElementById('edit-state').value.trim().toUpperCase() || null,
+    title:                document.getElementById('edit-contact-type').value || null,
+    first_name:           nameParts[0] || null,
+    last_name:            nameParts.slice(1).join(' ') || null,
+    email:                document.getElementById('edit-contact-email').value.trim() || null,
+    phone:                document.getElementById('edit-contact-phone').value.trim() || null,
+    contact2_type:        document.getElementById('edit-contact2-type').value || null,
+    contact2_first_name:  name2Parts[0] || null,
+    contact2_last_name:   name2Parts.slice(1).join(' ') || null,
+    contact2_email:       document.getElementById('edit-contact2-email').value.trim() || null,
+    contact2_phone:       document.getElementById('edit-contact2-phone').value.trim() || null,
   };
 
   try {
@@ -1099,9 +1181,14 @@ function openAddModal() {
   document.getElementById('add-course-name').value = '';
   document.getElementById('add-city').value = '';
   document.getElementById('add-state').value = '';
+  document.getElementById('add-contact-type').value = '';
   document.getElementById('add-contact').value = '';
   document.getElementById('add-email').value = '';
   document.getElementById('add-phone').value = '';
+  document.getElementById('add-contact2-type').value = '';
+  document.getElementById('add-contact2').value = '';
+  document.getElementById('add-email2').value = '';
+  document.getElementById('add-phone2').value = '';
   document.getElementById('add-address').value = '';
   document.getElementById('add-status').value = '';
   document.getElementById('add-outreach-stage').value = 'Prospect';
@@ -1159,16 +1246,25 @@ async function submitAddPartner() {
   const status        = document.getElementById('add-status').value || null;
   const outreachStage = document.getElementById('add-outreach-stage').value || null;
 
+  const contact2     = document.getElementById('add-contact2').value.trim();
+  const [c2first, ...c2rest] = contact2.split(' ');
+
   const payload = {
     course_name:     name,
     city,
     state,
     referral_code:   refCode,
     status:          status || 'pending',
+    title:           document.getElementById('add-contact-type').value || null,
     first_name:      firstName || null,
     last_name:       lastName  || null,
     email:           email     || null,
     phone:           phone     || null,
+    contact2_type:        document.getElementById('add-contact2-type').value || null,
+    contact2_first_name:  c2first || null,
+    contact2_last_name:   c2rest.join(' ') || null,
+    contact2_email:       document.getElementById('add-email2').value.trim() || null,
+    contact2_phone:       document.getElementById('add-phone2').value.trim() || null,
     mailing_address: address   || null,
     outreach_stage:  outreachStage,
     outreach_last_date: null,
