@@ -304,9 +304,9 @@
       <div class="modal-field" style="grid-column:1/-1">
         <label>Status</label>
         <select id="add-status">
-          <option value="prospect">Prospect</option>
-          <option value="targeted">Targeted</option>
           <option value="pending">Pending</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
         </select>
       </div>
     </div>
@@ -482,9 +482,11 @@
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <select class="status-select" id="drawer-outreach-stage">
         <option value="">— None —</option>
+        <option value="Prospect">Prospect</option>
         <option value="Targeted">Targeted</option>
         <option value="Contacted">Contacted</option>
         <option value="Declined">Declined</option>
+        <option value="No Response">No Response</option>
       </select>
       <button class="save-status-btn" onclick="saveOutreachStage()">Save</button>
     </div>
@@ -1009,7 +1011,7 @@ function openAddModal() {
   document.getElementById('add-email').value = '';
   document.getElementById('add-phone').value = '';
   document.getElementById('add-address').value = '';
-  document.getElementById('add-status').value = 'prospect';
+  document.getElementById('add-status').value = 'pending';
   document.getElementById('add-result').style.display = 'none';
   document.getElementById('add-error').style.display = 'none';
   const btn = document.getElementById('add-submit-btn');
@@ -1061,7 +1063,7 @@ async function submitAddPartner() {
 
   const phone   = document.getElementById('add-phone').value.trim();
   const address = document.getElementById('add-address').value.trim();
-  const status  = document.getElementById('add-status').value || 'prospect';
+  const status  = document.getElementById('add-status').value || 'pending';
 
   const payload = {
     course_name:     name,
@@ -1074,6 +1076,8 @@ async function submitAddPartner() {
     email:           email     || null,
     phone:           phone     || null,
     mailing_address: address   || null,
+    outreach_stage:  'Prospect',
+    outreach_last_date: null,
   };
 
   try {
@@ -1214,12 +1218,14 @@ async function submitBulk() {
           city:            r.city,
           state:           r.state,
           referral_code:   r.refCode,
-          status:          'prospect',
+          status:          'pending',
           first_name:      r.contact_name ? r.contact_name.split(' ')[0] : null,
           last_name:       r.contact_name ? r.contact_name.split(' ').slice(1).join(' ') || null : null,
           email:           r.email  || null,
           phone:           r.phone  || null,
           mailing_address: r.address || null,
+          outreach_stage:  'Prospect',
+          outreach_last_date: null,
         }),
       });
       if (res.ok) done++; else { console.error('Bulk import row failed', r.course_name, await res.text()); failed++; }
