@@ -1410,13 +1410,20 @@ async function setOutreachStage(id, stage) {
       'Content-Type': 'application/json',
       'apikey': SUPABASE_ANON_KEY,
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'Prefer': 'return=minimal',
+      'Prefer': 'return=representation',
     },
     body: JSON.stringify({ outreach_stage: stage, outreach_last_date: now }),
   });
-  if (!r.ok) throw new Error(await r.text());
+  const text = await r.text();
+  console.log('setOutreachStage response', r.status, text);
+  if (!r.ok) throw new Error(text);
+  let updated;
+  try { updated = JSON.parse(text); } catch(e) { updated = []; }
+  if (!Array.isArray(updated) || updated.length === 0) {
+    throw new Error(`No rows updated (id=${id}). Check Supabase RLS policies allow UPDATE on partners.`);
+  }
   const idx = allPartners.findIndex(x => x.id === id);
-  if (idx >= 0) allPartners[idx] = { ...allPartners[idx], outreach_stage: stage, outreach_last_date: now };
+  if (idx >= 0) allPartners[idx] = { ...allPartners[idx], ...updated[0] };
 }
 
 async function saveOutreachStage() {
