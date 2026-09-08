@@ -301,12 +301,24 @@
         <label>Mailing address (for print packets)</label>
         <input type="text" id="add-address" placeholder="123 Fairway Dr, Bend OR 97701" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
-      <div class="modal-field" style="grid-column:1/-1">
+      <div class="modal-field">
         <label>Status</label>
         <select id="add-status">
+          <option value="">— None —</option>
           <option value="pending">Pending</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Outreach Stage</label>
+        <select id="add-outreach-stage">
+          <option value="">— None —</option>
+          <option value="Prospect" selected>Prospect</option>
+          <option value="Targeted">Targeted</option>
+          <option value="Contacted">Contacted</option>
+          <option value="Declined">Declined</option>
+          <option value="No Response">No Response</option>
         </select>
       </div>
     </div>
@@ -1011,7 +1023,8 @@ function openAddModal() {
   document.getElementById('add-email').value = '';
   document.getElementById('add-phone').value = '';
   document.getElementById('add-address').value = '';
-  document.getElementById('add-status').value = 'pending';
+  document.getElementById('add-status').value = '';
+  document.getElementById('add-outreach-stage').value = 'Prospect';
   document.getElementById('add-result').style.display = 'none';
   document.getElementById('add-error').style.display = 'none';
   const btn = document.getElementById('add-submit-btn');
@@ -1063,20 +1076,21 @@ async function submitAddPartner() {
 
   const phone   = document.getElementById('add-phone').value.trim();
   const address = document.getElementById('add-address').value.trim();
-  const status  = document.getElementById('add-status').value || 'pending';
+  const status        = document.getElementById('add-status').value || null;
+  const outreachStage = document.getElementById('add-outreach-stage').value || null;
 
   const payload = {
     course_name:     name,
     city,
     state,
     referral_code:   refCode,
-    status,
+    status:          status || 'pending',
     first_name:      firstName || null,
     last_name:       lastName  || null,
     email:           email     || null,
     phone:           phone     || null,
     mailing_address: address   || null,
-    outreach_stage:  'Prospect',
+    outreach_stage:  outreachStage,
     outreach_last_date: null,
   };
 
