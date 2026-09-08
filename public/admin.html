@@ -793,7 +793,7 @@ function openDrawer(id) {
   // Registration status
   const regEl = document.getElementById('drawer-reg-status');
   if (p.portal_password) {
-    regEl.innerHTML = '<span style="color:#166534;font-weight:700;">✓ Self-registered</span> — partner completed signup form';
+    regEl.innerHTML = '<span style="color:#166534;font-weight:700;">✓ Self-registered</span> — partner completed signup form &nbsp;<button type="button" onclick="clearRegistered()" style="padding:4px 12px;background:#FEF2F2;color:#DC2626;border:1px solid #FCA5A5;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Unmark</button>';
   } else if (p.status === 'registered') {
     regEl.innerHTML = '<span style="color:#1A4A2E;font-weight:700;">✓ Admin confirmed</span> — manually marked as registered';
   } else {
@@ -838,6 +838,22 @@ function downloadDrawerQR() {
   a.download = `teewager-qr-${refCode}.png`;
   a.target = '_blank';
   a.click();
+}
+
+async function clearRegistered() {
+  if (!currentDrawerPartner) return;
+  if (!confirm('Remove self-registered status for this partner?')) return;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ portal_password: null }),
+  });
+  if (r.ok) {
+    currentDrawerPartner.portal_password = null;
+    allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, portal_password: null } : p);
+    document.getElementById('drawer-reg-status').innerHTML = '<span style="color:#888;">Admin added</span> — partner has not self-registered &nbsp;<button type="button" onclick="markAsRegistered()" style="padding:4px 12px;background:#1A4A2E;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Mark as registered</button>';
+    renderTable();
+  } else { alert('Failed: ' + await r.text()); }
 }
 
 async function markAsRegistered() {
