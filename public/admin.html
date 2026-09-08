@@ -1153,6 +1153,14 @@ function closeDrawer() {
   currentDrawerPartner = null;
 }
 
+// ── Salutation ────────────────────────────────────────────────────────────────
+function salutation(p) {
+  const name = `${p.first_name||''} ${p.last_name||''}`.trim();
+  if (name) return `Dear ${name}`;
+  if (p.title) return `Dear ${p.title}`;
+  return 'Dear Golf Professional';
+}
+
 // ── Export CSV ────────────────────────────────────────────────────────────────
 function exportCSV() {
   const start = periodStart();
@@ -1160,15 +1168,18 @@ function exportCSV() {
     const count = profilesForCode(p.referral_code).length;
     return [
       p.course_name, p.city, p.state, p.referral_code,
-      p.first_name, p.last_name, p.email, p.phone,
-      p.status, count, (count * PAYOUT_PER_SIGNUP).toFixed(2),
+      salutation(p),
+      p.title, p.first_name, p.last_name, p.email, p.phone,
+      p.contact2_type, p.contact2_first_name, p.contact2_last_name, p.contact2_email, p.contact2_phone,
+      p.mailing_address,
+      p.status, p.outreach_stage, count, (count * PAYOUT_PER_SIGNUP).toFixed(2),
       p.payout_method, p.bank_name, p.account_holder_name,
       p.routing_number, p.account_number, p.account_type,
       p.check_payable_to, p.check_mailing_address,
       formatDate(p.created_at),
     ].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',');
   });
-  const header = 'Course,City,State,Ref Code,First Name,Last Name,Email,Phone,Status,Signups,Payout,Payout Method,Bank,Account Holder,Routing,Account #,Account Type,Check Payable To,Check Address,Registered';
+  const header = 'Course,City,State,Ref Code,Salutation,Contact 1 Type,Contact 1 First,Contact 1 Last,Contact 1 Email,Contact 1 Phone,Contact 2 Type,Contact 2 First,Contact 2 Last,Contact 2 Email,Contact 2 Phone,Mailing Address,Status,Outreach Stage,Signups,Payout,Payout Method,Bank,Account Holder,Routing,Account #,Account Type,Check Payable To,Check Address,Registered';
   const csv = [header, ...rows].join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
@@ -1595,7 +1606,7 @@ function renderOutreachList() {
           <div style="font-size:14px;font-weight:700;">${esc(p.course_name)}${stageTag}</div>
           <div style="font-size:12px;color:#888;margin-top:1px;">
             ${esc(p.city||'')}${p.city&&p.state?', ':''}${esc(p.state||'')}
-            ${p.first_name ? ` · ${esc([p.first_name,p.last_name].filter(Boolean).join(' '))}` : ''}
+            · <em>${esc(salutation(p))},</em>
             ${hasAddress} ${hasEmail}
           </div>
           ${p.mailing_address ? `<div style="font-size:11px;color:#555;margin-top:1px;">📮 ${esc(p.mailing_address)}</div>` : ''}
