@@ -8,6 +8,7 @@
     { "src": "^/$", "dest": "/landing.html" },
     { "src": "^/partner$", "dest": "/partner.html" },
     { "src": "^/admin$", "dest": "/admin.html" },
+    { "src": "^/dashboard$", "dest": "/dashboard.html" },
     { "src": "^/portal$", "dest": "/portal.html" },
     { "src": "^/register$", "dest": "/partner.html" },
     { "src": "^/privacy$", "dest": "/privacy.html" },
