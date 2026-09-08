@@ -661,6 +661,7 @@ if (sessionStorage.getItem('tw_admin')) {
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function sbFetch(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    cache: 'no-store',
     headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
   });
   if (!r.ok) throw new Error(await r.text());
@@ -668,7 +669,7 @@ async function sbFetch(path) {
 }
 
 async function loadData() {
-  document.getElementById('table-body').innerHTML = '<tr><td colspan="8" class="loading">Loading…</td></tr>';
+  document.getElementById('table-body').innerHTML = '<tr><td colspan="6" class="loading">Loading…</td></tr>';
   try {
     const [partners, profiles] = await Promise.all([
       sbFetch('partners?select=*&order=created_at.desc'),
