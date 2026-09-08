@@ -195,32 +195,35 @@
     <!-- Stats -->
     <div class="stats-row">
       <div class="stat-card">
-        <div class="stat-label">Total Courses</div>
+        <div class="stat-label">Total in Pipeline</div>
         <div class="stat-value" id="stat-partners">—</div>
-        <div class="stat-sub">in database (all statuses)</div>
+        <div class="stat-sub">all prospects tracked</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Active Partners</div>
-        <div class="stat-value" id="stat-active">—</div>
-        <div class="stat-sub">status = active</div>
+        <div class="stat-label">Prospect</div>
+        <div class="stat-value" id="stat-prospect" style="color:#1D4ED8;">—</div>
+        <div class="stat-sub">not yet outreached</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Total Referrals</div>
-        <div class="stat-value" id="stat-referrals">—</div>
-        <div class="stat-sub">app signups via partner</div>
+        <div class="stat-label">Targeted</div>
+        <div class="stat-value" id="stat-targeted" style="color:#C2410C;">—</div>
+        <div class="stat-sub">print packet sent</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Payout This Period</div>
-        <div class="stat-value" id="stat-payout">—</div>
-        <div class="stat-sub" id="stat-payout-sub">pending calculation</div>
+        <div class="stat-label">Contacted</div>
+        <div class="stat-value" id="stat-contacted" style="color:#6D28D9;">—</div>
+        <div class="stat-sub">email sent</div>
       </div>
-    </div>
-
-    <!-- Period + controls -->
-    <div class="period-tabs">
-      <button class="period-tab active" onclick="setPeriod('all', this)">All time</button>
-      <button class="period-tab" onclick="setPeriod('month', this)">This month</button>
-      <button class="period-tab" onclick="setPeriod('quarter', this)">This quarter</button>
+      <div class="stat-card">
+        <div class="stat-label">Converted</div>
+        <div class="stat-value" id="stat-active" style="color:#166534;">—</div>
+        <div class="stat-sub">now active partners</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Declined / No Reply</div>
+        <div class="stat-value" id="stat-declined" style="color:#9CA3AF;">—</div>
+        <div class="stat-sub">closed or unresponsive</div>
+      </div>
     </div>
 
     <div class="controls">
@@ -705,14 +708,13 @@ function profilesForCode(code) {
 }
 
 function updateStats() {
-  const active = allPartners.filter(p => p.status === 'active').length;
-  const totalReferrals = allPartners.reduce((s, p) => s + profilesForCode(p.referral_code).length, 0);
-  const totalPayout = totalReferrals * PAYOUT_PER_SIGNUP;
-  document.getElementById('stat-partners').textContent   = allPartners.length;
-  document.getElementById('stat-active').textContent     = active;
-  document.getElementById('stat-referrals').textContent  = totalReferrals;
-  document.getElementById('stat-payout').textContent     = '$' + totalPayout.toFixed(2);
-  document.getElementById('stat-payout-sub').textContent = `@ $${PAYOUT_PER_SIGNUP.toFixed(2)}/signup`;
+  const byStage = s => allPartners.filter(p => p.outreach_stage === s).length;
+  document.getElementById('stat-partners').textContent  = allPartners.length;
+  document.getElementById('stat-prospect').textContent  = byStage('Prospect');
+  document.getElementById('stat-targeted').textContent  = byStage('Targeted');
+  document.getElementById('stat-contacted').textContent = byStage('Contacted');
+  document.getElementById('stat-active').textContent    = allPartners.filter(p => p.status === 'active').length;
+  document.getElementById('stat-declined').textContent  = byStage('Declined') + byStage('No Response');
 }
 
 function populateStateFilter() {
