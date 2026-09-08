@@ -1404,7 +1404,7 @@ function getOutreachStage(id) {
 
 async function setOutreachStage(id, stage) {
   const now = stage ? new Date().toISOString() : null;
-  await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${id}`, {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${id}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -1414,18 +1414,31 @@ async function setOutreachStage(id, stage) {
     },
     body: JSON.stringify({ outreach_stage: stage, outreach_last_date: now }),
   });
+  if (!r.ok) throw new Error(await r.text());
   const idx = allPartners.findIndex(x => x.id === id);
   if (idx >= 0) allPartners[idx] = { ...allPartners[idx], outreach_stage: stage, outreach_last_date: now };
 }
 
 async function saveOutreachStage() {
   if (!currentDrawerPartner) return;
+  const btn = document.querySelector('button[onclick="saveOutreachStage()"]');
   const stage = document.getElementById('drawer-outreach-stage').value || null;
-  await setOutreachStage(currentDrawerPartner.id, stage);
-  currentDrawerPartner.outreach_stage = stage;
-  currentDrawerPartner.outreach_last_date = stage ? new Date().toISOString() : null;
-  document.getElementById('drawer-outreach-meta').textContent = stage && currentDrawerPartner.outreach_last_date ? 'Last outreach: ' + formatDate(currentDrawerPartner.outreach_last_date) : '';
-  renderTable();
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    await setOutreachStage(currentDrawerPartner.id, stage);
+    currentDrawerPartner.outreach_stage = stage;
+    currentDrawerPartner.outreach_last_date = stage ? new Date().toISOString() : null;
+    document.getElementById('drawer-outreach-meta').textContent =
+      stage ? '✓ Saved · Last outreach: ' + formatDate(currentDrawerPartner.outreach_last_date) : '✓ Cleared';
+    document.getElementById('drawer-convert-section').style.display =
+      (stage && currentDrawerPartner.status !== 'active') ? 'block' : 'none';
+    renderTable();
+    updateStats();
+  } catch(e) {
+    alert('Failed to save outreach stage: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+  }
 }
 
 async function clearOutreachStage() {
