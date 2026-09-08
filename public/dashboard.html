@@ -342,6 +342,10 @@ if (sessionStorage.getItem('tw_admin')) {
   loadData();
 }
 
+window.addEventListener('pageshow', function(e) {
+  if (e.persisted && sessionStorage.getItem('tw_admin')) loadData();
+});
+
 // ── Data ──────────────────────────────────────────────────────────────────────
 async function sbFetch(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
