@@ -1,8 +1,9 @@
 // TeeWager Service Worker
 // Cache-first for the app shell; network-only for the course API.
 
-const CACHE_NAME = 'teewager-v1';
+const CACHE_NAME = 'teewager-v2';
 const COURSE_API_ORIGIN = 'https://api.golfcourseapi.com';
+const SUPABASE_ORIGIN    = 'https://zzhilgpznznwxvzgpzwt.supabase.co';
 
 // App-shell resources to pre-cache on install
 const PRECACHE_URLS = [
@@ -33,6 +34,9 @@ self.addEventListener('fetch', event => {
 
   // Never intercept course API calls — they need fresh data and auth headers
   if (url.origin === COURSE_API_ORIGIN) return;
+
+  // Never intercept Supabase — always needs live data
+  if (url.origin === SUPABASE_ORIGIN) return;
 
   // Never intercept Stripe
   if (url.origin.includes('stripe.com')) return;
