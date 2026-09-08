@@ -266,8 +266,6 @@
           <tr>
             <th class="sortable" onclick="sort('course_name')">Course ↕</th>
             <th>Ref Code</th>
-            <th class="sortable" onclick="sort('referral_count')">Referrals ↕</th>
-            <th class="sortable" onclick="sort('payout')">Payout ↕</th>
             <th>Status</th>
             <th class="sortable" onclick="sort('created_at')">Added ↕</th>
             <th>Outreach</th>
@@ -275,7 +273,7 @@
           </tr>
         </thead>
         <tbody id="table-body">
-          <tr><td colspan="8" class="loading">Loading…</td></tr>
+          <tr><td colspan="6" class="loading">Loading…</td></tr>
         </tbody>
       </table>
     </div>
@@ -789,8 +787,6 @@ function renderTable() {
         <div class="course-code">${esc(r.city||'')}${r.city && r.state ? ', ' : ''}${esc(r.state||'')}</div>
       </td>
       <td><span class="ref-code">${esc(r.referral_code||'—')}</span></td>
-      <td><strong>${r.referral_count}</strong></td>
-      <td class="${r.payout > 0 ? 'payout-amount' : 'payout-zero'}">$${r.payout.toFixed(2)}</td>
       <td>${(r.outreach_stage && r.status === 'pending') ? '<span style="color:#bbb;">—</span>' : `<span class="badge badge-${r.status||'pending'}">${r.status||'pending'}</span>`}</td>
       <td>
         ${formatDate(r.created_at)}
