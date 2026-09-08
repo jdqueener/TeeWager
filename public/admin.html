@@ -736,7 +736,7 @@ function renderTable() {
       <td><span class="ref-code">${esc(r.referral_code||'—')}</span></td>
       <td><strong>${r.referral_count}</strong></td>
       <td class="${r.payout > 0 ? 'payout-amount' : 'payout-zero'}">$${r.payout.toFixed(2)}</td>
-      <td><span class="badge badge-${r.status||'pending'}">${r.status||'pending'}</span></td>
+      <td>${(r.outreach_stage && r.status === 'pending') ? '<span style="color:#bbb;">—</span>' : `<span class="badge badge-${r.status||'pending'}">${r.status||'pending'}</span>`}</td>
       <td>
         ${formatDate(r.created_at)}
         ${r.portal_password ? '<br><span style="font-size:11px;color:#166534;font-weight:700;">✓ Self-registered</span>' : '<br><span style="font-size:11px;color:#888;">Admin added</span>'}
