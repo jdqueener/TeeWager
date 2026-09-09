@@ -263,10 +263,19 @@
       <button class="import-btn" onclick="openOutreachModal()" style="border-color:#6D28D9;color:#6D28D9;">📬 Outreach</button>
     </div>
 
+    <!-- Bulk action bar -->
+    <div id="bulk-action-bar" style="display:none;position:sticky;top:0;z-index:50;background:#1A4A2E;color:#fff;padding:10px 18px;border-radius:10px;margin-bottom:10px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span id="bulk-action-count" style="font-weight:700;font-size:14px;"></span>
+      <button onclick="bulkEmail()" style="padding:7px 16px;background:#fff;color:#1A4A2E;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;">✉ Send Email</button>
+      <button onclick="openPrintModal()" style="padding:7px 16px;background:#fff;color:#1A4A2E;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Print Packet</button>
+      <button onclick="clearBulkSelection()" style="padding:7px 14px;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.5);border-radius:7px;font-size:13px;cursor:pointer;">Clear</button>
+    </div>
+
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
+            <th style="width:32px;"><input type="checkbox" id="select-all-chk" onchange="toggleSelectAll(this.checked)" style="width:15px;height:15px;cursor:pointer;" /></th>
             <th class="sortable" onclick="sort('course_name')">Course ↕</th>
             <th>Contact</th>
             <th class="sortable" onclick="sort('created_at')">Added ↕</th>
@@ -276,7 +285,7 @@
           </tr>
         </thead>
         <tbody id="table-body">
-          <tr><td colspan="6" class="loading">Loading…</td></tr>
+          <tr><td colspan="7" class="loading">Loading…</td></tr>
         </tbody>
       </table>
     </div>
@@ -456,6 +465,26 @@
   </div>
 </div>
 
+<!-- ── Print Packet Modal ── -->
+<div class="modal-overlay" id="print-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
+  <div class="modal" style="max-width:520px;width:94%;background:#fff;border-radius:16px;padding:32px 28px;">
+    <h3 style="margin-top:0;">🖨 Print Packet</h3>
+    <p style="font-size:13px;color:#555;margin-bottom:12px;">Generating packets for:</p>
+    <ul id="print-modal-list" style="font-size:13px;margin:0 0 20px 18px;color:#333;"></ul>
+    <p style="font-size:13px;font-weight:600;margin-bottom:8px;">Select materials to include:</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+      <label style="font-size:13px;display:flex;align-items:center;gap:8px;"><input type="checkbox" class="print-material-chk" value="intro-letter" checked> Intro Letter</label>
+      <label style="font-size:13px;display:flex;align-items:center;gap:8px;"><input type="checkbox" class="print-material-chk" value="one-pager" checked> One-Pager</label>
+      <label style="font-size:13px;display:flex;align-items:center;gap:8px;"><input type="checkbox" class="print-material-chk" value="qr-sheet"> Counter Placard + QR Sheet</label>
+      <label style="font-size:13px;display:flex;align-items:center;gap:8px;"><input type="checkbox" class="print-material-chk" value="table-tent"> Table Tent</label>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="secondary-btn" onclick="closePrintModal()">Cancel</button>
+      <button class="save-status-btn" onclick="generatePrintPackets()">Generate & Open</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Outreach Modal ── -->
 <div class="modal-overlay" id="outreach-modal">
   <div class="modal" style="max-width:720px;">
@@ -593,6 +622,21 @@
       <button type="button" onclick="saveOutreachNotes()" style="margin-top:6px;padding:6px 14px;background:#1A4A2E;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Save notes</button>
       <span id="drawer-outreach-notes-msg" style="font-size:12px;color:#166534;margin-left:8px;display:none;">✓ Saved</span>
     </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-section-title">Log Contact</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <select id="drawer-log-method" class="status-select">
+        <option value="Contacted via Email">Emailed</option>
+        <option value="Contacted via Phone">Called</option>
+        <option value="Follow Up Email 1">Follow Up Email 1</option>
+        <option value="Follow Up Email 2">Follow Up Email 2</option>
+      </select>
+      <input type="date" id="drawer-log-date" style="padding:6px 10px;border:1.5px solid #E0E0D8;border-radius:8px;font-size:13px;" />
+      <button class="save-status-btn" onclick="logContact()">Log</button>
+    </div>
+    <div id="drawer-log-msg" style="font-size:12px;color:#166534;margin-top:6px;display:none;">✓ Logged</div>
   </div>
 
   <div class="drawer-section">
@@ -762,7 +806,7 @@ async function sbFetch(path) {
 }
 
 async function loadData() {
-  document.getElementById('table-body').innerHTML = '<tr><td colspan="6" class="loading">Loading…</td></tr>';
+  document.getElementById('table-body').innerHTML = '<tr><td colspan="7" class="loading">Loading…</td></tr>';
   try {
     const [partners, profiles] = await Promise.all([
       sbFetch('partners?select=*&order=created_at.desc'),
@@ -867,7 +911,7 @@ function renderTable() {
   });
 
   if (!rows.length) {
-    document.getElementById('table-body').innerHTML = '<tr><td colspan="6" class="empty">No partners found.</td></tr>';
+    document.getElementById('table-body').innerHTML = '<tr><td colspan="7" class="empty">No partners found.</td></tr>';
     return;
   }
 
@@ -883,6 +927,7 @@ function renderTable() {
       : '<span style="color:#ccc;font-size:12px;">—</span>';
     return `
     <tr>
+      <td><input type="checkbox" class="row-chk" value="${r.id}" onchange="updateBulkBar()" style="width:15px;height:15px;cursor:pointer;" /></td>
       <td>
         <div class="course-name">${esc(r.course_name)}</div>
         <div class="course-code">${esc(r.city||'')}${r.city && r.state ? ', ' : ''}${esc(r.state||'')}</div>
@@ -912,6 +957,8 @@ function openDrawer(id) {
   document.getElementById('drawer-outreach-meta').textContent = p.outreach_last_date ? 'Last outreach: ' + formatDate(p.outreach_last_date) : '';
   document.getElementById('drawer-outreach-notes').value = p.outreach_notes || '';
   document.getElementById('drawer-outreach-notes-msg').style.display = 'none';
+  document.getElementById('drawer-log-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('drawer-log-msg').style.display = 'none';
   // Show convert button for prospects not yet active
   document.getElementById('drawer-convert-section').style.display =
     (p.outreach_stage && p.status !== 'active') ? 'block' : 'none';
@@ -1620,6 +1667,181 @@ async function clearOutreachStage() {
   openDrawer(currentDrawerPartner.id);
   renderTable();
 }
+
+// ── Bulk selection helpers ──────────────────────────────────────────────────
+
+function updateBulkBar() {
+  const checked = document.querySelectorAll('.row-chk:checked');
+  const bar = document.getElementById('bulk-action-bar');
+  const count = document.getElementById('bulk-action-count');
+  if (checked.length > 0) {
+    bar.style.display = 'flex';
+    count.textContent = `${checked.length} selected`;
+  } else {
+    bar.style.display = 'none';
+  }
+  const all = document.querySelectorAll('.row-chk');
+  const selectAll = document.getElementById('select-all-chk');
+  if (selectAll) selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+  if (selectAll) selectAll.checked = all.length > 0 && checked.length === all.length;
+}
+
+function toggleSelectAll(checked) {
+  document.querySelectorAll('.row-chk').forEach(cb => { cb.checked = checked; });
+  updateBulkBar();
+}
+
+function clearBulkSelection() {
+  document.querySelectorAll('.row-chk').forEach(cb => { cb.checked = false; });
+  const selectAll = document.getElementById('select-all-chk');
+  if (selectAll) { selectAll.checked = false; selectAll.indeterminate = false; }
+  updateBulkBar();
+}
+
+function getSelectedPartners() {
+  return Array.from(document.querySelectorAll('.row-chk:checked'))
+    .map(cb => allPartners.find(p => p.id === cb.value))
+    .filter(Boolean);
+}
+
+function bulkEmail() {
+  const selected = getSelectedPartners();
+  if (!selected.length) return;
+  const emails = selected.map(p => {
+    if (p.contact2_email) return p.contact2_email;
+    if (p.email) return p.email;
+    return null;
+  }).filter(Boolean);
+  if (!emails.length) { alert('No email addresses found for selected courses.'); return; }
+  window.location.href = `mailto:${emails.join(',')}`;
+}
+
+function openPrintModal() {
+  const selected = getSelectedPartners();
+  if (!selected.length) return;
+  document.getElementById('print-modal-list').innerHTML =
+    selected.map(p => `<li>${p.course_name || p.name}</li>`).join('');
+  document.getElementById('print-modal').style.display = 'flex';
+}
+
+function closePrintModal() {
+  document.getElementById('print-modal').style.display = 'none';
+}
+
+function generatePrintPackets() {
+  const selected = getSelectedPartners();
+  const materials = Array.from(document.querySelectorAll('.print-material-chk:checked'))
+    .map(cb => cb.value);
+  if (!materials.length) { alert('Select at least one material.'); return; }
+
+  selected.forEach(p => {
+    const courseName = p.course_name || p.name || 'Golf Course';
+    const sal = salutation(p);
+    let body = `<!DOCTYPE html><html><head><title>${courseName} Packet</title>
+<style>
+  body { font-family: Georgia, serif; padding: 40px; max-width: 700px; margin: 0 auto; color: #1a1a1a; }
+  h1 { color: #1A4A2E; font-size: 26px; margin-bottom: 4px; }
+  h2 { color: #1A4A2E; font-size: 20px; border-bottom: 2px solid #1A4A2E; padding-bottom: 6px; margin-top: 40px; }
+  p { line-height: 1.7; }
+  .logo { font-size: 28px; font-weight: 900; color: #1A4A2E; letter-spacing: -1px; }
+  .page-break { page-break-after: always; }
+  @media print { button { display: none; } }
+</style></head><body>
+<div style="text-align:right"><button onclick="window.print()">🖨 Print</button></div>
+<div class="logo">TeeWager</div>`;
+
+    if (materials.includes('intro-letter')) {
+      body += `
+<div class="page-break">
+<h1>Partnership Opportunity</h1>
+<p>${sal},</p>
+<p>We'd love to introduce TeeWager — the app that brings friendly competition and side games to every round at <strong>${courseName}</strong>. Our platform lets golfers wager beans (virtual currency) on skins, long drive, closest-to-the-pin, and more, all within a single round.</p>
+<p>As a partner course, you'll receive a customized QR code placard for your pro shop, driving range, and starter booth. When golfers scan and sign up, you earn referral credits that can be applied toward future partnership benefits.</p>
+<p>We'd love the opportunity to connect at your convenience. Please reach out at <a href="mailto:info@teewager.com">info@teewager.com</a> or visit <a href="https://teewager.com">teewager.com</a>.</p>
+<p>We look forward to having ${courseName} as a TeeWager partner course.</p>
+<p>Warm regards,<br><strong>The TeeWager Team</strong></p>
+</div>`;
+    }
+
+    if (materials.includes('one-pager')) {
+      body += `
+<div class="page-break">
+<h2>About TeeWager</h2>
+<p><strong>What is TeeWager?</strong> A free mobile app that turns any round of golf into a friendly competition. Players set up bean wagers on skins, 3-putts, long drive, and closest to the pin — no real money, just bragging rights.</p>
+<p><strong>Why partner with us?</strong></p>
+<ul>
+  <li>Drive more rounds by giving players a reason to compete</li>
+  <li>Your course featured in the TeeWager app</li>
+  <li>Custom QR code for easy player sign-up at your course</li>
+  <li>Referral tracking and partner dashboard access</li>
+</ul>
+<p><strong>Partnership is free.</strong> Contact us at <a href="mailto:info@teewager.com">info@teewager.com</a>.</p>
+</div>`;
+    }
+
+    if (materials.includes('qr-sheet')) {
+      body += `
+<div class="page-break">
+<h2>Partner QR Code — ${courseName}</h2>
+<p style="font-size:13px;color:#666;">[QR code placard insert — print and place in pro shop, starter booth, and range tee]</p>
+<div style="text-align:center;margin:40px 0;font-size:120px;">📱</div>
+<p style="text-align:center;">Scan to join TeeWager and start playing at ${courseName}</p>
+<p style="text-align:center;font-size:13px;color:#888;">teewager.com · info@teewager.com</p>
+</div>`;
+    }
+
+    if (materials.includes('table-tent')) {
+      body += `
+<div class="page-break">
+<h2>Table Tent Insert — ${courseName}</h2>
+<div style="border:2px solid #1A4A2E;padding:32px;text-align:center;border-radius:12px;margin-top:24px;">
+  <div class="logo" style="font-size:36px;">TeeWager</div>
+  <p style="font-size:18px;font-weight:bold;margin:16px 0 8px;">Turn your round into a competition.</p>
+  <p style="font-size:14px;color:#555;">Skins · Long Drive · Closest to the Pin · 3-Putt Games</p>
+  <p style="font-size:13px;margin-top:20px;">📱 Scan to download &amp; start playing at ${courseName}</p>
+</div>
+</div>`;
+    }
+
+    body += `</body></html>`;
+
+    const win = window.open('', '_blank');
+    if (win) { win.document.write(body); win.document.close(); }
+  });
+
+  closePrintModal();
+}
+
+// ── Log Contact ─────────────────────────────────────────────────────────────
+
+async function logContact() {
+  if (!currentDrawerPartner) return;
+  const stage = document.getElementById('drawer-log-method').value;
+  const dateVal = document.getElementById('drawer-log-date').value;
+  const ts = dateVal ? new Date(dateVal).toISOString() : new Date().toISOString();
+  const msg = document.getElementById('drawer-log-msg');
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ outreach_stage: stage, outreach_last_date: ts }),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    currentDrawerPartner.outreach_stage = stage;
+    currentDrawerPartner.outreach_last_date = ts;
+    allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, outreach_stage: stage, outreach_last_date: ts } : p);
+    document.getElementById('drawer-outreach-stage').value = stage;
+    document.getElementById('drawer-outreach-meta').textContent = '✓ Saved · Last outreach: ' + formatDate(ts);
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 2500);
+    renderTable();
+    updateStats();
+  } catch(e) {
+    alert('Error logging contact: ' + e.message);
+  }
+}
+
+// ── End bulk/log helpers ─────────────────────────────────────────────────────
 
 function openOutreachModal() {
   document.getElementById('outreach-filter-status').value = 'prospect';
