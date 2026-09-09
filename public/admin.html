@@ -238,7 +238,10 @@
         <option value="">All outreach</option>
         <option value="Prospect">Prospect</option>
         <option value="Targeted">Targeted</option>
-        <option value="Contacted">Contacted</option>
+        <option value="Contacted via Email">Contacted via Email</option>
+        <option value="Contacted via Phone">Contacted via Phone</option>
+        <option value="Follow Up Email 1">Follow Up Email 1</option>
+        <option value="Follow Up Email 2">Follow Up Email 2</option>
         <option value="Declined">Declined</option>
         <option value="No Response">No Response</option>
         <option value="none">No stage set</option>
@@ -377,7 +380,10 @@
           <option value="">— None —</option>
           <option value="Prospect" selected>Prospect</option>
           <option value="Targeted">Targeted</option>
-          <option value="Contacted">Contacted</option>
+          <option value="Contacted via Email">Contacted via Email</option>
+          <option value="Contacted via Phone">Contacted via Phone</option>
+          <option value="Follow Up Email 1">Follow Up Email 1</option>
+          <option value="Follow Up Email 2">Follow Up Email 2</option>
           <option value="Declined">Declined</option>
           <option value="No Response">No Response</option>
         </select>
@@ -458,7 +464,12 @@
       <select id="outreach-filter-status" onchange="renderOutreachList()" style="padding:6px 12px;border:1.5px solid #E0E0D8;border-radius:6px;font-size:13px;background:#fff;cursor:pointer;">
         <option value="">All partners</option>
         <option value="Targeted">Targeted</option>
-        <option value="Contacted">Contacted</option>
+        <option value="Contacted via Email">Contacted via Email</option>
+        <option value="Contacted via Phone">Contacted via Phone</option>
+        <option value="Follow Up Email 1">Follow Up Email 1</option>
+        <option value="Follow Up Email 2">Follow Up Email 2</option>
+        <option value="Declined">Declined</option>
+        <option value="No Response">No Response</option>
         <option value="none">Not yet outreached</option>
       </select>
       <span style="font-size:13px;color:#888;margin-left:4px;"><span id="outreach-selected-count">0</span> selected</span>
@@ -562,13 +573,22 @@
         <option value="">— None —</option>
         <option value="Prospect">Prospect</option>
         <option value="Targeted">Targeted</option>
-        <option value="Contacted">Contacted</option>
+        <option value="Contacted via Email">Contacted via Email</option>
+        <option value="Contacted via Phone">Contacted via Phone</option>
+        <option value="Follow Up Email 1">Follow Up Email 1</option>
+        <option value="Follow Up Email 2">Follow Up Email 2</option>
         <option value="Declined">Declined</option>
         <option value="No Response">No Response</option>
       </select>
       <button class="save-status-btn" onclick="saveOutreachStage()">Save</button>
     </div>
     <div id="drawer-outreach-meta" style="margin-top:8px;font-size:13px;color:#888;"></div>
+    <div style="margin-top:12px;">
+      <label style="font-size:12px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Outreach Notes</label>
+      <textarea id="drawer-outreach-notes" rows="3" style="width:100%;margin-top:6px;padding:8px 10px;border:1.5px solid #E0E0D8;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;" placeholder="Notes on this outreach…"></textarea>
+      <button type="button" onclick="saveOutreachNotes()" style="margin-top:6px;padding:6px 14px;background:#1A4A2E;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Save notes</button>
+      <span id="drawer-outreach-notes-msg" style="font-size:12px;color:#166534;margin-left:8px;display:none;">✓ Saved</span>
+    </div>
   </div>
 
   <div class="drawer-section">
@@ -782,7 +802,7 @@ function updateStats() {
   document.getElementById('stat-targeted').textContent  = byStage('Targeted');
   document.getElementById('stat-contacted').textContent = byStage('Contacted');
   document.getElementById('stat-active').textContent    = allPartners.filter(p => p.status === 'active').length;
-  document.getElementById('stat-declined').textContent  = byStage('Declined') + byStage('No Response');
+  document.getElementById('stat-declined').textContent  = byStage('Declined') + byStage('No Response') + byStage('Follow Up Email 1') + byStage('Follow Up Email 2');
 }
 
 function populateStateFilter() {
@@ -886,6 +906,8 @@ function openDrawer(id) {
   document.getElementById('drawer-status').value         = p.status || 'pending';
   document.getElementById('drawer-outreach-stage').value = p.outreach_stage || '';
   document.getElementById('drawer-outreach-meta').textContent = p.outreach_last_date ? 'Last outreach: ' + formatDate(p.outreach_last_date) : '';
+  document.getElementById('drawer-outreach-notes').value = p.outreach_notes || '';
+  document.getElementById('drawer-outreach-notes-msg').style.display = 'none';
   // Show convert button for prospects not yet active
   document.getElementById('drawer-convert-section').style.display =
     (p.outreach_stage && p.status !== 'active') ? 'block' : 'none';
@@ -1540,6 +1562,26 @@ async function setOutreachStage(id, stage) {
   }
   const idx = allPartners.findIndex(x => x.id === id);
   if (idx >= 0) allPartners[idx] = { ...allPartners[idx], ...updated[0] };
+}
+
+async function saveOutreachNotes() {
+  if (!currentDrawerPartner) return;
+  const notes = document.getElementById('drawer-outreach-notes').value.trim() || null;
+  const msg   = document.getElementById('drawer-outreach-notes-msg');
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ outreach_notes: notes }),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    currentDrawerPartner.outreach_notes = notes;
+    allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, outreach_notes: notes } : p);
+    msg.style.display = 'inline';
+    setTimeout(() => msg.style.display = 'none', 2000);
+  } catch(e) {
+    alert('Error saving notes: ' + e.message);
+  }
 }
 
 async function saveOutreachStage() {
