@@ -388,6 +388,10 @@
           <option value="No Response">No Response</option>
         </select>
       </div>
+      <div class="modal-field" style="grid-column:1/-1">
+        <label>Outreach Notes</label>
+        <textarea id="add-outreach-notes" rows="3" placeholder="Any notes on this prospect…" style="width:100%;padding:8px 10px;border:1.5px solid #E0E0D8;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
     </div>
 
     <div id="add-result" style="display:none">
@@ -1229,6 +1233,7 @@ function openAddModal() {
   document.getElementById('add-contact2').value = '';
   document.getElementById('add-email2').value = '';
   document.getElementById('add-phone2').value = '';
+  document.getElementById('add-outreach-notes').value = '';
   document.getElementById('add-address').value = '';
   document.getElementById('add-status').value = '';
   document.getElementById('add-outreach-stage').value = 'Prospect';
@@ -1308,6 +1313,7 @@ async function submitAddPartner() {
     mailing_address: address   || null,
     outreach_stage:  outreachStage,
     outreach_last_date: null,
+    outreach_notes:  document.getElementById('add-outreach-notes').value.trim() || null,
   };
 
   try {
