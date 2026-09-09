@@ -265,10 +265,10 @@
         <thead>
           <tr>
             <th class="sortable" onclick="sort('course_name')">Course ↕</th>
-            <th>Ref Code</th>
-            <th>Status</th>
+            <th>Contact</th>
             <th class="sortable" onclick="sort('created_at')">Added ↕</th>
             <th>Outreach</th>
+            <th>Notes</th>
             <th></th>
           </tr>
         </thead>
@@ -843,26 +843,33 @@ function renderTable() {
   });
 
   if (!rows.length) {
-    document.getElementById('table-body').innerHTML = '<tr><td colspan="8" class="empty">No partners found.</td></tr>';
+    document.getElementById('table-body').innerHTML = '<tr><td colspan="6" class="empty">No partners found.</td></tr>';
     return;
   }
 
   document.getElementById('table-body').innerHTML = rows.map(r => {
     const stage = getOutreachStage(r.id);
     const stageHtml = stage ? `<div class="outreach-stage">${esc(stage)}</div>` : '<span style="color:#ccc;font-size:12px;">—</span>';
+    const contactName = [r.first_name, r.last_name].filter(Boolean).join(' ');
+    const contactHtml = contactName
+      ? `<div style="font-size:13px;font-weight:600;">${esc(contactName)}</div>${r.title ? `<div style="font-size:11px;color:#888;">${esc(r.title)}</div>` : ''}`
+      : r.title ? `<div style="font-size:12px;color:#888;">${esc(r.title)}</div>` : '<span style="color:#ccc;font-size:12px;">—</span>';
+    const notesHtml = r.placement_notes
+      ? `<span style="font-size:12px;color:#555;" title="${esc(r.placement_notes)}">${esc(r.placement_notes.length > 40 ? r.placement_notes.slice(0,40)+'…' : r.placement_notes)}</span>`
+      : '<span style="color:#ccc;font-size:12px;">—</span>';
     return `
     <tr>
       <td>
         <div class="course-name">${esc(r.course_name)}</div>
         <div class="course-code">${esc(r.city||'')}${r.city && r.state ? ', ' : ''}${esc(r.state||'')}</div>
       </td>
-      <td><span class="ref-code">${esc(r.referral_code||'—')}</span></td>
-      <td>${(r.outreach_stage && r.status === 'pending') ? '<span style="color:#bbb;">—</span>' : `<span class="badge badge-${r.status||'pending'}">${r.status||'pending'}</span>`}</td>
+      <td>${contactHtml}</td>
       <td>
         ${formatDate(r.created_at)}
         ${r.portal_password ? '<br><span style="font-size:11px;color:#166534;font-weight:700;">✓ Self-registered</span>' : '<br><span style="font-size:11px;color:#888;">Admin added</span>'}
       </td>
       <td>${stageHtml}</td>
+      <td>${notesHtml}</td>
       <td><button class="action-btn" onclick="openDrawer('${r.id}')">View</button></td>
     </tr>
   `}).join('');
