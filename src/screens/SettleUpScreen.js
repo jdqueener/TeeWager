@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { totalBeansForPlayer, computeSettleUp } from '../utils/beans';
-import { computeNassauSettleUp, computeNassauSettleUpTeam, legStandings, legMatchStatus } from '../utils/nassau';
+import { computeNassauSettleUp, computeNassauSettleUpTeamFormat, legStandings, legMatchStatus } from '../utils/nassau';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
 import { saveStats, loadStats } from '../utils/storage';
@@ -16,7 +16,7 @@ export default function SettleUpScreen() {
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18,
     spots = [], gameMode = 'beans', nassauStake = 5.00, strokes = [],
     nassauPresses = { front: [], back: [], total: [] },
-    nassauTeams = null } = state;
+    nassauTeams = null, nassauTeamFormat = 'match-play' } = state;
   const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const countedRef = useRef(false);
@@ -57,7 +57,7 @@ export default function SettleUpScreen() {
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
   const payments = isNassau
     ? (nassauTeams
-        ? computeNassauSettleUpTeam(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses)
+        ? computeNassauSettleUpTeamFormat(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses, nassauTeamFormat)
         : computeNassauSettleUp(players, strokes, nassauStake, holeCount, nassauPresses))
     : computeSettleUp(players, beanTotals, beanValue, wagers);
 

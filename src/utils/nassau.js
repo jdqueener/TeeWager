@@ -181,6 +181,99 @@ export function computeNassauSettleUpTeam(players, teams, strokes, nassauStake, 
   return minimumCashFlowNassau(players, net);
 }
 
+// ─── 2v2 sub-format helpers ──────────────────────────────────────────────────
+
+// Combined: team score per hole = sum of both team members' strokes.
+export function teamCombined(strokes, teamPlayers, holeIdx) {
+  const valid = teamPlayers.filter(pi => (strokes[pi]?.[holeIdx] ?? 0) > 0);
+  if (valid.length < teamPlayers.length) return null; // need all players scored
+  return valid.reduce((s, pi) => s + strokes[pi][holeIdx], 0);
+}
+
+// Scramble: team uses one ball — lowest score among team members per hole.
+// (Players should enter the shared scramble score; min handles slight entry differences.)
+export function teamScramble(strokes, teamPlayers, holeIdx) {
+  return teamBestBall(strokes, teamPlayers, holeIdx); // same math as best ball
+}
+
+// Stroke-play team standings: compare team stroke totals over a range.
+// scorer: function(strokes, teamPlayers, holeIdx) → number | null
+function legStandingsTeamStroke(strokes, teamA, teamB, holeRange, scorer) {
+  let totalA = 0, totalB = 0, holesPlayed = 0;
+  for (const h of holeRange) {
+    const sA = scorer(strokes, teamA, h);
+    const sB = scorer(strokes, teamB, h);
+    if (sA === null || sB === null) continue;
+    holesPlayed++;
+    totalA += sA;
+    totalB += sB;
+  }
+  return { totalA, totalB, holesPlayed };
+}
+
+// Human-readable stroke-play status for two teams.
+export function legMatchStatusTeamStroke(strokes, teamA, teamB, holeRange, teamNames, scorer) {
+  const { totalA, totalB, holesPlayed } = legStandingsTeamStroke(strokes, teamA, teamB, holeRange, scorer);
+  if (holesPlayed === 0) return 'Not started';
+  const diff = totalA - totalB;
+  if (diff === 0) return 'All Square';
+  const leader = diff < 0 ? teamNames[0] : teamNames[1];
+  return `${leader} leads (${Math.abs(diff)} strokes)`;
+}
+
+// Settlement for stroke-play team formats.
+function settleTeamRangeStroke(net, strokes, teamA, teamB, range, stake, scorer) {
+  const { totalA, totalB } = legStandingsTeamStroke(strokes, teamA, teamB, range, scorer);
+  if (totalA < totalB) {
+    for (const pi of teamA) net[pi] += stake / 2;
+    for (const pi of teamB) net[pi] -= stake / 2;
+  } else if (totalB < totalA) {
+    for (const pi of teamB) net[pi] += stake / 2;
+    for (const pi of teamA) net[pi] -= stake / 2;
+  }
+}
+
+// Main entry point for 2v2 settlement — routes by teamFormat.
+export function computeNassauSettleUpTeamFormat(players, teams, strokes, nassauStake, holeCount = 18, nassauPresses = {}, teamFormat = 'match-play') {
+  const [teamA, teamB] = teams;
+  const frontRange = Array.from({ length: 9 }, (_, i) => i);
+  const backRange  = Array.from({ length: Math.min(9, holeCount - 9) }, (_, i) => i + 9);
+  const totalRange = Array.from({ length: holeCount }, (_, i) => i);
+  const legDefs = holeCount >= 18
+    ? [['front', frontRange], ['back', backRange], ['total', totalRange]]
+    : [['front', frontRange]];
+
+  const net = new Array(players.length).fill(0);
+
+  if (teamFormat === 'match-play') {
+    // Original hole-by-hole match play (best ball)
+    function settleTeamRange(range, stake) {
+      const { winsA, winsB } = legStandingsTeam(strokes, teamA, teamB, range);
+      const diff = winsA - winsB;
+      if (diff > 0) { for (const pi of teamA) net[pi] += stake / 2; for (const pi of teamB) net[pi] -= stake / 2; }
+      else if (diff < 0) { for (const pi of teamB) net[pi] += stake / 2; for (const pi of teamA) net[pi] -= stake / 2; }
+    }
+    for (const [legKey, range] of legDefs) {
+      settleTeamRange(range, nassauStake);
+      for (const press of (nassauPresses[legKey] || [])) {
+        const pressRange = range.filter(h => h >= press.startHole);
+        if (pressRange.length > 0) settleTeamRange(pressRange, nassauStake);
+      }
+    }
+  } else {
+    const scorer = teamFormat === 'combined' ? teamCombined : teamBestBall; // best-ball and scramble both use min
+    for (const [legKey, range] of legDefs) {
+      settleTeamRangeStroke(net, strokes, teamA, teamB, range, nassauStake, scorer);
+      for (const press of (nassauPresses[legKey] || [])) {
+        const pressRange = range.filter(h => h >= press.startHole);
+        if (pressRange.length > 0) settleTeamRangeStroke(net, strokes, teamA, teamB, pressRange, nassauStake, scorer);
+      }
+    }
+  }
+
+  return minimumCashFlowNassau(players, net);
+}
+
 // ─── Press helpers ───────────────────────────────────────────────────────────
 
 // Returns true if any player in a 2-player match can press the leg.

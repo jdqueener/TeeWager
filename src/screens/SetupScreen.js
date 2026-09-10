@@ -39,6 +39,7 @@ export default function SetupScreen() {
   const [gameMode, setGameMode] = useState('beans'); // 'beans' | 'nassau'
   const [nassauStake, setNassauStake] = useState('5.00');
   const [nassauFormat, setNassauFormat] = useState('individual'); // 'individual' | 'teams'
+  const [teamSubFormat, setTeamSubFormat] = useState('match-play'); // 'match-play' | 'best-ball' | 'combined' | 'scramble'
   const [teamAssign, setTeamAssign] = useState([0, 0, 1, 1]); // team index per player slot
   const [beanValue, setBeanValue] = useState('1.00');
   const [enabledBeans, setEnabledBeans] = useState(
@@ -360,6 +361,7 @@ export default function SetupScreen() {
               players.map((_, i) => i).filter(i => teamAssign[i] === 1),
             ]
           : null,
+        nassauTeamFormat: nassauFormat === 'teams' ? teamSubFormat : 'match-play',
         players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom,
         wagers: [], course, holeCount, holeOffset,
         pressMode: pressEnabled ? pressMode : null,
@@ -732,12 +734,39 @@ export default function SetupScreen() {
                       ))}
                     </View>
                   </View>
-                  <Text style={styles.fieldHint}>Best ball: each team plays their lower score on each hole.</Text>
+                  <Text style={styles.fieldHint}>Assign 2 players to each team.</Text>
                 </>
               );
             })()}
             {nassauFormat === 'teams' && playerCount !== 4 && (
               <Text style={styles.fieldHint}>⚠️ Set player count to 4 to use 2v2 Teams.</Text>
+            )}
+
+            {nassauFormat === 'teams' && (
+              <>
+                <Text style={styles.label}>Team Format</Text>
+                {[
+                  { id: 'match-play', label: 'Match Play',  desc: 'Hole-by-hole wins using each team\'s best ball' },
+                  { id: 'best-ball',  label: 'Best Ball',   desc: 'Stroke play — team\'s lowest score per hole, totals compared' },
+                  { id: 'combined',   label: 'Individual',  desc: 'Each player\'s full round score added together, team totals compared' },
+                  { id: 'scramble',   label: 'Scramble',    desc: 'Team plays one ball — enter the shared score for both players' },
+                ].map(({ id, label, desc }) => (
+                  <TouchableOpacity
+                    key={id}
+                    style={[styles.formatOptionRow, teamSubFormat === id && styles.formatOptionRowActive]}
+                    onPress={() => setTeamSubFormat(id)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.formatRadio, teamSubFormat === id && styles.formatRadioActive]}>
+                      {teamSubFormat === id && <View style={styles.formatRadioDot} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.formatOptionLabel, teamSubFormat === id && { color: colors.green }]}>{label}</Text>
+                      <Text style={styles.formatOptionDesc}>{desc}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </>
             )}
 
             <Text style={styles.label}>$ per leg (front / back / total)</Text>
@@ -1118,6 +1147,15 @@ const styles = StyleSheet.create({
   spotBtnText:  { fontSize: 22, fontWeight: '700', color: colors.green, lineHeight: 24 },
   spotVal:      { width: 36, textAlign: 'center', fontSize: 20, fontWeight: '800', color: colors.textDark },
   spotHint:     { fontSize: 12, color: colors.textLight, marginTop: spacing.sm, textAlign: 'center', lineHeight: 18 },
+
+  // Team sub-format picker
+  formatOptionRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.white, marginBottom: spacing.xs },
+  formatOptionRowActive: { borderColor: colors.green, backgroundColor: 'rgba(26,74,46,0.05)' },
+  formatRadio:           { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center', marginTop: 2, flexShrink: 0 },
+  formatRadioActive:     { borderColor: colors.green },
+  formatRadioDot:        { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.green },
+  formatOptionLabel:     { fontSize: 14, fontWeight: '700', color: colors.textDark },
+  formatOptionDesc:      { fontSize: 12, color: colors.textLight, marginTop: 2, lineHeight: 17 },
 
   // Press options
   pressOptions:     { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.gold, padding: spacing.sm, marginBottom: spacing.sm, ...shadow.sm },
