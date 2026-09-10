@@ -1,0 +1,356 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
+import { useGame } from '../context/GameContext';
+import { totalBeansForPlayer, computeSettleUp } from '../utils/beans';
+import { computeNassauSettleUp, computeNassauSettleUpTeam, legStandings, legMatchStatus } from '../utils/nassau';
+import { incrementRoundsCompleted } from '../utils/pro';
+import { supabase } from '../utils/supabase';
+import { saveStats, loadStats } from '../utils/storage';
+import { colors, spacing, radius, shadow } from '../utils/theme';
+import ProBanner from '../components/ProBanner';
+import PaywallModal from '../components/PaywallModal';
+import ShareCard from '../components/ShareCard';
+
+export default function SettleUpScreen() {
+  const { state, dispatch, pro, setPro, activeBeans, refreshProfile } = useGame();
+  const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18,
+    spots = [], gameMode = 'beans', nassauStake = 5.00, strokes = [],
+    nassauPresses = { front: [], back: [], total: [] },
+    nassauTeams = null } = state;
+  const lastHole = holeCount - 1;
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const countedRef = useRef(false);
+
+  // Increment rounds completed once per settle-up session
+  useEffect(() => {
+    if (countedRef.current) return;
+    countedRef.current = true;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await incrementRoundsCompleted(session.user.id);
+        await refreshProfile(session.user.id);
+      }
+    })();
+  }, []);
+  const [saved, setSaved] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [shareVisible, setShareVisible] = useState(false);
+
+  const needsChipOff = ldCarryover > 0 || kpCarryover > 0;
+
+  function awardChipOff(type, playerIdx) {
+    if (type === 'ld') {
+      dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: lastHole, totalBeans: 1 + ldCarryover });
+    } else {
+      dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: lastHole, totalBeans: 1 + kpCarryover });
+    }
+  }
+
+  function voidCarryovers() {
+    if (ldCarryover > 0) dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
+    if (kpCarryover > 0) dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
+  }
+
+  const isNassau = gameMode === 'nassau';
+
+  const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
+  const payments = isNassau
+    ? (nassauTeams
+        ? computeNassauSettleUpTeam(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses)
+        : computeNassauSettleUp(players, strokes, nassauStake, holeCount, nassauPresses))
+    : computeSettleUp(players, beanTotals, beanValue, wagers);
+
+  // Nassau leg summaries
+  const playerIdxs = players.map((_, i) => i);
+  const frontRange = Array.from({ length: Math.min(9, holeCount) }, (_, i) => i);
+  const backRange  = holeCount >= 18 ? Array.from({ length: 9 }, (_, i) => i + 9) : [];
+  const totalRange = Array.from({ length: holeCount }, (_, i) => i);
+  const nassauLegs = isNassau ? [
+    { label: 'Front 9',  range: frontRange },
+    ...(holeCount >= 18 ? [{ label: 'Back 9', range: backRange }] : []),
+    { label: 'Total',    range: totalRange },
+  ] : [];
+
+  async function saveToStats() {
+    if (!pro) { setPaywallVisible(true); return; }
+    const stats = await loadStats();
+    const date  = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const maxBeans = Math.max(...beanTotals);
+    players.forEach((name, i) => {
+      const t   = beanTotals[i];
+      const won = t === maxBeans; // first-place tie counts as a win for all tied
+      const prev = stats[name] || { rounds: 0, wins: 0, totalBeans: 0, totalDollars: 0, bestRoundBeans: -Infinity, bestRound: null };
+      stats[name] = {
+        rounds:         prev.rounds + 1,
+        wins:           (prev.wins || 0) + (won ? 1 : 0),
+        totalBeans:     prev.totalBeans + t,
+        totalDollars:   prev.totalDollars + t * beanValue,
+        bestRound:      t > (prev.bestRoundBeans ?? -Infinity) ? date : prev.bestRound,
+        bestRoundBeans: Math.max(prev.bestRoundBeans ?? -Infinity, t),
+      };
+    });
+    await saveStats(stats);
+    setSaved(true);
+    if (Platform.OS !== 'web') {
+      Alert.alert('Saved!', 'Lifetime stats updated for all players.');
+    }
+  }
+
+  function newRound() {
+    if (Platform.OS === 'web') {
+      setConfirmVisible(true);
+    } else {
+      Alert.alert('Start new round?', 'This will clear all scoring data.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'New Round', style: 'destructive', onPress: () => dispatch({ type: 'RESET' }) },
+      ]);
+    }
+  }
+
+  return (
+    <View style={styles.root}>
+      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.headingWrap}>
+          <Text style={styles.heading}>Settle Up</Text>
+          <View style={styles.headingRule} />
+        </View>
+
+        {/* Chip-Off (beans only) */}
+        {!isNassau && needsChipOff && (
+          <>
+            <Text style={styles.sectionLabel}>⛳ Chip-Off Required</Text>
+            <View style={styles.chipOffCard}>
+              <Text style={styles.chipOffTitle}>Unawarded carryover beans — select the chip-off winner</Text>
+
+              {ldCarryover > 0 && (
+                <View style={styles.chipOffRow}>
+                  <Text style={styles.chipOffLabel}>Long Drive · ×{ldCarryover + 1} beans</Text>
+                  <View style={styles.chipOffPlayers}>
+                    {players.map((name, pi) => (
+                      <TouchableOpacity key={pi} style={styles.chipOffBtn} onPress={() => awardChipOff('ld', pi)} activeOpacity={0.75}>
+                        <Text style={styles.chipOffBtnText}>{name.split(' ')[0]}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {kpCarryover > 0 && (
+                <View style={styles.chipOffRow}>
+                  <Text style={styles.chipOffLabel}>KP · ×{kpCarryover + 1} beans</Text>
+                  <View style={styles.chipOffPlayers}>
+                    {players.map((name, pi) => (
+                      <TouchableOpacity key={pi} style={styles.chipOffBtn} onPress={() => awardChipOff('kp', pi)} activeOpacity={0.75}>
+                        <Text style={styles.chipOffBtnText}>{name.split(' ')[0]}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity style={styles.chipOffVoid} onPress={voidCarryovers}>
+                <Text style={styles.chipOffVoidText}>No chip-off — void carryover beans</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {/* Nassau leg standings OR bean totals */}
+        {isNassau ? (
+          <>
+            <Text style={styles.sectionLabel}>Match Results · ${nassauStake.toFixed(2)}/leg</Text>
+            {nassauLegs.map(({ label, range }) => {
+              const standing = legStandings(strokes, playerIdxs, range);
+              const status = players.length === 2
+                ? legMatchStatus(strokes, playerIdxs, range, players)
+                : null;
+              return (
+                <View key={label} style={styles.nassauLegCard}>
+                  <Text style={styles.nassauLegLabel}>{label}</Text>
+                  {status ? (
+                    <Text style={styles.nassauLegStatus}>{status}</Text>
+                  ) : (
+                    <View style={styles.nassauLegPlayers}>
+                      {players.map((name, pi) => (
+                        <Text key={pi} style={styles.nassauLegPlayer}>
+                          {name.split(' ')[0]}: {standing.wins[pi]}W {standing.halves[pi]}H {standing.losses[pi]}L
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </>
+        ) : (
+          <>
+            <Text style={styles.sectionLabel}>Bean totals</Text>
+            {players.map((name, i) => {
+              const beans = beanTotals[i];
+              const spot  = spots[i] || 0;
+              return (
+                <View key={i} style={styles.row}>
+                  <Text style={styles.name}>{name}</Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.val, beans < 0 && styles.neg]}>
+                      {beans >= 0 ? `+${beans}` : beans} beans{spot > 0 ? ` +${spot} spot` : ''}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </>
+        )}
+
+        {/* Wager results (beans only) */}
+        {!isNassau && wagers.length > 0 && (
+          <>
+            <Text style={styles.sectionLabel}>Side Wagers {!pro && '🔒'}</Text>
+            {wagers.map((w, wi) => (
+              <View key={wi} style={styles.row}>
+                <Text style={styles.name}>{w.desc}</Text>
+                <Text style={styles.val}>
+                  {w.winnerId >= 0 ? `${players[w.winnerId]} wins $${w.amt.toFixed(2)}` : 'Pending'}
+                </Text>
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* Payments */}
+        <Text style={styles.sectionLabel}>Payments</Text>
+        {payments.length === 0 ? (
+          <View style={styles.allSquareCard}>
+            <Text style={styles.allSquareEmoji}>🎉</Text>
+            <Text style={styles.allSquare}>All square!</Text>
+            <Text style={styles.allSquareSub}>No payments needed this round.</Text>
+          </View>
+        ) : payments.map((p, i) => (
+          <View key={i} style={styles.paymentCard}>
+            <View style={styles.paymentPlayer}>
+              <Text style={styles.paymentName}>{players[p.from]}</Text>
+              <Text style={styles.paymentRole}>pays</Text>
+            </View>
+            <View style={styles.paymentArrowWrap}>
+              <Text style={styles.paymentAmt}>${p.amt.toFixed(2)}</Text>
+              <Text style={styles.paymentArrow}>→</Text>
+            </View>
+            <View style={[styles.paymentPlayer, { alignItems: 'flex-end' }]}>
+              <Text style={styles.paymentName}>{players[p.to]}</Text>
+              <Text style={styles.paymentRole}>receives</Text>
+            </View>
+          </View>
+        ))}
+
+        {/* Actions */}
+        <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={() => (pro ? setShareVisible(true) : setPaywallVisible(true))}>
+          <Text style={styles.btnSecText}>📤 Share Results {!pro ? '🔒' : ''}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.btn, styles.btnSecondary, saved && styles.btnSaved]} onPress={saved ? null : saveToStats}>
+          <Text style={styles.btnSecText}>{saved ? '✓ Stats Saved' : `💾 Save to Lifetime Stats${!pro ? ' 🔒' : ''}`}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.btn} onPress={newRound}>
+          <Text style={styles.btnText}>⛳ New Round</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      <PaywallModal visible={paywallVisible} onClose={() => setPaywallVisible(false)} onUnlock={() => setPro(true)} />
+
+      <ShareCard
+        visible={shareVisible}
+        onClose={() => setShareVisible(false)}
+        players={players}
+        beanTotals={beanTotals}
+        beanValue={beanValue}
+        payments={payments}
+        wagers={wagers}
+        course={course}
+      />
+
+      <Modal visible={confirmVisible} transparent animationType="fade">
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>Start new round?</Text>
+            <Text style={styles.confirmSub}>This will clear all scoring data.</Text>
+            <TouchableOpacity style={styles.confirmDestructive} onPress={() => { setConfirmVisible(false); dispatch({ type: 'RESET' }); }}>
+              <Text style={styles.confirmDestructiveText}>New Round</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.confirmCancel} onPress={() => setConfirmVisible(false)}>
+              <Text style={styles.confirmCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root:         { flex: 1, backgroundColor: colors.background },
+  content:      { padding: spacing.md, paddingBottom: 100 },
+  headingWrap:  { marginBottom: spacing.md },
+  heading:      { fontSize: 28, fontWeight: '900', color: colors.textDark, letterSpacing: -0.8 },
+  headingRule:  { width: 46, height: 4, borderRadius: 2, backgroundColor: colors.gold, marginTop: spacing.sm },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 1, marginTop: spacing.lg, marginBottom: spacing.sm },
+
+  // Bean totals
+  row:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.xs, ...shadow.sm },
+  name:   { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
+  val:    { fontSize: 15, fontWeight: '800', color: colors.green, marginLeft: spacing.sm },
+  neg:    { color: colors.red },
+
+  // Payment cards
+  paymentCard:      { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', borderLeftWidth: 4, borderLeftColor: colors.gold, ...shadow.md },
+  paymentPlayer:    { flex: 1 },
+  paymentName:      { fontSize: 17, fontWeight: '900', color: colors.textDark, letterSpacing: -0.3 },
+  paymentRole:      { fontSize: 10, color: colors.textLight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 3 },
+  paymentArrowWrap: { alignItems: 'center', paddingHorizontal: spacing.sm },
+  paymentAmt:       { fontSize: 27, fontWeight: '900', color: colors.green, letterSpacing: -0.5 },
+  paymentArrow:     { fontSize: 20, color: colors.goldLight, fontWeight: '900', marginTop: 2 },
+
+  // All square
+  allSquareCard:  { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg, alignItems: 'center', marginBottom: spacing.sm, ...shadow.sm },
+  allSquareEmoji: { fontSize: 44, marginBottom: spacing.sm },
+  allSquare:      { fontSize: 20, fontWeight: '900', color: colors.green },
+  allSquareSub:   { fontSize: 14, color: colors.textLight, marginTop: 6 },
+
+  // Chip-off
+  chipOffCard:     { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 2, borderColor: colors.gold, padding: spacing.md, marginBottom: spacing.sm, ...shadow.sm },
+  chipOffTitle:    { fontSize: 14, fontWeight: '700', color: colors.textDark, marginBottom: spacing.sm },
+  chipOffRow:      { marginBottom: spacing.sm },
+  chipOffLabel:    { fontSize: 13, fontWeight: '600', color: colors.textMid, marginBottom: 8 },
+  chipOffPlayers:  { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
+  chipOffBtn:      { flex: 1, minWidth: 64, paddingVertical: 13, borderRadius: radius.sm, backgroundColor: colors.green, alignItems: 'center', ...shadow.green },
+  chipOffBtnText:  { color: colors.white, fontWeight: '800', fontSize: 14 },
+  chipOffVoid:     { marginTop: spacing.sm, alignItems: 'center', paddingTop: spacing.sm, borderTopWidth: 0.5, borderTopColor: colors.border },
+  chipOffVoidText: { color: colors.textLight, fontSize: 13, fontWeight: '600' },
+
+  // Wagers
+  bold:        { fontWeight: '700' },
+
+  // Buttons
+  btn:          { backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 20, alignItems: 'center', marginTop: spacing.sm, ...shadow.green },
+  btnSecondary: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.green, shadowOpacity: 0, elevation: 0, paddingVertical: 15 },
+  btnSaved:     { borderColor: colors.textLight },
+  btnText:      { color: colors.white, fontWeight: '900', fontSize: 17 },
+  btnSecText:   { color: colors.green, fontWeight: '700', fontSize: 15 },
+
+  // Nassau leg cards
+  nassauLegCard:    { backgroundColor: colors.white, borderRadius: radius.md, borderLeftWidth: 4, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.sm, ...shadow.sm },
+  nassauLegLabel:   { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
+  nassauLegStatus:  { fontSize: 17, fontWeight: '800', color: colors.textDark },
+  nassauLegPlayers: { gap: 4 },
+  nassauLegPlayer:  { fontSize: 15, fontWeight: '700', color: colors.textDark },
+
+  // Confirm modal
+  confirmOverlay:         { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  confirmCard:            { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 340, ...shadow.md },
+  confirmTitle:           { fontSize: 20, fontWeight: '900', color: colors.textDark, marginBottom: spacing.xs },
+  confirmSub:             { fontSize: 14, color: colors.textMid, marginBottom: spacing.lg },
+  confirmDestructive:     { backgroundColor: colors.red, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', marginBottom: spacing.sm },
+  confirmDestructiveText: { color: colors.white, fontWeight: '800', fontSize: 16 },
+  confirmCancel:          { paddingVertical: 12, alignItems: 'center' },
+  confirmCancelText:      { color: colors.textMid, fontSize: 15 },
+});
