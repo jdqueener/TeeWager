@@ -71,12 +71,16 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
     }
   }
 
-  function openBilling() {
+  async function openBilling() {
     if (Platform.OS === 'web') {
       window.open(STRIPE_PORTAL, '_blank');
-    } else {
-      Linking.openURL(STRIPE_PORTAL);
+      return;
     }
+    // Native: route to the OS subscription management screen (App Store /
+    // Play Store) instead of linking out to Stripe — required for App Store
+    // guideline 3.1.1 compliance.
+    const Purchases = (await import('react-native-purchases')).default;
+    await Purchases.showManageSubscriptions();
   }
 
   return (
