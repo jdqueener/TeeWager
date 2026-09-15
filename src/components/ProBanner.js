@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import AccountMenu from './AccountMenu';
 import AuthScreen from '../screens/AuthScreen';
@@ -28,6 +29,7 @@ const IS_BETA = false;
 
 export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
   const { state } = useGame();
+  const insets = useSafeAreaInsets();
   const [menuVisible, setMenuVisible] = useState(false);
   const [authVisible, setAuthVisible] = useState(false);
   const [postRoundVisible, setPostRoundVisible] = useState(false);
@@ -56,7 +58,7 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
 
   return (
     <>
-      <View style={[styles.banner, pro ? styles.proBanner : styles.freeBanner]}>
+      <View style={[styles.banner, pro ? styles.proBanner : styles.freeBanner, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={handleNewRound} style={styles.newRoundBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={styles.newRoundText}>New Round</Text>
         </TouchableOpacity>
