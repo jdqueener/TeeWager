@@ -30,7 +30,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
-        "com.google.android.gms.permission.AD_ID"
+        "com.google.android.gms.permission.AD_ID",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -64,6 +65,9 @@
         "projectId": "284e43de-e5b4-45a9-9ed3-320728a64f76"
       }
     },
-    "owner": "teewager-llc"
+    "owner": "teewager-llc",
+    "updates": {
+      "url": "https://u.expo.dev/284e43de-e5b4-45a9-9ed3-320728a64f76"
+    }
   }
 }
