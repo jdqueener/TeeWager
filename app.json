@@ -30,8 +30,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
-        "com.google.android.gms.permission.AD_ID",
-        "android.permission.RECORD_AUDIO"
+        "com.google.android.gms.permission.AD_ID"
       ]
     },
     "web": {
@@ -56,7 +55,8 @@
         "expo-image-picker",
         {
           "photosPermission": "TeeWager uses your photos to scan golf scorecards.",
-          "cameraPermission": "TeeWager uses your camera to scan golf scorecards."
+          "cameraPermission": "TeeWager uses your camera to scan golf scorecards.",
+          "microphonePermission": false
         }
       ]
     ],
