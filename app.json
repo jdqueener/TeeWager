@@ -58,6 +58,12 @@
           "cameraPermission": "TeeWager uses your camera to scan golf scorecards.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "TeeWager uses your location to find nearby golf courses."
+        }
       ]
     ],
     "extra": {

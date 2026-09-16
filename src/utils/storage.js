@@ -11,6 +11,7 @@ const KEYS = {
   ROUNDS_PLAYED: 'teewager_rounds_played',
   TRIAL_USED:    'teewager_trial_used',
   ONBOARDED:     'teewager_onboarded_v1',
+  GUEST_MODE:    'teewager_guest_mode',
 };
 
 export async function saveGame(state) {
@@ -111,6 +112,15 @@ export async function hasOnboarded() {
 
 export async function setOnboarded() {
   await AsyncStorage.setItem(KEYS.ONBOARDED, '1');
+}
+
+// Persists "continue as guest" on native, where sessionStorage isn't available
+export async function loadGuestFlag() {
+  return (await AsyncStorage.getItem(KEYS.GUEST_MODE)) === '1';
+}
+
+export async function saveGuestFlag() {
+  await AsyncStorage.setItem(KEYS.GUEST_MODE, '1');
 }
 
 export async function deleteSavedPlayer(name) {

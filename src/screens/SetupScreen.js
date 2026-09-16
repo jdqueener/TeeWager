@@ -12,7 +12,7 @@ import ProBanner from '../components/ProBanner';
 import AccountMenu from '../components/AccountMenu';
 import AuthScreen from './AuthScreen';
 import OnboardingScreen from './OnboardingScreen';
-import { loadSavedPlayers, savePlayer, deleteSavedPlayer, hasOnboarded, setOnboarded } from '../utils/storage';
+import { loadSavedPlayers, savePlayer, deleteSavedPlayer, hasOnboarded, setOnboarded, loadGuestFlag, saveGuestFlag } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
 import {
   searchCoursesByName,
@@ -69,6 +69,15 @@ export default function SetupScreen() {
   const [authInitialMode, setAuthInitialMode] = useState(urlMode === 'signup' ? 'signup' : 'signin');
   const [onboardingVisible, setOnboardingVisible] = useState(false);
 
+  // Persist "continue as guest" so it's remembered across app launches —
+  // sessionStorage (web) has no native equivalent, so native uses AsyncStorage
+  function markGuest() {
+    guestModeRef.current = true;
+    setGuestMode(true);
+    if (Platform.OS === 'web') setGuest();
+    else saveGuestFlag().catch(() => {});
+  }
+
   // On native first launch, show onboarding before auth
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -77,11 +86,23 @@ export default function SetupScreen() {
     });
   }, []);
 
+  // Native: restore a previously-chosen guest mode (persisted via AsyncStorage)
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    loadGuestFlag().then(saved => {
+      if (saved) {
+        guestModeRef.current = true;
+        setGuestMode(true);
+        setAuthVisible(false);
+      }
+    });
+  }, []);
+
   function handleOnboardingDone(intent) {
     setOnboarded();
     setOnboardingVisible(false);
     if (intent === 'guest') {
-      setGuestMode(true);
+      markGuest();
     } else if (intent === 'signup') {
       setAuthInitialMode('signup');
       setAuthVisible(true);
@@ -395,8 +416,8 @@ export default function SetupScreen() {
           <OnboardingScreen onDone={handleOnboardingDone} />
         </Modal>
 
-        <Modal visible={authVisible} animationType="slide" onRequestClose={() => { setGuestMode(true); setAuthVisible(false); }}>
-          <AuthScreen onSkip={(asGuest) => { if (asGuest) { setGuest(); guestModeRef.current = true; setGuestMode(true); } setAuthVisible(false); }} initialMode={authInitialMode} />
+        <Modal visible={authVisible} animationType="slide" onRequestClose={() => { markGuest(); setAuthVisible(false); }}>
+          <AuthScreen onSkip={(asGuest) => { if (asGuest) markGuest(); setAuthVisible(false); }} initialMode={authInitialMode} />
         </Modal>
 
         {/* Course */}
