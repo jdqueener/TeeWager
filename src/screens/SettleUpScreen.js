@@ -13,7 +13,7 @@ import ShareCard from '../components/ShareCard';
 
 export default function SettleUpScreen() {
   const { state, dispatch, pro, setPro, activeBeans, refreshProfile } = useGame();
-  const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, holeCount = 18,
+  const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18,
     spots = [], gameMode = 'beans', nassauStake = 5.00, strokes = [],
     nassauPresses = { front: [], back: [], total: [] },
     nassauTeams = null, nassauTeamFormat = 'match-play' } = state;
@@ -37,19 +37,22 @@ export default function SettleUpScreen() {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
 
-  const needsChipOff = ldCarryover > 0 || kpCarryover > 0;
+  const needsChipOff = ldCarryover > 0 || kpCarryover > 0 || skinsCarryover > 0;
 
   function awardChipOff(type, playerIdx) {
     if (type === 'ld') {
       dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: lastHole, totalBeans: 1 + ldCarryover });
-    } else {
+    } else if (type === 'kp') {
       dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: lastHole, totalBeans: 1 + kpCarryover });
+    } else {
+      dispatch({ type: 'SKINS_AWARD', playerIdx, holeIdx: lastHole, totalBeans: 1 + skinsCarryover });
     }
   }
 
   function voidCarryovers() {
     if (ldCarryover > 0) dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
     if (kpCarryover > 0) dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
+    if (skinsCarryover > 0) dispatch({ type: 'SKINS_AWARD', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
   }
 
   const isNassau = gameMode === 'nassau';
@@ -143,6 +146,19 @@ export default function SettleUpScreen() {
                   <View style={styles.chipOffPlayers}>
                     {players.map((name, pi) => (
                       <TouchableOpacity key={pi} style={styles.chipOffBtn} onPress={() => awardChipOff('kp', pi)} activeOpacity={0.75}>
+                        <Text style={styles.chipOffBtnText}>{name.split(' ')[0]}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {skinsCarryover > 0 && (
+                <View style={styles.chipOffRow}>
+                  <Text style={styles.chipOffLabel}>Skins · ×{skinsCarryover + 1} beans</Text>
+                  <View style={styles.chipOffPlayers}>
+                    {players.map((name, pi) => (
+                      <TouchableOpacity key={pi} style={styles.chipOffBtn} onPress={() => awardChipOff('skins', pi)} activeOpacity={0.75}>
                         <Text style={styles.chipOffBtnText}>{name.split(' ')[0]}</Text>
                       </TouchableOpacity>
                     ))}
