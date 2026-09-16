@@ -10,6 +10,7 @@ import { nassauMatchSummary, legMatchStatus, canPressLeg, activeLegStatus,
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
+import NativeStrokePicker from '../components/NativeStrokePicker';
 
 const CELL_W  = 38;
 const LABEL_W = 70;
@@ -453,23 +454,11 @@ export default function ScorecardScreen() {
                       onChange={v => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: v })}
                     />
                   ) : (
-                    <View style={styles.nassauStepper}>
-                      <TouchableOpacity
-                        style={styles.nassauStepBtn}
-                        onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: Math.max(1, val - 1) })}
-                        activeOpacity={0.75}
-                      >
-                        <Text style={styles.nassauStepText}>−</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.nassauStrokeVal}>{val || '—'}</Text>
-                      <TouchableOpacity
-                        style={styles.nassauStepBtn}
-                        onPress={() => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: val + 1 })}
-                        activeOpacity={0.75}
-                      >
-                        <Text style={styles.nassauStepText}>+</Text>
-                      </TouchableOpacity>
-                    </View>
+                    <NativeStrokePicker
+                      value={val}
+                      par={par}
+                      onChange={v => dispatch({ type: 'SET_STROKE', playerIdx: pi, holeIdx: hole, value: v })}
+                    />
                   )}
                   <Text style={[styles.nassauRelPar, val === 0 && { opacity: 0 }]}>
                     {val === 0 ? '—' : val === par ? 'E' : val < par ? `${val - par}` : `+${val - par}`}
@@ -490,7 +479,6 @@ export default function ScorecardScreen() {
               <View style={styles.strokesRow}>
                 {players.map((name, pi) => {
                   const s  = getStroke(pi, hole);
-                  const bg = strokeColor(s, par);
                   // Wide screens or ≤2 players: single row. Narrow mobile with 3+: 2-column grid.
                   const useGrid = players.length >= 3 && screenWidth < 500;
                   const playerStyle = useGrid
@@ -511,17 +499,11 @@ export default function ScorecardScreen() {
                           onChange={val => setStroke(pi, hole, val)}
                         />
                       ) : (
-                        <View style={styles.strokeCounter}>
-                          <TouchableOpacity style={styles.strokeBtn} onPress={() => setStroke(pi, hole, s - 1)}>
-                            <Text style={styles.strokeBtnText}>−</Text>
-                          </TouchableOpacity>
-                          <View style={[styles.strokeVal, bg && { backgroundColor: bg }]}>
-                            <Text style={[styles.strokeNum, bg && { color: colors.white }]}>{s || '—'}</Text>
-                          </View>
-                          <TouchableOpacity style={styles.strokeBtn} onPress={() => setStroke(pi, hole, s + 1)}>
-                            <Text style={styles.strokeBtnText}>+</Text>
-                          </TouchableOpacity>
-                        </View>
+                        <NativeStrokePicker
+                          value={s}
+                          par={par}
+                          onChange={val => setStroke(pi, hole, val)}
+                        />
                       )}
                       {s > 0 && (
                         <Text style={[styles.strokeDiff,
@@ -1133,11 +1115,6 @@ const styles = StyleSheet.create({
   strokesRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   strokePlayer:  { alignItems: 'center', gap: 6, paddingVertical: spacing.xs },
   strokeName:    { fontSize: 12, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.3 },
-  strokeCounter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  strokeBtn:     { width: 46, height: 46, borderRadius: radius.sm, backgroundColor: colors.green, justifyContent: 'center', alignItems: 'center', ...shadow.green },
-  strokeBtnText: { color: colors.white, fontSize: 24, fontWeight: '300', lineHeight: 30 },
-  strokeVal:     { width: 50, height: 50, borderRadius: radius.sm, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },
-  strokeNum:     { fontSize: 22, fontWeight: '800', color: colors.textDark },
   strokeDiff:    { fontSize: 11, fontWeight: '800', color: colors.textMid },
   autoAwardLabel:{ fontSize: 10, fontWeight: '700', color: colors.green, marginTop: 2 },
 
@@ -1176,10 +1153,6 @@ const styles = StyleSheet.create({
   nassauHoleLabel:    { fontSize: 13, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm },
   nassauStrokeRow:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm },
   nassauPlayerName:   { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
-  nassauStepper:      { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  nassauStepBtn:      { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  nassauStepText:     { fontSize: 20, fontWeight: '300', color: colors.textDark, lineHeight: 24 },
-  nassauStrokeVal:    { fontSize: 22, fontWeight: '900', color: colors.textDark, minWidth: 32, textAlign: 'center' },
   nassauRelPar:       { fontSize: 14, fontWeight: '700', color: colors.textMid, minWidth: 28, textAlign: 'right', marginLeft: spacing.sm },
   nassauStakeNote:    { fontSize: 12, color: colors.textLight, textAlign: 'center', marginTop: spacing.md },
   nassauPressBar:     { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.xs, backgroundColor: colors.green, paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
