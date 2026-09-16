@@ -176,12 +176,20 @@ export default function ScorecardScreen() {
 
     const holeStrokes = players.map((_, pi) => getStroke(pi, hole));
     const allEntered  = holeStrokes.every(s => s > 0);
-    if (!allEntered) { next(); return; }
+    const winner      = players.findIndex((_, pi) => hasBean(pi, 'lowBall'));
+
+    if (!allEntered) {
+      // Can't determine a low-score leader without every stroke entered —
+      // carry the skins pot forward rather than letting it silently drop,
+      // unless a winner was already manually awarded on this hole.
+      if (winner < 0 && skinsBean) dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
+      next();
+      return;
+    }
 
     const minS     = Math.min(...holeStrokes);
     const hLeaders = players.map((_, pi) => holeStrokes[pi] === minS);
     const outright = hLeaders.filter(Boolean).length === 1;
-    const winner   = players.findIndex((_, pi) => hasBean(pi, 'lowBall'));
 
     const confirm = (title, msg) => {
       if (Platform.OS !== 'web') {
