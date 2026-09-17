@@ -185,8 +185,9 @@ export default function BreakdownScreen() {
               if (allEntered) {
                 if (winner === -1) { resultText = 'Halved'; resultStyle = styles.nassauResultHalve; }
                 else if (isTeams) {
-                  if (winner === myTeam) { resultText = 'WIN'; resultStyle = styles.nassauResultWin; }
-                  else { resultText = `${teamNames[winner]} wins`; resultStyle = styles.nassauResultLoss; }
+                  // Always name the winning team — never just "WIN" — so 2v2 results read as team, not individual.
+                  resultText = `${teamNames[winner]} win`;
+                  resultStyle = winner === myTeam ? styles.nassauResultWin : styles.nassauResultLoss;
                 } else if (winner === selectedPlayer) { resultText = 'WIN'; resultStyle = styles.nassauResultWin; }
                 else { resultText = `${players[winner].split(' ')[0]} wins`; resultStyle = styles.nassauResultLoss; }
               }

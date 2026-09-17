@@ -116,6 +116,15 @@ function reducer(state, action) {
       return { ...state, strokes };
     }
 
+    // Sets the same stroke value for every player in a 2v2 team (scramble — one shared ball).
+    case 'SET_TEAM_STROKE': {
+      const { playerIdxs, holeIdx, value } = action;
+      const strokes = state.strokes.map((p, pi) =>
+        !playerIdxs.includes(pi) ? p : p.map((v, hi) => hi !== holeIdx ? v : Math.max(0, value))
+      );
+      return { ...state, strokes };
+    }
+
     case 'AWARD_BEAN': {
       const { playerIdx, holeIdx, beanId, delta, bean } = action;
       const scores = state.scores.map((p, pi) =>

@@ -26,7 +26,7 @@ export default function ScorecardScreen() {
     ldCarryoverEnabled = true, kpCarryoverEnabled = true,
     gameMode = 'beans', nassauStake = 5.00,
     nassauPresses = { front: [], back: [], total: [] },
-    nassauTeams = null,
+    nassauTeams = null, nassauTeamFormat = 'match-play',
   } = state;
 
   const strokes = state.strokes?.length === players.length
@@ -281,6 +281,13 @@ export default function ScorecardScreen() {
   const front = holes.slice(0, Math.min(9, holeCount));
   const back  = holeCount > 9 ? holes.slice(9) : [];
 
+  // Scramble: one shared ball per team, so the scorecard grid shows one row per
+  // team instead of one per player (both teammates carry identical strokes).
+  const isScrambleTeams = gameMode === 'nassau' && nassauTeams && nassauTeamFormat === 'scramble';
+  const gridRows = isScrambleTeams
+    ? nassauTeams.map(team => ({ label: team.map(pi => players[pi]?.split(' ')[0]).join(' & '), pi: team[0] }))
+    : players.map((name, pi) => ({ label: name, pi }));
+
   function sumStrokes(pi, holeArr) {
     return holeArr.reduce((s, hi) => s + (getStroke(pi, hi) || 0), 0);
   }
@@ -453,8 +460,35 @@ export default function ScorecardScreen() {
 
 
           <ScrollView contentContainerStyle={styles.holeContent}>
-            {/* Nassau stroke entry */}
-            {gameMode === 'nassau' && players.map((name, pi) => {
+            {/* Nassau stroke entry — scramble: one shared ball, one input per team */}
+            {gameMode === 'nassau' && nassauTeams && nassauTeamFormat === 'scramble' && nassauTeams.map((team, ti) => {
+              const val = strokes[team[0]]?.[hole] || strokes[team[1]]?.[hole] || 0;
+              const teamName = team.map(pi => players[pi]?.split(' ')[0]).join(' & ');
+              return (
+                <View key={ti} style={styles.nassauStrokeRow}>
+                  <Text style={styles.nassauPlayerName} numberOfLines={1}>{teamName}</Text>
+                  {Platform.OS === 'web' ? (
+                    <StrokePicker
+                      value={val}
+                      par={par}
+                      onChange={v => dispatch({ type: 'SET_TEAM_STROKE', playerIdxs: team, holeIdx: hole, value: v })}
+                    />
+                  ) : (
+                    <NativeStrokePicker
+                      value={val}
+                      par={par}
+                      onChange={v => dispatch({ type: 'SET_TEAM_STROKE', playerIdxs: team, holeIdx: hole, value: v })}
+                    />
+                  )}
+                  <Text style={[styles.nassauRelPar, val === 0 && { opacity: 0 }]}>
+                    {val === 0 ? '—' : val === par ? 'E' : val < par ? `${val - par}` : `+${val - par}`}
+                  </Text>
+                </View>
+              );
+            })}
+
+            {/* Nassau stroke entry — individual / best-ball / combined: one input per player */}
+            {gameMode === 'nassau' && !(nassauTeams && nassauTeamFormat === 'scramble') && players.map((name, pi) => {
               const val = strokes[pi]?.[hole] || 0;
               return (
                 <View key={pi} style={styles.nassauStrokeRow}>
@@ -611,30 +645,35 @@ export default function ScorecardScreen() {
             <Text style={styles.gridTitle}>{courseName}{teeLabel}</Text>
           ) : null}
 
-          <GridHalf label="OUT" holes={front} players={players} holeOffset={holeOffset}
+          <GridHalf label="OUT" holes={front} rows={gridRows} holeOffset={holeOffset}
             getHolePar={getHolePar} getStroke={getStroke} getHoleBeans={getHoleBeans}
-            strokeColor={strokeColor} sumStrokes={sumStrokes} sumPar={sumPar} course={course} />
+            strokeColor={strokeColor} sumStrokes={sumStrokes} sumPar={sumPar} course={course}
+            showBeans={gameMode !== 'nassau'} />
 
           {back.length > 0 && (
-            <GridHalf label="IN" holes={back} players={players} holeOffset={holeOffset}
+            <GridHalf label="IN" holes={back} rows={gridRows} holeOffset={holeOffset}
               getHolePar={getHolePar} getStroke={getStroke} getHoleBeans={getHoleBeans}
-              strokeColor={strokeColor} sumStrokes={sumStrokes} sumPar={sumPar} course={course} />
+              strokeColor={strokeColor} sumStrokes={sumStrokes} sumPar={sumPar} course={course}
+              showBeans={gameMode !== 'nassau'} />
           )}
 
           {/* Totals */}
           <View style={styles.totalsCard}>
             <Text style={styles.totalsSectionLabel}>Totals</Text>
-            {players.map((name, pi) => {
+            {gridRows.map(({ label: rowLabel, pi }) => {
               const outS  = sumStrokes(pi, front);
               const inS   = back.length > 0 ? sumStrokes(pi, back) : 0;
               const tot   = outS + inS;
-              const totP  = sumPar(front) + (back.length > 0 ? sumPar(back) : 0);
+              // Only count par for holes actually played, so mid-round totals don't
+              // compare a partial score against the full round's par.
+              const playedHoles = holes.filter(hi => getStroke(pi, hi) > 0);
+              const totP  = sumPar(playedHoles);
               const diff  = tot > 0 ? tot - totP : null;
               const earned = holes.reduce((s, hi) => s + getHoleBeans(pi, hi), 0);
               const beans  = earned + (state.spots?.[pi] || 0);
               return (
                 <View key={pi} style={styles.totalRow}>
-                  <Text style={styles.totalName2}>{name}</Text>
+                  <Text style={styles.totalName2}>{rowLabel}</Text>
                   {back.length > 0 && (
                     <>
                       <Text style={styles.totalSplit}>{outS || '-'}</Text>
@@ -648,9 +687,11 @@ export default function ScorecardScreen() {
                   ]}>
                     {diff == null ? '' : diff === 0 ? 'E' : diff > 0 ? `+${diff}` : `${diff}`}
                   </Text>
-                  <Text style={[styles.totalBeans, beans < 0 && { color: colors.red }]}>
-                    {beans >= 0 ? `+${beans}` : beans} 🫘
-                  </Text>
+                  {gameMode !== 'nassau' && (
+                    <Text style={[styles.totalBeans, beans < 0 && { color: colors.red }]}>
+                      {beans >= 0 ? `+${beans}` : beans} 🫘
+                    </Text>
+                  )}
                 </View>
               );
             })}
@@ -1027,7 +1068,7 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
 }
 
 // ── Grid half (front 9 / back 9) ───────────────────────────────────────────
-function GridHalf({ label, holes, players, holeOffset, getHolePar, getStroke, getHoleBeans, strokeColor, sumStrokes, sumPar, course }) {
+function GridHalf({ label, holes, rows, holeOffset, getHolePar, getStroke, getHoleBeans, strokeColor, sumStrokes, sumPar, course, showBeans = true }) {
   return (
     <View style={styles.gridCard}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -1056,17 +1097,17 @@ function GridHalf({ label, holes, players, holeOffset, getHolePar, getStroke, ge
             {holes.map(hi => <Text key={hi} style={[styles.gridCell, styles.gridParCell]}>{getHolePar(hi)}</Text>)}
             <Text style={[styles.gridTotalCell, styles.gridParCell]}>{sumPar(holes)}</Text>
           </View>
-          {players.map((name, pi) => {
+          {rows.map(({ label: rowLabel, pi }, ri) => {
             const total = sumStrokes(pi, holes);
             const par   = sumPar(holes);
             return (
-              <View key={pi} style={[styles.gridRow, pi % 2 === 1 && styles.gridRowAlt]}>
-                <Text style={styles.gridLabel} numberOfLines={1}>{name}</Text>
+              <View key={pi} style={[styles.gridRow, ri % 2 === 1 && styles.gridRowAlt]}>
+                <Text style={styles.gridLabel} numberOfLines={1}>{rowLabel}</Text>
                 {holes.map(hi => {
                   const s  = getStroke(pi, hi);
                   const p  = getHolePar(hi);
                   const bg = strokeColor(s, p);
-                  const beans = getHoleBeans(pi, hi);
+                  const beans = showBeans ? getHoleBeans(pi, hi) : 0;
                   return (
                     <View key={hi} style={[styles.gridScoreCell, bg && { backgroundColor: bg }]}>
                       <Text style={[styles.gridScoreText, bg && { color: colors.white }]}>{s || '-'}</Text>
