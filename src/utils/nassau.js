@@ -196,6 +196,17 @@ export function teamScramble(strokes, teamPlayers, holeIdx) {
   return teamBestBall(strokes, teamPlayers, holeIdx); // same math as best ball
 }
 
+// Per-hole result for a 2v2 team format (match-play/best-ball, combined, or scramble).
+// winner: 0 = teamA, 1 = teamB, -1 = halved, null = hole not yet fully scored.
+export function holeResultTeam(strokes, teamA, teamB, holeIdx, teamFormat = 'match-play') {
+  const scorer = teamFormat === 'combined' ? teamCombined : teamBestBall; // best-ball & scramble share the min-score scorer
+  const scoreA = scorer(strokes, teamA, holeIdx);
+  const scoreB = scorer(strokes, teamB, holeIdx);
+  if (scoreA === null || scoreB === null) return { scoreA, scoreB, winner: null };
+  if (scoreA === scoreB) return { scoreA, scoreB, winner: -1 };
+  return { scoreA, scoreB, winner: scoreA < scoreB ? 0 : 1 };
+}
+
 // Stroke-play team standings: compare team stroke totals over a range.
 // scorer: function(strokes, teamPlayers, holeIdx) → number | null
 function legStandingsTeamStroke(strokes, teamA, teamB, holeRange, scorer) {

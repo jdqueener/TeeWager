@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer, computePressSettleUp } from '../utils/beans';
-import { holeWinner } from '../utils/nassau';
+import { holeWinner, holeResultTeam } from '../utils/nassau';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -11,8 +11,13 @@ export default function BreakdownScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const { players, scores, firstBonus, beanValue, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0,
     pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {}, spots = [],
-    gameMode = 'beans', nassauStake = 5.00, strokes = [] } = state;
+    gameMode = 'beans', nassauStake = 5.00, strokes = [], nassauTeams = null, nassauTeamFormat = 'match-play' } = state;
   const isNassau = gameMode === 'nassau';
+  const isTeams = isNassau && !!nassauTeams;
+  const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
+  const teamNames = isTeams
+    ? [teamA.map(i => players[i]?.split(' ')[0]).join(' & '), teamB.map(i => players[i]?.split(' ')[0]).join(' & ')]
+    : [];
   const [selectedPlayer, setSelectedPlayer] = useState(0);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -122,22 +127,23 @@ export default function BreakdownScreen() {
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
 
       {/* Player tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.playerTabs}
-        contentContainerStyle={{ padding: spacing.sm, gap: spacing.xs }}
-      >
-        {players.map((p, i) => (
-          <TouchableOpacity
-            key={i}
-            style={[styles.tab, selectedPlayer === i && styles.tabActive]}
-            onPress={() => setSelectedPlayer(i)}
-          >
-            <Text style={[styles.tabText, selectedPlayer === i && styles.tabTextActive]}>{p}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.playerTabsWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ padding: spacing.sm, gap: spacing.xs }}
+        >
+          {players.map((p, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[styles.tab, selectedPlayer === i && styles.tabActive]}
+              onPress={() => setSelectedPlayer(i)}
+            >
+              <Text style={[styles.tabText, selectedPlayer === i && styles.tabTextActive]}>{p}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         {isNassau ? (
@@ -145,7 +151,12 @@ export default function BreakdownScreen() {
           <>
             <View style={styles.nassauHeader}>
               <Text style={styles.nassauHeaderName}>{players[selectedPlayer]}</Text>
-              <Text style={styles.nassauHeaderSub}>${nassauStake.toFixed(2)}/leg · hole-by-hole results</Text>
+              <Text style={styles.nassauHeaderSub}>
+                ${nassauStake.toFixed(2)}/leg{isTeams ? ` · 2v2 ${nassauTeamFormat.replace('-', ' ')}` : ''} · hole-by-hole results
+              </Text>
+              {isTeams && (
+                <Text style={styles.nassauHeaderSub} numberOfLines={1}>{teamNames[0]} vs {teamNames[1]}</Text>
+              )}
             </View>
             <View style={styles.nassauTableHeader}>
               <Text style={[styles.nassauCol, styles.nassauColHole]}>HOLE</Text>
@@ -159,13 +170,24 @@ export default function BreakdownScreen() {
             {Array.from({ length: holeCount }, (_, h) => {
               const par = getHolePar(h);
               const playerIdxs = players.map((_, i) => i);
-              const winner = holeWinner(strokes, playerIdxs, h);
-              const allEntered = playerIdxs.every(pi => (strokes[pi]?.[h] ?? 0) > 0);
+              let winner, allEntered;
+              if (isTeams) {
+                const result = holeResultTeam(strokes, teamA, teamB, h, nassauTeamFormat);
+                winner = result.winner;
+                allEntered = winner !== null;
+              } else {
+                winner = holeWinner(strokes, playerIdxs, h);
+                allEntered = playerIdxs.every(pi => (strokes[pi]?.[h] ?? 0) > 0);
+              }
+              const myTeam = isTeams ? (teamA.includes(selectedPlayer) ? 0 : 1) : null;
               let resultText = '—';
               let resultStyle = styles.nassauResultPending;
               if (allEntered) {
                 if (winner === -1) { resultText = 'Halved'; resultStyle = styles.nassauResultHalve; }
-                else if (winner === selectedPlayer) { resultText = 'WIN'; resultStyle = styles.nassauResultWin; }
+                else if (isTeams) {
+                  if (winner === myTeam) { resultText = 'WIN'; resultStyle = styles.nassauResultWin; }
+                  else { resultText = `${teamNames[winner]} wins`; resultStyle = styles.nassauResultLoss; }
+                } else if (winner === selectedPlayer) { resultText = 'WIN'; resultStyle = styles.nassauResultWin; }
                 else { resultText = `${players[winner].split(' ')[0]} wins`; resultStyle = styles.nassauResultLoss; }
               }
               return (
@@ -177,7 +199,9 @@ export default function BreakdownScreen() {
                   {players.map((_, pi) => {
                     const s = strokes[pi]?.[h] ?? 0;
                     const relPar = s > 0 ? s - par : null;
-                    const isWin = allEntered && winner === pi;
+                    const isWin = isTeams
+                      ? allEntered && winner === (teamA.includes(pi) ? 0 : 1)
+                      : allEntered && winner === pi;
                     return (
                       <Text key={pi} style={[styles.nassauCol, styles.nassauStroke, pi === selectedPlayer && styles.nassauColActive, isWin && styles.nassauStrokeWin]}>
                         {s > 0 ? s : '—'}{relPar !== null ? ` (${relPar >= 0 ? '+' : ''}${relPar === 0 ? 'E' : relPar})` : ''}
@@ -260,7 +284,7 @@ export default function BreakdownScreen() {
 const styles = StyleSheet.create({
   root:          { flex: 1, backgroundColor: colors.background },
 
-  playerTabs:    { backgroundColor: colors.white, maxHeight: 60, ...shadow.sm, zIndex: 5 },
+  playerTabsWrap:{ backgroundColor: colors.white, maxHeight: 60, ...shadow.sm, zIndex: 5 },
   tab:           { paddingHorizontal: spacing.md, paddingVertical: 9, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border, justifyContent: 'center' },
   tabActive:     { backgroundColor: colors.green, borderColor: colors.green, ...shadow.green },
   tabText:       { fontSize: 14, fontWeight: '700', color: colors.textMid },
