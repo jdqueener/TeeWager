@@ -340,6 +340,8 @@ export default function ScorecardScreen() {
               onPress={() => dispatch({ type: 'SET_HOLE', hole: Math.max(0, hole - 1) })}
               disabled={hole === 0}
               style={styles.navBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Previous hole"
             >
               <Text style={[styles.navArrow, hole === 0 && styles.navDisabled]}>‹</Text>
             </TouchableOpacity>
@@ -353,6 +355,8 @@ export default function ScorecardScreen() {
               onPress={advanceHole}
               disabled={hole === lastHole}
               style={styles.navBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Next hole"
             >
               <Text style={[styles.navArrow, hole === lastHole && styles.navDisabled]}>›</Text>
             </TouchableOpacity>

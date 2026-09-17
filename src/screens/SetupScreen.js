@@ -425,7 +425,7 @@ export default function SetupScreen() {
         {courseLabel ? (
           <View style={styles.courseChip}>
             <Text style={styles.courseChipText} numberOfLines={1}>{courseLabel}</Text>
-            <TouchableOpacity onPress={clearCourse} style={styles.courseChipClear}>
+            <TouchableOpacity onPress={clearCourse} style={styles.courseChipClear} accessibilityRole="button" accessibilityLabel="Clear selected course">
               <Text style={styles.courseChipClearText}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -485,6 +485,8 @@ export default function SetupScreen() {
                         await removeRecentCourse(c.id);
                         setRecentCourses(prev => prev.filter(r => r.id !== c.id));
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove ${c.name} from recent courses`}
                     >
                       <Text style={styles.recentRemoveText}>✕</Text>
                     </TouchableOpacity>
@@ -921,7 +923,7 @@ export default function SetupScreen() {
               />
               <Text style={styles.beanDesc}>earns 1 bean</Text>
             </View>
-            <TouchableOpacity onPress={() => removeCustomBean(bean.id)} style={{ paddingHorizontal: 8 }}>
+            <TouchableOpacity onPress={() => removeCustomBean(bean.id)} style={{ paddingHorizontal: 8 }} accessibilityRole="button" accessibilityLabel={bean.name ? `Remove ${bean.name}` : 'Remove custom bean'}>
               <Text style={{ fontSize: 18, color: colors.textLight }}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -970,7 +972,7 @@ export default function SetupScreen() {
                   <TouchableOpacity onPress={async () => {
                     await deleteSavedPlayer(item);
                     setSavedPlayers(prev => prev.filter(n => n !== item));
-                  }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel={`Remove ${item} from saved players`}>
                     <Text style={{ fontSize: 18, color: '#999', paddingHorizontal: 12 }}>✕</Text>
                   </TouchableOpacity>
                 </View>

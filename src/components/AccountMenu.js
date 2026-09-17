@@ -120,6 +120,8 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
         style={[styles.avatarBtn, { width: size, height: size, borderRadius: size / 2 }]}
         onPress={() => (user ? openAccount() : onSignIn?.())}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel={user ? 'My Account' : 'Sign in'}
       >
         <Text style={[styles.avatarText, { fontSize: size * 0.36 }]}>
           {user ? initials(displayName) : '?'}
@@ -130,7 +132,7 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
         <View style={styles.root}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => setVisible(false)} style={styles.closeBtn}>
+            <TouchableOpacity onPress={() => setVisible(false)} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
               <Text style={styles.closeBtnText}>✕</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>My Account</Text>
