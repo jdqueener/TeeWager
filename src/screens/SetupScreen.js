@@ -9,6 +9,7 @@ import { BEAN_DEFS, DEFAULT_PARS, beanLabel } from '../utils/beans';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import PaywallModal from '../components/PaywallModal';
 import ProBanner from '../components/ProBanner';
+import NativeSelect from '../components/NativeSelect';
 import AccountMenu from '../components/AccountMenu';
 import AuthScreen from './AuthScreen';
 import OnboardingScreen from './OnboardingScreen';
@@ -743,17 +744,25 @@ export default function SetupScreen() {
                     <View style={[styles.teamColumn, styles.teamColumnA]}>
                       <Text style={[styles.teamColumnHeader, { color: colors.green }]}>Team A</Text>
                       {[0, 1].map(slot => (
-                        <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
-                          {playerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                        </select>
+                        Platform.OS === 'web' ? (
+                          <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
+                            {playerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          </select>
+                        ) : (
+                          <NativeSelect key={slot} value={slots[slot]} options={playerOptions} onChange={v => pickPlayer(slot, v)} />
+                        )
                       ))}
                     </View>
                     <View style={[styles.teamColumn, styles.teamColumnB]}>
                       <Text style={[styles.teamColumnHeader, { color: '#1d6fa4' }]}>Team B</Text>
                       {[2, 3].map(slot => (
-                        <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
-                          {playerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                        </select>
+                        Platform.OS === 'web' ? (
+                          <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
+                            {playerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          </select>
+                        ) : (
+                          <NativeSelect key={slot} value={slots[slot]} options={playerOptions} onChange={v => pickPlayer(slot, v)} />
+                        )
                       ))}
                     </View>
                   </View>
