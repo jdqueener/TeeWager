@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
@@ -40,7 +40,10 @@ async function nativePurchase(productId, setLoading, onSuccess) {
       onSuccess();
     }
   } catch (e) {
-    if (!e.userCancelled) console.warn('Purchase error', e);
+    if (!e.userCancelled) {
+      console.warn('Purchase error', e);
+      Alert.alert('Purchase Failed', e.message || 'Something went wrong completing your purchase. Please try again.');
+    }
   } finally {
     setLoading(null);
   }

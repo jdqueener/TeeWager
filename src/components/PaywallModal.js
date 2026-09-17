@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Modal, View, Text, TouchableOpacity,
-  StyleSheet, Platform, ActivityIndicator,
+  StyleSheet, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { colors, spacing, radius } from '../utils/theme';
@@ -45,7 +45,10 @@ async function nativePurchase(productId, onUnlock, onClose, setLoading) {
       onClose();
     }
   } catch (e) {
-    if (!e.userCancelled) console.warn('Purchase error', e);
+    if (!e.userCancelled) {
+      console.warn('Purchase error', e);
+      Alert.alert('Purchase Failed', e.message || 'Something went wrong completing your purchase. Please try again.');
+    }
   } finally {
     setLoading(null);
   }
@@ -69,6 +72,7 @@ async function nativeRestore(onUnlock, onClose, setRestoreStatus) {
   } catch (e) {
     console.warn('Restore error', e);
     setRestoreStatus('');
+    Alert.alert('Restore Failed', e.message || 'Something went wrong restoring your purchase. Please try again.');
   }
 }
 
