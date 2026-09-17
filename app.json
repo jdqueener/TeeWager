@@ -13,7 +13,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "io.teewager.app",
-      "buildNumber": "19",
+      "buildNumber": "20",
       "infoPlist": {
         "NSCameraUsageDescription": "TeeWager uses your camera to scan QR codes at partner courses.",
         "NSPhotoLibraryUsageDescription": "TeeWager saves your round results to your photo library.",
@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "io.teewager.app",
-      "versionCode": 16,
+      "versionCode": 17,
       "adaptiveIcon": {
         "backgroundColor": "#14432A",
         "foregroundImage": "./assets/android-icon-foreground.png",
