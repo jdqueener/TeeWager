@@ -35,6 +35,7 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
   const [error, setError]       = useState('');
   const [saved, setSaved]       = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
 
   const [fullName,     setFullName]     = useState('');
   const [scoringName,  setScoringName]  = useState('');
@@ -81,6 +82,36 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
     // guideline 3.1.1 compliance.
     const Purchases = (await import('react-native-purchases')).default;
     await Purchases.showManageSubscriptions();
+  }
+
+  async function runDeleteAccount() {
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      setVisible(false);
+      dispatch({ type: 'RESET' });
+    } catch (e) {
+      const msg = e.message || 'Could not delete account. Contact support@teewager.io.';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Error', msg);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function confirmDeleteAccount() {
+    if (Platform.OS === 'web') {
+      setDeleteConfirmVisible(true);
+      return;
+    }
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all your data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete my account', style: 'destructive', onPress: runDeleteAccount },
+      ]
+    );
   }
 
   return (
@@ -222,31 +253,7 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
               style={styles.deleteBtn}
               disabled={deleting}
               activeOpacity={0.85}
-              onPress={() => {
-                Alert.alert(
-                  'Delete Account',
-                  'This will permanently delete your account and all your data. This cannot be undone.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Delete my account',
-                      style: 'destructive',
-                      onPress: async () => {
-                        setDeleting(true);
-                        try {
-                          await deleteAccount();
-                          setVisible(false);
-                          dispatch({ type: 'RESET' });
-                        } catch (e) {
-                          Alert.alert('Error', e.message || 'Could not delete account. Contact support@teewager.io.');
-                        } finally {
-                          setDeleting(false);
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
+              onPress={confirmDeleteAccount}
             >
               {deleting
                 ? <ActivityIndicator color="#DC2626" />
@@ -255,11 +262,38 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
           </ScrollView>
         </View>
       </Modal>
+
+      <Modal visible={deleteConfirmVisible} transparent animationType="fade" onRequestClose={() => setDeleteConfirmVisible(false)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>Delete Account</Text>
+            <Text style={styles.confirmSub}>This will permanently delete your account and all your data. This cannot be undone.</Text>
+            <TouchableOpacity
+              style={styles.confirmDestructive}
+              onPress={() => { setDeleteConfirmVisible(false); runDeleteAccount(); }}
+            >
+              <Text style={styles.confirmDestructiveText}>Delete my account</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.confirmCancel} onPress={() => setDeleteConfirmVisible(false)}>
+              <Text style={styles.confirmCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  confirmOverlay:         { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  confirmCard:            { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 340 },
+  confirmTitle:           { fontSize: 20, fontWeight: '900', color: colors.textDark, marginBottom: spacing.xs },
+  confirmSub:             { fontSize: 14, color: colors.textMid, marginBottom: spacing.lg },
+  confirmDestructive:     { backgroundColor: '#DC2626', borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', marginBottom: spacing.sm },
+  confirmDestructiveText: { color: colors.white, fontWeight: '800', fontSize: 16 },
+  confirmCancel:          { paddingVertical: 12, alignItems: 'center' },
+  confirmCancelText:      { color: colors.textMid, fontSize: 15 },
+
   avatarBtn:    { backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)', justifyContent: 'center', alignItems: 'center' },
   avatarText:   { color: colors.white, fontWeight: '800' },
 
