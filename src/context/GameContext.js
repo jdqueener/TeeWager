@@ -301,8 +301,8 @@ export function GameProvider({ children }) {
   // auto-save whenever round state changes; clear on reset
   useEffect(() => {
     if (loading) return;
-    if (state.phase === 'round') saveGame(state);
-    else clearGame();
+    if (state.phase === 'round') saveGame(state).catch(e => console.warn('Auto-save failed', e));
+    else clearGame().catch(e => console.warn('Clear game failed', e));
   }, [state, loading]);
 
   const allBeans = [...BEAN_DEFS, ...(state.customBeans || [])];
