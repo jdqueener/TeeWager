@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions,
   Alert, Platform, Modal, TextInput,
@@ -94,8 +94,20 @@ export default function ScorecardScreen() {
     return (scores[playerIdx]?.[hole]?.[beanId] || 0) > 0;
   }
 
+  // Guards against mobile browsers occasionally firing a single tap's touch
+  // and click events as two separate presses — without this, the delta-based
+  // award dispatches below would double-count (0 → 1 → 2) on one real tap.
+  const lastPressRef = useRef({});
+  function isDuplicatePress(key) {
+    const now = Date.now();
+    const last = lastPressRef.current[key] || 0;
+    lastPressRef.current[key] = now;
+    return now - last < 500;
+  }
+
   function togglePlayer(bean, playerIdx) {
     if (!bean.free && !pro) { setPaywallVisible(true); return; }
+    if (isDuplicatePress(`${bean.id}:${playerIdx}:${hole}`)) return;
     const currently = hasBean(playerIdx, bean.id);
 
     if (bean.id === 'longDrive') {
