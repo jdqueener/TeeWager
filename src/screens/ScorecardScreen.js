@@ -115,19 +115,27 @@ export default function ScorecardScreen() {
         // Always dispatch an absolute total (not a +1 delta) — idempotent, so a
         // duplicate press (e.g. a mobile browser double-firing one tap) is a
         // harmless no-op instead of stacking to 2.
-        dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + ldCarryover });
+        //
+        // Advancing off a hole without awarding Long Drive starts a carryover
+        // pot for it to be claimed on a later hole — but if the user instead
+        // goes BACK to that same hole and awards it there, they're correcting
+        // that one hole retroactively, not claiming the pot going forward, so
+        // the pot shouldn't inflate this award.
+        const totalBeans = isPastHole ? 1 : 1 + ldCarryover;
+        dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans });
       } else {
         const awarded = scores[playerIdx]?.[hole]?.longDrive || 1;
         dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
-        if (awarded > 1) dispatch({ type: 'LD_RESTORE_CARRYOVER', value: awarded - 1 });
+        if (awarded > 1 && !isPastHole) dispatch({ type: 'LD_RESTORE_CARRYOVER', value: awarded - 1 });
       }
     } else if (bean.id === 'kp') {
       if (!currently) {
-        dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + kpCarryover });
+        const totalBeans = isPastHole ? 1 : 1 + kpCarryover;
+        dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans });
       } else {
         const awarded = scores[playerIdx]?.[hole]?.kp || 1;
         dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
-        if (awarded > 1) dispatch({ type: 'KP_RESTORE_CARRYOVER', value: awarded - 1 });
+        if (awarded > 1 && !isPastHole) dispatch({ type: 'KP_RESTORE_CARRYOVER', value: awarded - 1 });
       }
     } else if (bean.id === 'lowBall') {
       if (!currently) {
