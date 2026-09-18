@@ -308,7 +308,11 @@ export default function BreakdownScreen() {
                     </View>
                     <Text style={[styles.eventBeans, event.beans < 0 && styles.neg]}>
                       {(() => {
-                        const total = event.incoming ? event.beans : event.beans * (n - 1);
+                        // In a 2v2 beans scramble there's only ONE opposing team, not
+                        // (n-1) separate opponents — each own bean swings against just
+                        // that one team, not every other real player individually.
+                        const opponentMultiplier = isBeansTeams ? 1 : (n - 1);
+                        const total = event.incoming ? event.beans : event.beans * opponentMultiplier;
                         return total >= 0 ? `+${total}` : `${total}`;
                       })()}
                     </Text>
