@@ -191,8 +191,19 @@ export default function ScorecardScreen() {
     const skinsBean  = activeBeans.find(b => b.id === 'lowBall');
     const ldEligible = ldBean && isParAllowed(ldBean, par);
     const kpEligible = kpBean && isParAllowed(kpBean, par);
-    const ldWon      = players.some((_, pi) => hasBean(pi, 'longDrive'));
-    const kpWon      = players.some((_, pi) => hasBean(pi, 'kp'));
+
+    // In a 2v2 beans scramble, every "row" is a team sharing one score —
+    // both teammates hold the identical stroke value, so comparing raw
+    // per-player strokes makes a clear team win look like an internal tie
+    // between teammates. Compare by team representative instead.
+    const beansIsTeams = beansTeams?.length === 2;
+    const rowRealIdx = beansIsTeams ? beansTeams.map(team => team[0]) : players.map((_, pi) => pi);
+    const rowLabel   = idx => beansIsTeams
+      ? beansTeams[idx].map(i => players[i]?.split(' ')[0]).join(' & ')
+      : players[rowRealIdx[idx]].split(' ')[0];
+
+    const ldWon      = rowRealIdx.some(pi => hasBean(pi, 'longDrive'));
+    const kpWon      = rowRealIdx.some(pi => hasBean(pi, 'kp'));
 
     const doCarryovers = () => {
       if (ldCarryoverEnabled && ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER', holeIdx: hole });
@@ -204,21 +215,21 @@ export default function ScorecardScreen() {
       dispatch({ type: 'SET_HOLE', hole: hole + 1 });
     };
 
-    const holeStrokes = players.map((_, pi) => getStroke(pi, hole));
+    const holeStrokes = rowRealIdx.map(pi => getStroke(pi, hole));
     const allEntered  = holeStrokes.every(s => s > 0);
-    const winner      = players.findIndex((_, pi) => hasBean(pi, 'lowBall'));
+    const winnerRow   = rowRealIdx.findIndex(pi => hasBean(pi, 'lowBall'));
 
     if (!allEntered) {
       // Can't determine a low-score leader without every stroke entered —
       // carry the skins pot forward rather than letting it silently drop,
       // unless a winner was already manually awarded on this hole.
-      if (winner < 0 && skinsBean) dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
+      if (winnerRow < 0 && skinsBean) dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
       next();
       return;
     }
 
     const minS     = Math.min(...holeStrokes);
-    const hLeaders = players.map((_, pi) => holeStrokes[pi] === minS);
+    const hLeaders = holeStrokes.map(s => s === minS);
     const outright = hLeaders.filter(Boolean).length === 1;
 
     const confirm = (title, msg) => {
@@ -232,9 +243,9 @@ export default function ScorecardScreen() {
       }
     };
 
-    if (winner >= 0 && !hLeaders[winner]) {
-      const leaderName = players[hLeaders.indexOf(true)].split(' ')[0];
-      const winnerName = players[winner].split(' ')[0];
+    if (winnerRow >= 0 && !hLeaders[winnerRow]) {
+      const leaderName = rowLabel(hLeaders.indexOf(true));
+      const winnerName = rowLabel(winnerRow);
       confirm(
         'Skins Conflict',
         `${winnerName} is awarded Skins but ${leaderName} has the low score (${minS}). Advance anyway?`
@@ -243,9 +254,9 @@ export default function ScorecardScreen() {
     }
 
     // No skins winner — auto-award outright winner or carry over tie
-    if (winner < 0 && skinsBean) {
+    if (winnerRow < 0 && skinsBean) {
       if (outright) {
-        dispatch({ type: 'SKINS_AWARD', playerIdx: hLeaders.indexOf(true), holeIdx: hole, totalBeans: 1 + skinsCarryover });
+        dispatch({ type: 'SKINS_AWARD', playerIdx: rowRealIdx[hLeaders.indexOf(true)], holeIdx: hole, totalBeans: 1 + skinsCarryover });
       } else {
         dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
       }
