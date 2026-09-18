@@ -27,7 +27,8 @@ const INITIAL_SETUP = {
   gameMode: 'beans', // 'beans' | 'nassau'
   nassauStake: 5.00, // dollar amount per Nassau leg (front/back/total)
   nassauTeams: null, // null = individual; [[0,1],[2,3]] = 2v2 teams
-  nassauTeamFormat: 'match-play', // 'match-play' | 'best-ball' | 'combined' | 'scramble'
+  nassauTeamFormat: 'match-play', // 'match-play' | 'scramble' (legacy rounds may still hold 'best-ball'/'combined')
+  beansTeams: null, // null = individual; [[0,1,2,3]] = group scramble; [[0,1],[2,3]] = 2v2 team scramble
   players: [],
   beanValue: 1.00,
   enabledBeans: BEAN_DEFS.filter(b => b.free).map(b => b.id),
@@ -65,7 +66,7 @@ function reducer(state, action) {
       return action.payload;
 
     case 'START_ROUND': {
-      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null, spots = [], ldCarryoverEnabled = true, kpCarryoverEnabled = true, gameMode = 'beans', nassauStake = 5.00, nassauTeams = null, nassauTeamFormat = 'match-play' } = action.payload;
+      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null, spots = [], ldCarryoverEnabled = true, kpCarryoverEnabled = true, gameMode = 'beans', nassauStake = 5.00, nassauTeams = null, nassauTeamFormat = 'match-play', beansTeams = null } = action.payload;
       return {
         ...state,
         phase: 'round',
@@ -73,6 +74,7 @@ function reducer(state, action) {
         nassauStake,
         nassauTeams,
         nassauTeamFormat,
+        beansTeams,
         players,
         beanValue,
         enabledBeans,
@@ -126,7 +128,7 @@ function reducer(state, action) {
     }
 
     case 'AWARD_BEAN': {
-      const { playerIdx, holeIdx, beanId, delta, bean } = action;
+      const { playerIdx, holeIdx, beanId, delta, bean, skipFirstBonus = false } = action;
       const scores = state.scores.map((p, pi) =>
         pi !== playerIdx ? p : p.map((h, hi) => {
           if (hi !== holeIdx) return h;
@@ -136,9 +138,11 @@ function reducer(state, action) {
         })
       );
 
-      // track first-bonus: round-wide first occurrence per bean type
+      // track first-bonus: round-wide first occurrence per bean type. Skipped for
+      // team/group-shared beans (e.g. a scramble birdie) — with one shot shared by
+      // everyone, there's no single player to fairly hand the 2x bonus to.
       let firstBonus = state.firstBonus;
-      if (bean?.fb && delta > 0) {
+      if (bean?.fb && delta > 0 && !skipFirstBonus) {
         const cur = state.scores[playerIdx][holeIdx][beanId] || 0;
         if (cur === 0 && firstBonus[beanId] === undefined) {
           // First time this bean type has been awarded all round
@@ -259,8 +263,8 @@ function reducer(state, action) {
     }
 
     case 'NASSAU_PRESS': {
-      const { leg, startHole } = action;
-      const legPresses = [...(state.nassauPresses[leg] || []), { startHole }];
+      const { leg, startHole, players: pressPlayers } = action;
+      const legPresses = [...(state.nassauPresses[leg] || []), { startHole, ...(pressPlayers ? { players: pressPlayers } : {}) }];
       return { ...state, nassauPresses: { ...state.nassauPresses, [leg]: legPresses } };
     }
 

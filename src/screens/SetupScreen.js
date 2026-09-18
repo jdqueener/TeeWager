@@ -30,6 +30,70 @@ const MAX_FREE_PLAYERS = 4;
 const MAX_PRO_PLAYERS  = 5;
 const TEE_COLORS = { Blue: '#1a6fb5', White: '#e0e0e0', Red: '#c0392b', Gold: '#B8860B', Black: '#222', Green: '#1A4A2E' };
 
+// Shared 2v2 team-assignment picker — used for both Nassau Teams and Beans team scramble,
+// so the two-slot swap logic (and its selects) only live in one place.
+function TeamAssignmentPicker({ names, teamAssign, setTeamAssign }) {
+  const playerOptions = names.slice(0, 4).map((n, i) => ({ label: n.trim() || `Player ${i + 1}`, value: i }));
+  const teamAIdxs = [0,1,2,3].filter(i => teamAssign[i] === 0);
+  const teamBIdxs = [0,1,2,3].filter(i => teamAssign[i] === 1);
+  // each team has 2 slots; pad with fallback so selects always have a value
+  const slots = [
+    teamAIdxs[0] ?? 0, teamAIdxs[1] ?? 1,
+    teamBIdxs[0] ?? 2, teamBIdxs[1] ?? 3,
+  ];
+
+  function pickPlayer(slotIdx, newPi) {
+    // slotIdx 0,1 = Team A slots; 2,3 = Team B slots
+    const oldPi = slots[slotIdx];
+    if (oldPi === newPi) return;
+    // find the slot currently holding newPi and swap
+    const swapSlot = slots.findIndex(v => v === newPi);
+    const newSlots = [...slots];
+    newSlots[slotIdx] = newPi;
+    if (swapSlot >= 0) newSlots[swapSlot] = oldPi;
+    // rebuild teamAssign: slots 0,1 → team 0; slots 2,3 → team 1
+    const next = [0,0,0,0];
+    next[newSlots[0]] = 0; next[newSlots[1]] = 0;
+    next[newSlots[2]] = 1; next[newSlots[3]] = 1;
+    setTeamAssign(next);
+  }
+
+  const sel = { fontSize: 15, padding: '8px', borderRadius: 8, border: '1px solid #ccc', width: '100%', marginBottom: 8, backgroundColor: '#fff', cursor: 'pointer' };
+
+  return (
+    <>
+      <Text style={styles.label}>Team Assignment</Text>
+      <View style={styles.teamGrid}>
+        <View style={[styles.teamColumn, styles.teamColumnA]}>
+          <Text style={[styles.teamColumnHeader, { color: colors.green }]}>Team A</Text>
+          {[0, 1].map(slot => (
+            Platform.OS === 'web' ? (
+              <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
+                {playerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            ) : (
+              <NativeSelect key={slot} value={slots[slot]} options={playerOptions} onChange={v => pickPlayer(slot, v)} />
+            )
+          ))}
+        </View>
+        <View style={[styles.teamColumn, styles.teamColumnB]}>
+          <Text style={[styles.teamColumnHeader, { color: '#1d6fa4' }]}>Team B</Text>
+          {[2, 3].map(slot => (
+            Platform.OS === 'web' ? (
+              <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
+                {playerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            ) : (
+              <NativeSelect key={slot} value={slots[slot]} options={playerOptions} onChange={v => pickPlayer(slot, v)} />
+            )
+          ))}
+        </View>
+      </View>
+      <Text style={styles.fieldHint}>Assign 2 players to each team.</Text>
+    </>
+  );
+}
+
 export default function SetupScreen() {
   const { dispatch, pro, setPro, canPlay, roundsLeft } = useGame();
   const [trialExpiredVisible, setTrialExpiredVisible] = useState(false);
@@ -40,8 +104,10 @@ export default function SetupScreen() {
   const [gameMode, setGameMode] = useState('beans'); // 'beans' | 'nassau'
   const [nassauStake, setNassauStake] = useState('5.00');
   const [nassauFormat, setNassauFormat] = useState('individual'); // 'individual' | 'teams'
-  const [teamSubFormat, setTeamSubFormat] = useState('match-play'); // 'match-play' | 'best-ball' | 'combined' | 'scramble'
+  const [teamSubFormat, setTeamSubFormat] = useState('match-play'); // 'match-play' | 'scramble'
   const [teamAssign, setTeamAssign] = useState([0, 0, 1, 1]); // team index per player slot
+  const [beansFormat, setBeansFormat] = useState('individual'); // 'individual' | 'scramble'
+  const [beansScrambleMode, setBeansScrambleMode] = useState('group'); // 'group' | 'teams'
   const [beanValue, setBeanValue] = useState('1.00');
   const [enabledBeans, setEnabledBeans] = useState(
     new Set(BEAN_DEFS.map(b => b.id))
@@ -344,6 +410,18 @@ export default function SetupScreen() {
         return;
       }
     }
+    if (gameMode === 'beans' && beansFormat === 'scramble' && beansScrambleMode === 'teams' && players.length !== 4) {
+      setSavePrompt({ error: '2v2 Teams requires exactly 4 players.' });
+      return;
+    }
+    if (gameMode === 'beans' && beansFormat === 'scramble' && beansScrambleMode === 'teams') {
+      const aCount = teamAssign.slice(0, players.length).filter(t => t === 0).length;
+      const bCount = teamAssign.slice(0, players.length).filter(t => t === 1).length;
+      if (aCount !== 2 || bCount !== 2) {
+        setSavePrompt({ error: 'Assign exactly 2 players to each team.' });
+        return;
+      }
+    }
 
     const holeOffset = holeCount === 9 && nineChoice === 'back' ? 9 : 0;
 
@@ -384,6 +462,14 @@ export default function SetupScreen() {
             ]
           : null,
         nassauTeamFormat: nassauFormat === 'teams' ? teamSubFormat : 'match-play',
+        beansTeams: (gameMode === 'beans' && beansFormat === 'scramble')
+          ? (beansScrambleMode === 'teams'
+              ? [
+                  players.map((_, i) => i).filter(i => teamAssign[i] === 0),
+                  players.map((_, i) => i).filter(i => teamAssign[i] === 1),
+                ]
+              : [players.map((_, i) => i)])
+          : null,
         players, beanValue: val, enabledBeans: allEnabled, customBeans: validCustom,
         wagers: [], course, holeCount, holeOffset,
         pressMode: pressEnabled ? pressMode : null,
@@ -709,67 +795,9 @@ export default function SetupScreen() {
               ))}
             </View>
 
-            {nassauFormat === 'teams' && playerCount === 4 && (() => {
-              const playerOptions = names.slice(0, 4).map((n, i) => ({ label: n.trim() || `Player ${i + 1}`, value: i }));
-              const teamAIdxs = [0,1,2,3].filter(i => teamAssign[i] === 0);
-              const teamBIdxs = [0,1,2,3].filter(i => teamAssign[i] === 1);
-              // each team has 2 slots; pad with fallback so selects always have a value
-              const slots = [
-                teamAIdxs[0] ?? 0, teamAIdxs[1] ?? 1,
-                teamBIdxs[0] ?? 2, teamBIdxs[1] ?? 3,
-              ];
-
-              function pickPlayer(slotIdx, newPi) {
-                // slotIdx 0,1 = Team A slots; 2,3 = Team B slots
-                const oldPi = slots[slotIdx];
-                if (oldPi === newPi) return;
-                // find the slot currently holding newPi and swap
-                const swapSlot = slots.findIndex(v => v === newPi);
-                const newSlots = [...slots];
-                newSlots[slotIdx] = newPi;
-                if (swapSlot >= 0) newSlots[swapSlot] = oldPi;
-                // rebuild teamAssign: slots 0,1 → team 0; slots 2,3 → team 1
-                const next = [0,0,0,0];
-                next[newSlots[0]] = 0; next[newSlots[1]] = 0;
-                next[newSlots[2]] = 1; next[newSlots[3]] = 1;
-                setTeamAssign(next);
-              }
-
-              const sel = { fontSize: 15, padding: '8px', borderRadius: 8, border: '1px solid #ccc', width: '100%', marginBottom: 8, backgroundColor: '#fff', cursor: 'pointer' };
-
-              return (
-                <>
-                  <Text style={styles.label}>Team Assignment</Text>
-                  <View style={styles.teamGrid}>
-                    <View style={[styles.teamColumn, styles.teamColumnA]}>
-                      <Text style={[styles.teamColumnHeader, { color: colors.green }]}>Team A</Text>
-                      {[0, 1].map(slot => (
-                        Platform.OS === 'web' ? (
-                          <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
-                            {playerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                          </select>
-                        ) : (
-                          <NativeSelect key={slot} value={slots[slot]} options={playerOptions} onChange={v => pickPlayer(slot, v)} />
-                        )
-                      ))}
-                    </View>
-                    <View style={[styles.teamColumn, styles.teamColumnB]}>
-                      <Text style={[styles.teamColumnHeader, { color: '#1d6fa4' }]}>Team B</Text>
-                      {[2, 3].map(slot => (
-                        Platform.OS === 'web' ? (
-                          <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
-                            {playerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                          </select>
-                        ) : (
-                          <NativeSelect key={slot} value={slots[slot]} options={playerOptions} onChange={v => pickPlayer(slot, v)} />
-                        )
-                      ))}
-                    </View>
-                  </View>
-                  <Text style={styles.fieldHint}>Assign 2 players to each team.</Text>
-                </>
-              );
-            })()}
+            {nassauFormat === 'teams' && playerCount === 4 && (
+              <TeamAssignmentPicker names={names} teamAssign={teamAssign} setTeamAssign={setTeamAssign} />
+            )}
             {nassauFormat === 'teams' && playerCount !== 4 && (
               <Text style={styles.fieldHint}>⚠️ Set player count to 4 to use 2v2 Teams.</Text>
             )}
@@ -778,10 +806,8 @@ export default function SetupScreen() {
               <>
                 <Text style={styles.label}>Team Format</Text>
                 {[
-                  { id: 'match-play', label: 'Match Play',  desc: 'Hole-by-hole wins using each team\'s best ball' },
-                  { id: 'best-ball',  label: 'Best Ball',   desc: 'Stroke play — team\'s lowest score per hole, totals compared' },
-                  { id: 'combined',   label: 'Individual',  desc: 'Each player\'s full round score added together, team totals compared' },
-                  { id: 'scramble',   label: 'Scramble',    desc: 'Team plays one ball — enter the shared score for both players' },
+                  { id: 'match-play', label: 'Match Play', desc: 'Each player\'s own ball — hole-by-hole wins using each team\'s best ball' },
+                  { id: 'scramble',   label: 'Scramble',   desc: 'One shared ball — scored hole-by-hole, just like match play' },
                 ].map(({ id, label, desc }) => (
                   <TouchableOpacity
                     key={id}
@@ -819,6 +845,57 @@ export default function SetupScreen() {
         )}
 
         {gameMode === 'beans' && <>
+        {/* Beans format: individual (default) or scramble */}
+        <Text style={styles.label}>Format</Text>
+        <View style={styles.gameModeRow}>
+          {[
+            { id: 'individual', label: '👤 Individual' },
+            { id: 'scramble',   label: '🎯 Scramble' },
+          ].map(({ id, label }) => (
+            <TouchableOpacity
+              key={id}
+              style={[styles.gameModeBtn, beansFormat === id && styles.gameModeBtnActive]}
+              onPress={() => setBeansFormat(id)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.gameModeBtnText, beansFormat === id && styles.gameModeBtnTextActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {beansFormat === 'scramble' && (
+          <>
+            <Text style={styles.label}>Scoring</Text>
+            {[
+              { id: 'group', label: 'Group',      desc: `All ${playerCount} players share one score. Skins, Long Drive, and KP are still tracked per player.` },
+              { id: 'teams', label: '2v2 Teams',  desc: 'Two teams of 2, each sharing one score. Beans are awarded to the winning team.' },
+            ].map(({ id, label, desc }) => (
+              <TouchableOpacity
+                key={id}
+                style={[styles.formatOptionRow, beansScrambleMode === id && styles.formatOptionRowActive]}
+                onPress={() => setBeansScrambleMode(id)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.formatRadio, beansScrambleMode === id && styles.formatRadioActive]}>
+                  {beansScrambleMode === id && <View style={styles.formatRadioDot} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.formatOptionLabel, beansScrambleMode === id && { color: colors.green }]}>{label}</Text>
+                  <Text style={styles.formatOptionDesc}>{desc}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            {beansScrambleMode === 'teams' && playerCount === 4 && (
+              <TeamAssignmentPicker names={names} teamAssign={teamAssign} setTeamAssign={setTeamAssign} />
+            )}
+            {beansScrambleMode === 'teams' && playerCount !== 4 && (
+              <Text style={styles.fieldHint}>⚠️ Set player count to 4 to use 2v2 Teams.</Text>
+            )}
+          </>
+        )}
+
         {/* Bean value */}
         <Text style={styles.label}>$ per bean</Text>
         <TextInput

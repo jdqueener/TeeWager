@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer, computePressSettleUp } from '../utils/beans';
+import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer, computePressSettleUp, computeSettleUp } from '../utils/beans';
 import { holeWinner, holeResultTeam } from '../utils/nassau';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
@@ -11,12 +11,17 @@ export default function BreakdownScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const { players, scores, firstBonus, beanValue, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0,
     pressMode, presses = [], tenthPressed = false, tenthPressValue, holePresses = {}, spots = [],
-    gameMode = 'beans', nassauStake = 5.00, strokes = [], nassauTeams = null, nassauTeamFormat = 'match-play' } = state;
+    gameMode = 'beans', nassauStake = 5.00, strokes = [], nassauTeams = null, nassauTeamFormat = 'match-play',
+    beansTeams = null } = state;
   const isNassau = gameMode === 'nassau';
   const isTeams = isNassau && !!nassauTeams;
   const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
   const teamNames = isTeams
     ? [teamA.map(i => players[i]?.split(' ')[0]).join(' & '), teamB.map(i => players[i]?.split(' ')[0]).join(' & ')]
+    : [];
+  const isBeansTeams = !isNassau && beansTeams?.length === 2;
+  const beansTeamNames = isBeansTeams
+    ? beansTeams.map(team => team.map(i => players[i]?.split(' ')[0]).join(' & '))
     : [];
   const [selectedPlayer, setSelectedPlayer] = useState(0);
   const [paywallVisible, setPaywallVisible] = useState(false);
@@ -81,6 +86,22 @@ export default function BreakdownScreen() {
     }
   }
 
+  // 2v2 beans scramble: beans only ever land on a team's representative, so the
+  // per-player formula above (scaled by the real player count) overstates the
+  // swing. Recompute the bottom-line net the same way SettleUpScreen does — as a
+  // virtual 2-team game, split evenly per team — so the two screens agree.
+  if (isBeansTeams) {
+    const reps = beansTeams.map(team => team[0]);
+    const repNames = reps.map(pi => players[pi]);
+    const repScores = reps.map(pi => scores[pi]);
+    const repBeanTotals = [0, 1].map(i => totalBeansForPlayer(i, repScores, activeBeans, firstBonus));
+    const repPayments = computeSettleUp(repNames, repBeanTotals, beanValue, []);
+    const teamNet = [0, 0];
+    repPayments.forEach(p => { teamNet[p.from] -= p.amt; teamNet[p.to] += p.amt; });
+    const myTeamIdx = beansTeams.findIndex(team => team.includes(selectedPlayer));
+    netDollars = myTeamIdx >= 0 ? teamNet[myTeamIdx] : 0;
+  }
+
   // Gross earned from own events (collected from all opponents) and what was paid to others
   let grossEarned = 0;
   events.forEach(event => {
@@ -89,10 +110,9 @@ export default function BreakdownScreen() {
       ? event.beans * effVal
       : event.beans * (n - 1) * effVal;
   });
-  const grossPaid = grossEarned - netDollars;
 
   // Gross paid to each other player for their bean wins (before netting)
-  const paidToPlayers = players
+  let paidToPlayers = players
     .map((_, op) => {
       if (op === selectedPlayer) return null;
       let amt = 0;
@@ -103,6 +123,26 @@ export default function BreakdownScreen() {
       return amt > 0 ? { name: players[op].split(' ')[0], amt } : null;
     })
     .filter(Boolean);
+
+  // 2v2 beans scramble: the per-real-player breakdown above is wrong here — it can
+  // show a team "paying" its own teammate, since only representatives ever hold
+  // bean counts. Recompute earned/paid against the OTHER team as a single entity.
+  if (isBeansTeams) {
+    const myTeamIdx = beansTeams.findIndex(team => team.includes(selectedPlayer));
+    if (myTeamIdx >= 0) {
+      const otherTeamIdx = 1 - myTeamIdx;
+      const reps = beansTeams.map(team => team[0]);
+      const repTotals = reps.map(pi => totalBeansForPlayer(pi, scores, activeBeans, firstBonus));
+      grossEarned = repTotals[myTeamIdx] * beanValue;
+      const paid = repTotals[otherTeamIdx] * beanValue;
+      paidToPlayers = paid > 0 ? [{ name: beansTeamNames[otherTeamIdx], amt: paid }] : [];
+    }
+  }
+  const grossPaid = grossEarned - netDollars;
+
+  const displayName = isBeansTeams
+    ? beansTeamNames[beansTeams.findIndex(team => team.includes(selectedPlayer))]
+    : players[selectedPlayer];
 
   function beanDesc(event) {
     const { bean, count, isFirst, incoming, from } = event;
@@ -133,13 +173,16 @@ export default function BreakdownScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ padding: spacing.sm, gap: spacing.xs }}
         >
-          {players.map((p, i) => (
+          {(isBeansTeams
+            ? beansTeams.map((team, ti) => ({ pi: team[0], label: beansTeamNames[ti] }))
+            : players.map((p, i) => ({ pi: i, label: p }))
+          ).map(({ pi, label }) => (
             <TouchableOpacity
-              key={i}
-              style={[styles.tab, selectedPlayer === i && styles.tabActive]}
-              onPress={() => setSelectedPlayer(i)}
+              key={pi}
+              style={[styles.tab, selectedPlayer === pi && styles.tabActive]}
+              onPress={() => setSelectedPlayer(pi)}
             >
-              <Text style={[styles.tabText, selectedPlayer === i && styles.tabTextActive]}>{p}</Text>
+              <Text style={[styles.tabText, selectedPlayer === pi && styles.tabTextActive]} numberOfLines={1}>{label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -219,7 +262,7 @@ export default function BreakdownScreen() {
           <>
             <View style={styles.summaryCard}>
               <View style={styles.summaryGlow} />
-              <Text style={styles.summaryName}>{players[selectedPlayer]}</Text>
+              <Text style={styles.summaryName}>{displayName}</Text>
               <View style={styles.summaryRow}>
                 <View style={styles.summaryItem}>
                   <Text style={styles.summaryVal}>+${grossEarned.toFixed(2)}</Text>
@@ -249,7 +292,7 @@ export default function BreakdownScreen() {
             {events.length === 0 ? (
               <View style={styles.emptyWrap}>
                 <Text style={styles.emptyIcon}>⛳</Text>
-                <Text style={styles.empty}>No beans recorded yet for {players[selectedPlayer]}.</Text>
+                <Text style={styles.empty}>No beans recorded yet for {displayName}.</Text>
               </View>
             ) : (
               <>

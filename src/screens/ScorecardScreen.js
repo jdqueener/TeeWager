@@ -6,7 +6,8 @@ import {
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
 import { nassauMatchSummary, legMatchStatus, canPressLeg, activeLegStatus,
-         legMatchStatusTeam, canPressTeam, activeLegStatusTeam } from '../utils/nassau';
+         legMatchStatusTeam, canPressTeam, activeLegStatusTeam,
+         canPressPair } from '../utils/nassau';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -27,6 +28,7 @@ export default function ScorecardScreen() {
     gameMode = 'beans', nassauStake = 5.00,
     nassauPresses = { front: [], back: [], total: [] },
     nassauTeams = null, nassauTeamFormat = 'match-play',
+    beansTeams = null,
   } = state;
 
   const strokes = state.strokes?.length === players.length
@@ -259,6 +261,34 @@ export default function ScorecardScreen() {
     }
   }
 
+  // Scramble: one shared stroke for a whole team (or the whole group), so birdie/eagle
+  // auto-award runs for every member. Skips the cross-player "tied first birdie, pick
+  // who gets 2x" prompt — a team/group sharing one shot isn't a competitive tie.
+  function setTeamStroke(team, hi, val) {
+    const newVal = Math.max(0, val);
+    dispatch({ type: 'SET_TEAM_STROKE', playerIdxs: team, holeIdx: hi, value: newVal });
+
+    const holePar    = getHolePar(hi);
+    const diff        = newVal > 0 ? newVal - holePar : null;
+    const birdieBean  = activeBeans.find(b => b.id === 'birdie');
+    const eagleBean   = activeBeans.find(b => b.id === 'eagle');
+
+    team.forEach(pi => {
+      if (birdieBean && (scores[pi]?.[hi]?.birdie || 0) > 0) {
+        dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'birdie', delta: -1, bean: birdieBean });
+      }
+      if (eagleBean && (scores[pi]?.[hi]?.eagle || 0) > 0) {
+        dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'eagle', delta: -1, bean: eagleBean });
+      }
+    });
+
+    if (diff === -1 && birdieBean) {
+      team.forEach(pi => dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'birdie', delta: 1, bean: birdieBean, skipFirstBonus: true }));
+    } else if (diff <= -2 && eagleBean) {
+      team.forEach(pi => dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'eagle', delta: 1, bean: eagleBean, skipFirstBonus: true }));
+    }
+  }
+
   function assignFirstBirdieBonus(winnerIdx, holeIdx) {
     const birdieBean = activeBeans.find(b => b.id === 'birdie');
     if (!birdieBean) return;
@@ -394,12 +424,32 @@ export default function ScorecardScreen() {
               const sorted = [...playerIdxs].sort((a, b) => (wins[b] || 0) - (wins[a] || 0));
               return sorted.map(pi => `${players[pi].split(' ')[0]} ${wins[pi] || 0}W`).join(' · ');
             }
-            const pressableLegs = legs.filter(leg => {
-              if (!leg.range.includes(hole)) return false;
-              if (isTeams) return canPressTeam(strokes, teamA, teamB, leg.range, nassauPresses[leg.label] || [], hole);
-              if (players.length === 2) return canPressLeg(strokes, playerIdxs, leg.range, nassauPresses[leg.label] || [], hole);
-              return false;
-            });
+            // Pressable items: one per eligible leg (2-player / teams), or one per
+            // eligible opponent PAIR per leg for 3-5 player round-robin — each pair
+            // runs its own independent side bet, so each gets its own press button.
+            const pressableItems = [];
+            for (const leg of legs) {
+              if (!leg.range.includes(hole)) continue;
+              const legPresses = nassauPresses[leg.label] || [];
+              if (isTeams) {
+                if (canPressTeam(strokes, teamA, teamB, leg.range, legPresses, hole)) {
+                  pressableItems.push({ leg: leg.label, label: `Press ${leg.title}`, dispatchPlayers: null });
+                }
+              } else if (players.length === 2) {
+                if (canPressLeg(strokes, playerIdxs, leg.range, legPresses, hole)) {
+                  pressableItems.push({ leg: leg.label, label: `Press ${leg.title}`, dispatchPlayers: null });
+                }
+              } else {
+                for (let i = 0; i < playerIdxs.length; i++) {
+                  for (let j = i + 1; j < playerIdxs.length; j++) {
+                    if (canPressPair(strokes, i, j, leg.range, legPresses, hole)) {
+                      const nameI = players[i].split(' ')[0], nameJ = players[j].split(' ')[0];
+                      pressableItems.push({ leg: leg.label, label: `Press ${leg.title}: ${nameI} vs ${nameJ}`, dispatchPlayers: [i, j] });
+                    }
+                  }
+                }
+              }
+            }
             return (
               <>
                 {isTeams && (
@@ -424,17 +474,20 @@ export default function ScorecardScreen() {
                     );
                   })}
                 </View>
-                {pressableLegs.length > 0 && (
+                {pressableItems.length > 0 && (
                   <View style={styles.nassauPressBar}>
                     <Text style={styles.nassauPressBarLabel}>🤝 Press available:</Text>
-                    {pressableLegs.map(leg => (
+                    {pressableItems.map((item, idx) => (
                       <TouchableOpacity
-                        key={leg.label}
+                        key={idx}
                         style={styles.nassauPressBtn}
-                        onPress={() => dispatch({ type: 'NASSAU_PRESS', leg: leg.label, startHole: hole })}
+                        onPress={() => dispatch({
+                          type: 'NASSAU_PRESS', leg: item.leg, startHole: hole,
+                          ...(item.dispatchPlayers ? { players: item.dispatchPlayers } : {}),
+                        })}
                         activeOpacity={0.75}
                       >
-                        <Text style={styles.nassauPressBtnText}>Press {leg.title}</Text>
+                        <Text style={styles.nassauPressBtnText}>{item.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -446,11 +499,14 @@ export default function ScorecardScreen() {
           {/* Running totals (beans only) */}
           {gameMode !== 'nassau' && (
           <View style={styles.totalsBar}>
-            {players.map((name, pi) => {
+            {(beansTeams?.length === 2
+              ? beansTeams.map(team => ({ pi: team[0], label: team.map(i => players[i]?.split(' ')[0]).join(' & ') }))
+              : players.map((name, pi) => ({ pi, label: name.split(' ')[0] }))
+            ).map(({ pi, label }) => {
               const t = playerTotalBeans(pi) + (state.spots?.[pi] || 0);
               return (
                 <View key={pi} style={styles.totalChip}>
-                  <Text style={styles.totalName} numberOfLines={1}>{name.split(' ')[0]}</Text>
+                  <Text style={styles.totalName} numberOfLines={1}>{label}</Text>
                   <Text style={[styles.totalVal, t < 0 && styles.neg]}>{t >= 0 ? `+${t}` : t}</Text>
                 </View>
               );
@@ -521,12 +577,16 @@ export default function ScorecardScreen() {
             {/* Stroke + bean cards (beans mode only) */}
             {gameMode !== 'nassau' && (<>
             <View style={styles.strokesCard}>
-              <Text style={styles.strokesLabel}>Strokes</Text>
+              <Text style={styles.strokesLabel}>Strokes{beansTeams ? (beansTeams.length === 2 ? ' · 2v2 Scramble' : ' · Group Scramble') : ''}</Text>
               <View style={styles.strokesRow}>
-                {players.map((name, pi) => {
+                {(beansTeams
+                  ? beansTeams.map(team => ({ pi: team[0], team, label: team.map(i => players[i]?.split(' ')[0]).join(' & ') }))
+                  : players.map((name, pi) => ({ pi, team: null, label: name.split(' ')[0]}))
+                ).map(({ pi, team, label }) => {
                   const s  = getStroke(pi, hole);
-                  // Wide screens or ≤2 players: single row. Narrow mobile with 3+: 2-column grid.
-                  const useGrid = players.length >= 3 && screenWidth < 500;
+                  const rowCount = beansTeams ? beansTeams.length : players.length;
+                  // Wide screens or ≤2 rows: single row. Narrow mobile with 3+: 2-column grid.
+                  const useGrid = rowCount >= 3 && screenWidth < 500;
                   const playerStyle = useGrid
                     ? [styles.strokePlayer, { flexBasis: '48%', flexGrow: 0 }]
                     : [styles.strokePlayer, { flex: 1 }];
@@ -534,21 +594,22 @@ export default function ScorecardScreen() {
                   const autoEagleAwarded  = (scores[pi]?.[hole]?.eagle  || 0) > 0;
                   const autoLabel = autoEagleAwarded ? '🦅 Eagle' : autoBirdieAwarded ? '🐦 Birdie' : null;
                   const isFirstBirdie = autoBirdieAwarded && state.firstBonus?.birdie?.playerIdx === pi && state.firstBonus?.birdie?.holeIdx === hole;
+                  const onChange = team ? (val => setTeamStroke(team, hole, val)) : (val => setStroke(pi, hole, val));
 
                   return (
                     <View key={pi} style={playerStyle}>
-                      <Text style={styles.strokeName} numberOfLines={1}>{name.split(' ')[0]}</Text>
+                      <Text style={styles.strokeName} numberOfLines={1}>{label}</Text>
                       {Platform.OS === 'web' ? (
                         <StrokePicker
                           value={s}
                           par={par}
-                          onChange={val => setStroke(pi, hole, val)}
+                          onChange={onChange}
                         />
                       ) : (
                         <NativeStrokePicker
                           value={s}
                           par={par}
-                          onChange={val => setStroke(pi, hole, val)}
+                          onChange={onChange}
                         />
                       )}
                       {s > 0 && (
@@ -570,28 +631,40 @@ export default function ScorecardScreen() {
               </View>
             </View>
 
-            {/* Bean cards */}
+            {/* Bean cards — in 2v2 team scramble, beans are awarded to the winning
+                TEAM: each "row" is a team, credited to that team's representative
+                player (beansTeams[i][0]); the other member's own bean count stays 0
+                and is folded back in at settlement (see SettleUpScreen). */}
+            {(() => {
+              const beansIsTeams = beansTeams?.length === 2;
+              const beanRows = beansIsTeams
+                ? beansTeams.map(team => ({ label: team.map(i => players[i]?.split(' ')[0]).join(' & '), rep: team[0] }))
+                : players.map((name, pi) => ({ label: name.split(' ')[0], rep: pi }));
+              const beanPlayerLabels = beanRows.map(r => r.label);
+              const realIdx = pi => beanRows[pi].rep;
+
+              return (<>
             {visibleBeans.map(bean => {
               if (bean.id === 'lowBall') {
                 // Auto-detect low scorer from strokes
-                const holeStrokes = players.map((_, pi) => getStroke(pi, hole));
+                const holeStrokes = beanRows.map(r => getStroke(r.rep, hole));
                 const entered = holeStrokes.filter(s => s > 0);
                 const minS = entered.length > 0 ? Math.min(...entered) : null;
-                const leaders = minS != null ? players.map((_, pi) => holeStrokes[pi] === minS && holeStrokes[pi] > 0) : players.map(() => false);
+                const leaders = minS != null ? beanRows.map((r, pi) => holeStrokes[pi] === minS && holeStrokes[pi] > 0) : beanRows.map(() => false);
                 const outright = leaders.filter(Boolean).length === 1;
                 return (
                   <LowBallCard
                     key="lowBall"
                     bean={bean}
-                    players={players}
+                    players={beanPlayerLabels}
                     strokes={holeStrokes}
                     leaders={leaders}
                     outright={outright}
-                    hasWinner={pi => hasBean(pi, 'lowBall')}
-                    onAward={pi => togglePlayer(bean, pi)}
+                    hasWinner={pi => hasBean(realIdx(pi), 'lowBall')}
+                    onAward={pi => togglePlayer(bean, realIdx(pi))}
                     onCarryover={isPastHole ? null : () => dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole })}
                     carryover={isPastHole ? 0 : skinsCarryover}
-                    anyAwarded={players.some((_, pi) => hasBean(pi, 'lowBall'))}
+                    anyAwarded={beanRows.some(r => hasBean(r.rep, 'lowBall'))}
                     onShowConflict={(title, msg, onConfirm) => setConflictPrompt({ title, msg, onConfirm })}
                   />
                 );
@@ -600,9 +673,9 @@ export default function ScorecardScreen() {
                 <BeanCard
                   key={bean.id}
                   bean={bean}
-                  players={players}
-                  hasBean={pi => hasBean(pi, bean.id)}
-                  onToggle={pi => togglePlayer(bean, pi)}
+                  players={beanPlayerLabels}
+                  hasBean={pi => hasBean(realIdx(pi), bean.id)}
+                  onToggle={pi => togglePlayer(bean, realIdx(pi))}
                   pro={pro}
                   firstBonus={firstBonus}
                   hole={hole}
@@ -624,7 +697,7 @@ export default function ScorecardScreen() {
                   <BeanCard
                     key={bean.id}
                     bean={bean}
-                    players={players}
+                    players={beanPlayerLabels}
                     hasBean={() => false}
                     onToggle={() => {}}
                     pro={pro}
@@ -635,6 +708,8 @@ export default function ScorecardScreen() {
                 ))}
               </>
             )}
+              </>);
+            })()}
             </>)}
           </ScrollView>
         </>
@@ -954,7 +1029,7 @@ function BeanCard({ bean, players, hasBean, onToggle, pro, firstBonus, hole, dim
               activeOpacity={0.75}
             >
               <Text style={[styles.playerBtnText, selected && styles.playerBtnTextActive]} numberOfLines={1}>
-                {name.split(' ')[0]}
+                {name}
               </Text>
               {selected && <Text style={styles.checkmark}>✓</Text>}
             </TouchableOpacity>
@@ -990,8 +1065,8 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
     const tappedStroke = strokes[pi];
     if (tappedStroke > 0 && minSoFar !== null && tappedStroke > minSoFar) {
       const currentLeaderIdx = strokes.indexOf(minSoFar);
-      const leaderName = currentLeaderIdx >= 0 ? players[currentLeaderIdx].split(' ')[0] : 'another player';
-      const msg = `${players[pi].split(' ')[0]} has ${tappedStroke} strokes — ${leaderName} currently has the low score (${minSoFar}). Award Skins to ${players[pi].split(' ')[0]} anyway?`;
+      const leaderName = currentLeaderIdx >= 0 ? players[currentLeaderIdx] : 'another player';
+      const msg = `${players[pi]} has ${tappedStroke} strokes — ${leaderName} currently has the low score (${minSoFar}). Award Skins to ${players[pi]} anyway?`;
       if (Platform.OS !== 'web') {
         Alert.alert('Override Skins?', msg, [
           { text: 'Cancel', style: 'cancel' },
@@ -1025,7 +1100,7 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
       {!anyAwarded && strokes.some(s => s > 0) && (
         <Text style={[styles.skinsHint, outright && { color: colors.green }]}>
           {outright
-            ? `${players[leaders.indexOf(true)].split(' ')[0]} leads — tap to award`
+            ? `${players[leaders.indexOf(true)]} leads — tap to award`
             : 'Tied — award or carry over'}
         </Text>
       )}
@@ -1043,7 +1118,7 @@ function LowBallCard({ bean, players, strokes, leaders, outright, hasWinner, onA
               activeOpacity={0.75}
             >
               <Text style={[styles.playerBtnText, (won || leader) && styles.playerBtnTextActive]} numberOfLines={1}>
-                {name.split(' ')[0]}
+                {name}
               </Text>
               {strokes[pi] > 0 && (
                 <Text style={[styles.skinsStokeText, (won || leader) && { color: 'rgba(255,255,255,0.85)' }]}>

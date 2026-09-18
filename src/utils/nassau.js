@@ -75,7 +75,8 @@ export function legMatchStatus(strokes, playerIdxs, holeRange, playerNames) {
   const remaining = holeRange.length - holesPlayed;
 
   if (diff === 0) {
-    return holesPlayed === 0 ? 'Not started' : 'All Square';
+    if (holesPlayed === 0) return 'Not started';
+    return remaining === 0 ? 'Match Halved' : 'All Square';
   }
   const leader = diff > 0 ? a : b;
   const margin = Math.abs(diff);
@@ -117,7 +118,7 @@ export function legMatchStatusTeam(strokes, teamA, teamB, holeRange, teamNames) 
   const diff = winsA - winsB;
   const remaining = holeRange.length - holesPlayed;
   if (holesPlayed === 0) return 'Not started';
-  if (diff === 0) return 'All Square';
+  if (diff === 0) return remaining === 0 ? 'Match Halved' : 'All Square';
   const leader = diff > 0 ? teamNames[0] : teamNames[1];
   const margin = Math.abs(diff);
   if (remaining === 0) return `${leader} wins ${margin} UP`;
@@ -244,8 +245,12 @@ function settleTeamRangeStroke(net, strokes, teamA, teamB, range, stake, scorer)
   }
 }
 
-// Main entry point for 2v2 settlement — routes by teamFormat.
-export function computeNassauSettleUpTeamFormat(players, teams, strokes, nassauStake, holeCount = 18, nassauPresses = {}, teamFormat = 'match-play') {
+// Computes net dollar amounts per player for 2v2 team Nassau, before collapsing
+// into minimum-cash-flow payments. Every team member always ends up with the
+// same net as their teammate (each settle call splits the stake evenly across
+// the team), so callers needing a live "team net" (e.g. Leaderboard) can just
+// read net[team[0]].
+export function netNassauTeamFormat(players, teams, strokes, nassauStake, holeCount = 18, nassauPresses = {}, teamFormat = 'match-play') {
   const [teamA, teamB] = teams;
   const frontRange = Array.from({ length: 9 }, (_, i) => i);
   const backRange  = Array.from({ length: Math.min(9, holeCount - 9) }, (_, i) => i + 9);
@@ -256,8 +261,10 @@ export function computeNassauSettleUpTeamFormat(players, teams, strokes, nassauS
 
   const net = new Array(players.length).fill(0);
 
-  if (teamFormat === 'match-play') {
-    // Original hole-by-hole match play (best ball)
+  if (teamFormat === 'match-play' || teamFormat === 'scramble') {
+    // Hole-by-hole match play — scramble uses the same win/loss counting as
+    // match play (both compare each team's best-ball score per hole), just with
+    // a single shared ball instead of each player's own.
     function settleTeamRange(range, stake) {
       const { winsA, winsB } = legStandingsTeam(strokes, teamA, teamB, range);
       const diff = winsA - winsB;
@@ -272,7 +279,9 @@ export function computeNassauSettleUpTeamFormat(players, teams, strokes, nassauS
       }
     }
   } else {
-    const scorer = teamFormat === 'combined' ? teamCombined : teamBestBall; // best-ball and scramble both use min
+    // Legacy stroke-play formats ('best-ball'/'combined') — no longer selectable from
+    // Setup, kept only so an in-progress round started before this change still settles.
+    const scorer = teamFormat === 'combined' ? teamCombined : teamBestBall;
     for (const [legKey, range] of legDefs) {
       settleTeamRangeStroke(net, strokes, teamA, teamB, range, nassauStake, scorer);
       for (const press of (nassauPresses[legKey] || [])) {
@@ -282,7 +291,12 @@ export function computeNassauSettleUpTeamFormat(players, teams, strokes, nassauS
     }
   }
 
-  return minimumCashFlowNassau(players, net);
+  return net;
+}
+
+// Main entry point for 2v2 settlement — routes by teamFormat.
+export function computeNassauSettleUpTeamFormat(players, teams, strokes, nassauStake, holeCount = 18, nassauPresses = {}, teamFormat = 'match-play') {
+  return minimumCashFlowNassau(players, netNassauTeamFormat(players, teams, strokes, nassauStake, holeCount, nassauPresses, teamFormat));
 }
 
 // ─── Press helpers ───────────────────────────────────────────────────────────
@@ -314,6 +328,35 @@ export function activeLegStatus(strokes, playerIdxs, legRange, legPresses, playe
   const activeStart = lastPress ? lastPress.startHole : legRange[0];
   const activeRange = legRange.filter(h => h >= activeStart);
   return legMatchStatus(strokes, playerIdxs, activeRange, playerNames);
+}
+
+// Presses relevant to a specific pair within a leg. A press with no `players`
+// field (2-player games) is treated as applying to whichever pair is asked about.
+function relevantPairPresses(legPresses, a, b) {
+  return legPresses.filter(p => !p.players || (p.players.includes(a) && p.players.includes(b)));
+}
+
+// Press eligibility for a specific pair in round-robin individual Nassau (3-5 players).
+// Each pair runs its own independent 2-down/press check, same rule as canPressLeg.
+export function canPressPair(strokes, a, b, legRange, legPresses, currentHole) {
+  const remaining = legRange.filter(h => h >= currentHole).length;
+  if (remaining <= 0) return false;
+  const relevant = relevantPairPresses(legPresses, a, b);
+  const lastPress = relevant[relevant.length - 1];
+  const activeStart = lastPress ? lastPress.startHole : legRange[0];
+  const completedRange = legRange.filter(h => h >= activeStart && h < currentHole);
+  if (completedRange.length === 0) return false;
+  const { wins } = legStandings(strokes, [a, b], completedRange);
+  return Math.abs(wins[a] - wins[b]) >= 2;
+}
+
+// Status of the current active match between a specific pair (from their last press, or leg start).
+export function activeStatusPair(strokes, a, b, legRange, legPresses, playerNames) {
+  const relevant = relevantPairPresses(legPresses, a, b);
+  const lastPress = relevant[relevant.length - 1];
+  const activeStart = lastPress ? lastPress.startHole : legRange[0];
+  const activeRange = legRange.filter(h => h >= activeStart);
+  return legMatchStatus(strokes, [a, b], activeRange, playerNames);
 }
 
 // ─── Settlement ──────────────────────────────────────────────────────────────
@@ -359,12 +402,13 @@ export function computeNassauSettleUp(players, strokes, nassauStake, holeCount =
   const net = new Array(n).fill(0);
 
   for (const [legKey, range] of legDefs) {
-    // Original leg
+    // Original leg — full round-robin among all players
     settleLegRange(net, strokes, playerIdxs, range, nassauStake);
-    // Each press
+    // Each press — settles only between the pair who declared it (2-player games
+    // never set `players`, so this falls back to the same pair as the original leg)
     for (const press of (nassauPresses[legKey] || [])) {
       const pressRange = range.filter(h => h >= press.startHole);
-      if (pressRange.length > 0) settleLegRange(net, strokes, playerIdxs, pressRange, nassauStake);
+      if (pressRange.length > 0) settleLegRange(net, strokes, press.players || playerIdxs, pressRange, nassauStake);
     }
   }
 

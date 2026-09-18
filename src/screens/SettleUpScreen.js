@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { totalBeansForPlayer, computeSettleUp } from '../utils/beans';
-import { computeNassauSettleUp, computeNassauSettleUpTeamFormat, legStandings, legMatchStatus } from '../utils/nassau';
+import { totalBeansForPlayer, computeSettleUp, minimumCashFlow } from '../utils/beans';
+import { computeNassauSettleUp, computeNassauSettleUpTeamFormat, legStandings, legMatchStatus, legMatchStatusTeam } from '../utils/nassau';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
 import { saveStats, loadStats } from '../utils/storage';
@@ -16,7 +16,7 @@ export default function SettleUpScreen() {
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18,
     spots = [], gameMode = 'beans', nassauStake = 5.00, strokes = [],
     nassauPresses = { front: [], back: [], total: [] },
-    nassauTeams = null, nassauTeamFormat = 'match-play' } = state;
+    nassauTeams = null, nassauTeamFormat = 'match-play', beansTeams = null } = state;
   const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const countedRef = useRef(false);
@@ -56,13 +56,52 @@ export default function SettleUpScreen() {
   }
 
   const isNassau = gameMode === 'nassau';
+  const isTeams = isNassau && !!nassauTeams;
+  const isBeansTeams = !isNassau && beansTeams?.length === 2;
+  const teamNames = isTeams
+    ? nassauTeams.map(team => team.map(pi => players[pi]?.split(' ')[0]).join(' & '))
+    : isBeansTeams
+    ? beansTeams.map(team => team.map(pi => players[pi]?.split(' ')[0]).join(' & '))
+    : [];
+  function teamOfPlayer(pi) {
+    if (isTeams) return nassauTeams.findIndex(team => team.includes(pi));
+    if (isBeansTeams) return beansTeams.findIndex(team => team.includes(pi));
+    return null;
+  }
 
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
-  const payments = isNassau
-    ? (nassauTeams
-        ? computeNassauSettleUpTeamFormat(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses, nassauTeamFormat)
-        : computeNassauSettleUp(players, strokes, nassauStake, holeCount, nassauPresses))
-    : computeSettleUp(players, beanTotals, beanValue, wagers);
+  let payments;
+  if (isNassau) {
+    payments = nassauTeams
+      ? computeNassauSettleUpTeamFormat(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses, nassauTeamFormat)
+      : computeNassauSettleUp(players, strokes, nassauStake, holeCount, nassauPresses);
+  } else if (isBeansTeams) {
+    // Award-time, beans only ever land on a team's representative player (see
+    // ScorecardScreen's toggleTeam/togglePlayer wiring). Settle as a virtual 2-player
+    // game between the two representatives, then split each rep's net evenly with
+    // their real teammate — same "stake split in half" convention as Nassau teams.
+    const reps = beansTeams.map(team => team[0]);
+    const repNames = reps.map(pi => players[pi]);
+    const repScores = reps.map(pi => scores[pi]);
+    const repBeanTotals = [0, 1].map(i => totalBeansForPlayer(i, repScores, activeBeans, firstBonus));
+    const repPayments = computeSettleUp(repNames, repBeanTotals, beanValue, []);
+    const net = new Array(players.length).fill(0);
+    const teamNet = [0, 0];
+    repPayments.forEach(p => { teamNet[p.from] -= p.amt; teamNet[p.to] += p.amt; });
+    beansTeams.forEach((team, ti) => team.forEach(pi => { net[pi] = teamNet[ti] / team.length; }));
+    // Side wagers reference real players directly, so apply them on the real net —
+    // same formula computeSettleUp uses internally — rather than the virtual rep pair.
+    wagers.forEach(w => {
+      if (w.winnerId >= 0) {
+        players.forEach((_, pi) => {
+          if (pi !== w.winnerId) { net[w.winnerId] += w.amt; net[pi] -= w.amt; }
+        });
+      }
+    });
+    payments = minimumCashFlow(players, net);
+  } else {
+    payments = computeSettleUp(players, beanTotals, beanValue, wagers);
+  }
 
   // Nassau leg summaries
   const playerIdxs = players.map((_, i) => i);
@@ -177,7 +216,20 @@ export default function SettleUpScreen() {
         {isNassau ? (
           <>
             <Text style={styles.sectionLabel}>Match Results · ${nassauStake.toFixed(2)}/leg</Text>
+            {isTeams && (
+              <Text style={styles.nassauTeamsLabel} numberOfLines={1}>{teamNames[0]} vs {teamNames[1]}</Text>
+            )}
             {nassauLegs.map(({ label, range }) => {
+              if (isTeams) {
+                const [teamA, teamB] = nassauTeams;
+                const status = legMatchStatusTeam(strokes, teamA, teamB, range, teamNames);
+                return (
+                  <View key={label} style={styles.nassauLegCard}>
+                    <Text style={styles.nassauLegLabel}>{label}</Text>
+                    <Text style={styles.nassauLegStatus}>{status}</Text>
+                  </View>
+                );
+              }
               const standing = legStandings(strokes, playerIdxs, range);
               const status = players.length === 2
                 ? legMatchStatus(strokes, playerIdxs, range, players)
@@ -203,12 +255,18 @@ export default function SettleUpScreen() {
         ) : (
           <>
             <Text style={styles.sectionLabel}>Bean totals</Text>
+            {isBeansTeams && (
+              <Text style={styles.nassauTeamsLabel} numberOfLines={1}>{teamNames[0]} vs {teamNames[1]}</Text>
+            )}
             {players.map((name, i) => {
               const beans = beanTotals[i];
               const spot  = spots[i] || 0;
               return (
                 <View key={i} style={styles.row}>
-                  <Text style={styles.name}>{name}</Text>
+                  <View>
+                    <Text style={styles.name}>{name}</Text>
+                    {isBeansTeams && <Text style={styles.paymentTeam}>{teamNames[teamOfPlayer(i)]}</Text>}
+                  </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={[styles.val, beans < 0 && styles.neg]}>
                       {beans >= 0 ? `+${beans}` : beans} beans{spot > 0 ? ` +${spot} spot` : ''}
@@ -247,6 +305,7 @@ export default function SettleUpScreen() {
           <View key={i} style={styles.paymentCard}>
             <View style={styles.paymentPlayer}>
               <Text style={styles.paymentName}>{players[p.from]}</Text>
+              {(isTeams || isBeansTeams) && <Text style={styles.paymentTeam}>{teamNames[teamOfPlayer(p.from)]}</Text>}
               <Text style={styles.paymentRole}>pays</Text>
             </View>
             <View style={styles.paymentArrowWrap}>
@@ -255,6 +314,7 @@ export default function SettleUpScreen() {
             </View>
             <View style={[styles.paymentPlayer, { alignItems: 'flex-end' }]}>
               <Text style={styles.paymentName}>{players[p.to]}</Text>
+              {(isTeams || isBeansTeams) && <Text style={styles.paymentTeam}>{teamNames[teamOfPlayer(p.to)]}</Text>}
               <Text style={styles.paymentRole}>receives</Text>
             </View>
           </View>
@@ -321,6 +381,7 @@ const styles = StyleSheet.create({
   paymentCard:      { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', borderLeftWidth: 4, borderLeftColor: colors.gold, ...shadow.md },
   paymentPlayer:    { flex: 1 },
   paymentName:      { fontSize: 17, fontWeight: '900', color: colors.textDark, letterSpacing: -0.3 },
+  paymentTeam:      { fontSize: 11, color: colors.textMid, fontWeight: '600', marginTop: 1 },
   paymentRole:      { fontSize: 10, color: colors.textLight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 3 },
   paymentArrowWrap: { alignItems: 'center', paddingHorizontal: spacing.sm },
   paymentAmt:       { fontSize: 27, fontWeight: '900', color: colors.green, letterSpacing: -0.5 },
@@ -355,6 +416,7 @@ const styles = StyleSheet.create({
 
   // Nassau leg cards
   nassauLegCard:    { backgroundColor: colors.white, borderRadius: radius.md, borderLeftWidth: 4, borderLeftColor: colors.green, padding: spacing.md, marginBottom: spacing.sm, ...shadow.sm },
+  nassauTeamsLabel: { fontSize: 13, fontWeight: '700', color: colors.textMid, marginBottom: spacing.sm },
   nassauLegLabel:   { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
   nassauLegStatus:  { fontSize: 17, fontWeight: '800', color: colors.textDark },
   nassauLegPlayers: { gap: 4 },
