@@ -112,15 +112,10 @@ export default function ScorecardScreen() {
 
     if (bean.id === 'longDrive') {
       if (!currently) {
-        if (ldCarryover > 0) {
-          dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + ldCarryover });
-        } else {
-          players.forEach((_, pi) => {
-            if (pi !== playerIdx && hasBean(pi, bean.id))
-              dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hole, beanId: bean.id, delta: -1, bean });
-          });
-          dispatch({ type: 'AWARD_BEAN', playerIdx, holeIdx: hole, beanId: bean.id, delta: 1, bean });
-        }
+        // Always dispatch an absolute total (not a +1 delta) — idempotent, so a
+        // duplicate press (e.g. a mobile browser double-firing one tap) is a
+        // harmless no-op instead of stacking to 2.
+        dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + ldCarryover });
       } else {
         const awarded = scores[playerIdx]?.[hole]?.longDrive || 1;
         dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
@@ -128,15 +123,7 @@ export default function ScorecardScreen() {
       }
     } else if (bean.id === 'kp') {
       if (!currently) {
-        if (kpCarryover > 0) {
-          dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + kpCarryover });
-        } else {
-          players.forEach((_, pi) => {
-            if (pi !== playerIdx && hasBean(pi, bean.id))
-              dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hole, beanId: bean.id, delta: -1, bean });
-          });
-          dispatch({ type: 'AWARD_BEAN', playerIdx, holeIdx: hole, beanId: bean.id, delta: 1, bean });
-        }
+        dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + kpCarryover });
       } else {
         const awarded = scores[playerIdx]?.[hole]?.kp || 1;
         dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
