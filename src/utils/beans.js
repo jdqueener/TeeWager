@@ -22,9 +22,15 @@ export const BEAN_DEFS = [
 export function beanLabel(value, awardToOthers = false) {
   const abs = Math.abs(value);
   const noun = abs === 1 ? 'bean' : 'beans';
-  if (awardToOthers) return `costs ${abs} ${noun} each`;
+  if (awardToOthers) return `pays ${abs} ${noun} each`;
   return value >= 0 ? `earns ${value} ${noun}` : `costs ${abs} ${noun}`;
 }
+
+// Beans mode group scramble (all players share one score, no opposing side): beans
+// that are auto-derived by comparing individual stroke counts — Skins, Birdie,
+// Eagle, Double Eagle — become a guaranteed wash since everyone always ties. Only
+// beans independent of the shared score stay meaningful.
+export const SCRAMBLE_GROUP_BEAN_IDS = ['longDrive', 'kp', 'flagLength', 'holeInOne', 'chipIn', 'fourPutt'];
 
 export function isParAllowed(bean, par) {
   if (!bean.pf) return true;

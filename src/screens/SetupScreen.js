@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 const ImagePicker = Platform.OS !== 'web' ? require('expo-image-picker') : null;
 import { useGame } from '../context/GameContext';
-import { BEAN_DEFS, DEFAULT_PARS, beanLabel } from '../utils/beans';
+import { BEAN_DEFS, DEFAULT_PARS, beanLabel, SCRAMBLE_GROUP_BEAN_IDS } from '../utils/beans';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import PaywallModal from '../components/PaywallModal';
 import ProBanner from '../components/ProBanner';
@@ -448,8 +448,12 @@ export default function SetupScreen() {
     }
 
     const validCustom = customBeans.filter(b => b.name.trim());
+    const isGroupScramble = gameMode === 'beans' && beansFormat === 'scramble' && beansScrambleMode === 'group';
     const allEnabled = [...enabledBeans].filter(id =>
-      !id.startsWith('custom_') || validCustom.some(b => b.id === id)
+      (!id.startsWith('custom_') || validCustom.some(b => b.id === id))
+      // Custom beans are always manually awarded (never auto-derived from comparing
+      // the shared score), so they're exempt from the group scramble restriction.
+      && (!isGroupScramble || id.startsWith('custom_') || SCRAMBLE_GROUP_BEAN_IDS.includes(id))
     );
     dispatch({
       type: 'START_ROUND',
@@ -869,7 +873,7 @@ export default function SetupScreen() {
           <>
             <Text style={styles.label}>Scoring</Text>
             {[
-              { id: 'group', label: 'Group',      desc: `All ${playerCount} players share one score. Skins, Long Drive, and KP are still tracked per player.` },
+              { id: 'group', label: 'Group',      desc: `All ${playerCount} players share one score. Long Drive, KP, and a few other beans are still tracked per player.` },
               { id: 'teams', label: '2v2 Teams',  desc: 'Two teams of 2, each sharing one score. Beans are awarded to the winning team.' },
             ].map(({ id, label, desc }) => (
               <TouchableOpacity
@@ -937,9 +941,15 @@ export default function SetupScreen() {
           </View>
         )}
 
-        {/* Bean list */}
+        {/* Bean list — group scramble hides beans that are a guaranteed wash
+            when every player shares one score (Skins, Birdie, Eagle, etc.) */}
         <Text style={styles.label}>Beans</Text>
-        {BEAN_DEFS.filter(b => !b.impromptu).map(bean => {
+        {beansFormat === 'scramble' && beansScrambleMode === 'group' && (
+          <Text style={styles.fieldHint}>Group Scramble: only beans independent of the shared score are offered.</Text>
+        )}
+        {BEAN_DEFS.filter(b => !b.impromptu)
+          .filter(b => !(beansFormat === 'scramble' && beansScrambleMode === 'group') || SCRAMBLE_GROUP_BEAN_IDS.includes(b.id))
+          .map(bean => {
           const locked = !bean.free && !pro;
           const on = enabledBeans.has(bean.id);
           return (
@@ -951,7 +961,7 @@ export default function SetupScreen() {
                     {bean.name}
                     {locked && <Text style={styles.beanProBadge}> PRO</Text>}
                     <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
-                      {'  '}{beanLabel(bean.v)}
+                      {'  '}{beanLabel(bean.v, bean.awardToOthers)}
                     </Text>
                   </Text>
                   {bean.desc ? <Text style={styles.beanDesc}>{bean.desc}</Text> : null}

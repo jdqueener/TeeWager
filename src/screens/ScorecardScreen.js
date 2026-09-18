@@ -158,6 +158,34 @@ export default function ScorecardScreen() {
   function advanceHole() {
     if (hole >= lastHole) return;
 
+    // Missing-score guard: warn before advancing off a hole where not everyone
+    // (or every team, for a shared scramble score) has a score entered yet —
+    // applies to both Nassau and Beans, individual or team.
+    const teams = gameMode === 'nassau' ? nassauTeams : beansTeams;
+    const checkRows = teams
+      ? teams.map(team => ({ pi: team[0], label: team.map(i => players[i]?.split(' ')[0]).join(' & ') }))
+      : players.map((name, pi) => ({ pi, label: name.split(' ')[0] }));
+    const missing = checkRows.filter(row => getStroke(row.pi, hole) === 0);
+
+    if (missing.length > 0) {
+      const names = missing.map(m => m.label).join(', ');
+      const title = 'Missing score';
+      const msg = `${names} ${missing.length === 1 ? "doesn't" : "don't"} have a score entered for this hole. Advance anyway?`;
+      if (Platform.OS !== 'web') {
+        Alert.alert(title, msg, [
+          { text: 'Go Back', style: 'cancel' },
+          { text: 'Advance Anyway', onPress: proceedAdvanceHole },
+        ]);
+      } else {
+        setConflictPrompt({ title, msg, onConfirm: proceedAdvanceHole });
+      }
+      return;
+    }
+
+    proceedAdvanceHole();
+  }
+
+  function proceedAdvanceHole() {
     const ldBean     = activeBeans.find(b => b.id === 'longDrive');
     const kpBean     = activeBeans.find(b => b.id === 'kp');
     const skinsBean  = activeBeans.find(b => b.id === 'lowBall');
