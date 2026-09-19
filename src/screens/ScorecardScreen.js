@@ -328,10 +328,14 @@ export default function ScorecardScreen() {
       }
     });
 
+    // Credit only the team's representative (team[0]) — the same real index
+    // every other team-scramble bean (Skins/LD/KP) and the Strokes card's one
+    // shared row already use — so the normal "first of the round earns 2x"
+    // tracking applies correctly instead of being permanently disabled.
     if (diff === -1 && birdieBean) {
-      team.forEach(pi => dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'birdie', delta: 1, bean: birdieBean, skipFirstBonus: true }));
+      dispatch({ type: 'AWARD_BEAN', playerIdx: team[0], holeIdx: hi, beanId: 'birdie', delta: 1, bean: birdieBean });
     } else if (diff <= -2 && eagleBean) {
-      team.forEach(pi => dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'eagle', delta: 1, bean: eagleBean, skipFirstBonus: true }));
+      dispatch({ type: 'AWARD_BEAN', playerIdx: team[0], holeIdx: hi, beanId: 'eagle', delta: 1, bean: eagleBean });
     }
   }
 
