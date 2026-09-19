@@ -42,6 +42,7 @@ export default function ScorecardScreen() {
   const [pressAmountModal, setPressAmountModal] = useState(null); // { mode: 'anytime'|'tenth' }
   const [customPressAmt, setCustomPressAmt] = useState('');
   const [chosenPressAmt, setChosenPressAmt] = useState(null);
+  const [roundFinished, setRoundFinished] = useState(false);
 
   const hole = currentHole;
   const par  = getHolePar(hole);
@@ -160,37 +161,49 @@ export default function ScorecardScreen() {
 
   function getStroke(pi, hi) { return strokes?.[pi]?.[hi] ?? 0; }
 
-  function advanceHole() {
-    if (hole >= lastHole) return;
-
-    // Missing-score guard: warn before advancing off a hole where not everyone
-    // (or every team, for a shared scramble score) has a score entered yet —
-    // applies to both Nassau and Beans, individual or team.
+  // Shared missing-score guard for both "advance to next hole" and "finish round
+  // on the last hole" — same check, just a different message and follow-up action.
+  function checkMissingScores(msgVerb, onConfirm) {
     const teams = gameMode === 'nassau' ? nassauTeams : beansTeams;
     const checkRows = teams
       ? teams.map(team => ({ pi: team[0], label: team.map(i => players[i]?.split(' ')[0]).join(' & ') }))
       : players.map((name, pi) => ({ pi, label: name.split(' ')[0] }));
     const missing = checkRows.filter(row => getStroke(row.pi, hole) === 0);
 
-    if (missing.length > 0) {
-      const names = missing.map(m => m.label).join(', ');
-      const title = 'Missing score';
-      const msg = `${names} ${missing.length === 1 ? "doesn't" : "don't"} have a score entered for this hole. Advance anyway?`;
-      if (Platform.OS !== 'web') {
-        Alert.alert(title, msg, [
-          { text: 'Go Back', style: 'cancel' },
-          { text: 'Advance Anyway', onPress: proceedAdvanceHole },
-        ]);
-      } else {
-        setConflictPrompt({ title, msg, onConfirm: proceedAdvanceHole });
-      }
-      return;
+    if (missing.length === 0) return false;
+    const names = missing.map(m => m.label).join(', ');
+    const title = 'Missing score';
+    const msg = `${names} ${missing.length === 1 ? "doesn't" : "don't"} have a score entered for this hole. ${msgVerb} anyway?`;
+    const confirmLabel = `${msgVerb} Anyway`;
+    if (Platform.OS !== 'web') {
+      Alert.alert(title, msg, [
+        { text: 'Go Back', style: 'cancel' },
+        { text: confirmLabel, onPress: onConfirm },
+      ]);
+    } else {
+      setConflictPrompt({ title, msg, onConfirm, confirmLabel });
     }
-
-    proceedAdvanceHole();
+    return true;
   }
 
-  function proceedAdvanceHole() {
+  function advanceHole() {
+    if (hole >= lastHole) return;
+    if (checkMissingScores('Advance', () => proceedAdvanceHole(true))) return;
+    proceedAdvanceHole(true);
+  }
+
+  // The auto-award/carryover logic below only ever runs as part of advancing
+  // off a hole — but there's no hole after the 18th to advance to, so without
+  // this, the final hole's Skins/Long Drive/KP were never evaluated at all.
+  // "Finish Round" resolves the last hole the same way, without advancing.
+  function finishRound() {
+    if (hole !== lastHole) return;
+    if (checkMissingScores('Finish', () => { proceedAdvanceHole(false); setRoundFinished(true); })) return;
+    proceedAdvanceHole(false);
+    setRoundFinished(true);
+  }
+
+  function proceedAdvanceHole(advance) {
     const ldBean     = activeBeans.find(b => b.id === 'longDrive');
     const kpBean     = activeBeans.find(b => b.id === 'kp');
     const skinsBean  = activeBeans.find(b => b.id === 'lowBall');
@@ -215,9 +228,10 @@ export default function ScorecardScreen() {
       if (kpCarryoverEnabled && kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER', holeIdx: hole });
     };
 
+    const verb = advance ? 'Advance' : 'Finish';
     const next = () => {
       doCarryovers();
-      dispatch({ type: 'SET_HOLE', hole: hole + 1 });
+      if (advance) dispatch({ type: 'SET_HOLE', hole: hole + 1 });
     };
 
     const holeStrokes = rowRealIdx.map(pi => getStroke(pi, hole));
@@ -238,13 +252,14 @@ export default function ScorecardScreen() {
     const outright = hLeaders.filter(Boolean).length === 1;
 
     const confirm = (title, msg) => {
+      const confirmLabel = `${verb} Anyway`;
       if (Platform.OS !== 'web') {
         Alert.alert(title, msg, [
           { text: 'Go Back', style: 'cancel' },
-          { text: 'Advance Anyway', onPress: next },
+          { text: confirmLabel, onPress: () => { next(); if (!advance) setRoundFinished(true); } },
         ]);
       } else {
-        setConflictPrompt({ title, msg, onConfirm: next });
+        setConflictPrompt({ title, msg, onConfirm: () => { next(); if (!advance) setRoundFinished(true); }, confirmLabel });
       }
     };
 
@@ -253,7 +268,7 @@ export default function ScorecardScreen() {
       const winnerName = rowLabel(winnerRow);
       confirm(
         'Skins Conflict',
-        `${winnerName} is awarded Skins but ${leaderName} has the low score (${minS}). Advance anyway?`
+        `${winnerName} is awarded Skins but ${leaderName} has the low score (${minS}). ${verb} anyway?`
       );
       return;
     }
@@ -446,6 +461,20 @@ export default function ScorecardScreen() {
               <Text style={[styles.navArrow, hole === lastHole && styles.navDisabled]}>›</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Finish Round — the 18th hole has no "next hole" to advance to, so
+              this is what actually runs the final hole's bean/carryover logic. */}
+          {hole === lastHole && (
+            <TouchableOpacity
+              style={[styles.finishRoundBtn, roundFinished && styles.finishRoundBtnDone]}
+              onPress={finishRound}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.finishRoundBtnText}>
+                {roundFinished ? '✓ Round Complete' : '🏁 Finish Round'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Nassau match status bar + press buttons */}
           {gameMode === 'nassau' && (() => {
@@ -959,7 +988,7 @@ export default function ScorecardScreen() {
               style={styles.confirmAdvance}
               onPress={() => { conflictPrompt?.onConfirm(); setConflictPrompt(null); }}
             >
-              <Text style={styles.confirmAdvanceText}>Advance Anyway</Text>
+              <Text style={styles.confirmAdvanceText}>{conflictPrompt?.confirmLabel || 'Advance Anyway'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.confirmBack} onPress={() => setConflictPrompt(null)}>
               <Text style={styles.confirmBackText}>Go Back</Text>
@@ -1268,6 +1297,10 @@ const styles = StyleSheet.create({
   holeCenter:  { flex: 1, alignItems: 'center', paddingVertical: 2 },
   holeLabel:   { fontSize: 25, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
   parLabel:    { fontSize: 12, color: 'rgba(255,255,255,0.82)', textAlign: 'center', flexWrap: 'wrap', marginTop: 3, fontWeight: '600' },
+
+  finishRoundBtn:     { backgroundColor: colors.gold, paddingVertical: 12, alignItems: 'center' },
+  finishRoundBtnDone: { backgroundColor: colors.green },
+  finishRoundBtnText: { color: colors.white, fontWeight: '800', fontSize: 15 },
 
   // Running totals bar
   totalsBar:  { flexDirection: 'row', backgroundColor: colors.white, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, gap: spacing.xs, ...shadow.sm, zIndex: 5 },
