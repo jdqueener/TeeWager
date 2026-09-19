@@ -166,34 +166,41 @@ export default function BreakdownScreen() {
     <View style={styles.root}>
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
 
-      {/* Player tabs */}
-      <View style={styles.playerTabsWrap}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ padding: spacing.sm, gap: spacing.xs }}
-        >
-          {(isBeansTeams
-            ? beansTeams.map((team, ti) => ({ pi: team[0], label: beansTeamNames[ti] }))
-            : players.map((p, i) => ({ pi: i, label: p }))
-          ).map(({ pi, label }) => (
-            <TouchableOpacity
-              key={pi}
-              style={[styles.tab, selectedPlayer === pi && styles.tabActive]}
-              onPress={() => setSelectedPlayer(pi)}
-            >
-              <Text style={[styles.tabText, selectedPlayer === pi && styles.tabTextActive]} numberOfLines={1}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      {/* Player tabs — Nassau's hole-by-hole table already shows every
+          player's strokes and the actual winner of each hole, so there's no
+          "selected player" perspective to switch between; only beans mode
+          needs a tab to pick whose earned/paid/net summary to view. */}
+      {!isNassau && (
+        <View style={styles.playerTabsWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ padding: spacing.sm, gap: spacing.xs }}
+          >
+            {(isBeansTeams
+              ? beansTeams.map((team, ti) => ({ pi: team[0], label: beansTeamNames[ti] }))
+              : players.map((p, i) => ({ pi: i, label: p }))
+            ).map(({ pi, label }) => (
+              <TouchableOpacity
+                key={pi}
+                style={[styles.tab, selectedPlayer === pi && styles.tabActive]}
+                onPress={() => setSelectedPlayer(pi)}
+              >
+                <Text style={[styles.tabText, selectedPlayer === pi && styles.tabTextActive]} numberOfLines={1}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={styles.content}>
         {isNassau ? (
-          /* Nassau: hole-by-hole stroke comparison */
+          /* Nassau: hole-by-hole stroke comparison — winner shown absolutely
+             (not relative to a selected player), so every hole is readable
+             from one table with no tabbing required. */
           <>
             <View style={styles.nassauHeader}>
-              <Text style={styles.nassauHeaderName}>{players[selectedPlayer]}</Text>
+              <Text style={styles.nassauHeaderName}>Nassau Results</Text>
               <Text style={styles.nassauHeaderSub}>
                 ${nassauStake.toFixed(2)}/leg{isTeams ? ` · 2v2 ${nassauTeamFormat.replace('-', ' ')}` : ''} · hole-by-hole results
               </Text>
@@ -204,7 +211,7 @@ export default function BreakdownScreen() {
             <View style={styles.nassauTableHeader}>
               <Text style={[styles.nassauCol, styles.nassauColHole]}>HOLE</Text>
               {players.map((name, pi) => (
-                <Text key={pi} style={[styles.nassauCol, pi === selectedPlayer && styles.nassauColActive]}>
+                <Text key={pi} style={styles.nassauCol}>
                   {name.split(' ')[0].toUpperCase()}
                 </Text>
               ))}
@@ -222,7 +229,6 @@ export default function BreakdownScreen() {
                 winner = holeWinner(strokes, playerIdxs, h);
                 allEntered = playerIdxs.every(pi => (strokes[pi]?.[h] ?? 0) > 0);
               }
-              const myTeam = isTeams ? (teamA.includes(selectedPlayer) ? 0 : 1) : null;
               let resultText = '—';
               let resultStyle = styles.nassauResultPending;
               if (allEntered) {
@@ -230,9 +236,8 @@ export default function BreakdownScreen() {
                 else if (isTeams) {
                   // Always name the winning team — never just "WIN" — so 2v2 results read as team, not individual.
                   resultText = `${teamNames[winner]} win`;
-                  resultStyle = winner === myTeam ? styles.nassauResultWin : styles.nassauResultLoss;
-                } else if (winner === selectedPlayer) { resultText = 'WIN'; resultStyle = styles.nassauResultWin; }
-                else { resultText = `${players[winner].split(' ')[0]} wins`; resultStyle = styles.nassauResultLoss; }
+                  resultStyle = styles.nassauResultWin;
+                } else { resultText = `${players[winner].split(' ')[0]} wins`; resultStyle = styles.nassauResultWin; }
               }
               return (
                 <View key={h} style={styles.nassauTableRow}>
@@ -247,12 +252,12 @@ export default function BreakdownScreen() {
                       ? allEntered && winner === (teamA.includes(pi) ? 0 : 1)
                       : allEntered && winner === pi;
                     return (
-                      <Text key={pi} style={[styles.nassauCol, styles.nassauStroke, pi === selectedPlayer && styles.nassauColActive, isWin && styles.nassauStrokeWin]}>
+                      <Text key={pi} style={[styles.nassauCol, styles.nassauStroke, isWin && styles.nassauStrokeWin]}>
                         {s > 0 ? s : '—'}{relPar !== null ? ` (${relPar >= 0 ? '+' : ''}${relPar === 0 ? 'E' : relPar})` : ''}
                       </Text>
                     );
                   })}
-                  <Text style={[styles.nassauCol, styles.nassauColResult, resultStyle]}>{resultText}</Text>
+                  <Text style={[styles.nassauCol, styles.nassauColResult, resultStyle]} numberOfLines={2}>{resultText}</Text>
                 </View>
               );
             })}
@@ -376,7 +381,7 @@ const styles = StyleSheet.create({
   nassauColActive:    { color: colors.green },
   nassauColHole:      { flex: 0.7, textAlign: 'left' },
   nassauColHoleCell:  { flex: 0.7, alignItems: 'flex-start' },
-  nassauColResult:    { flex: 1.4, textAlign: 'right' },
+  nassauColResult:    { flex: 1.8, textAlign: 'right', lineHeight: 16 },
   nassauHoleNum:      { fontSize: 14, fontWeight: '900', color: colors.textDark },
   nassauHolePar:      { fontSize: 10, color: colors.textLight, fontWeight: '600' },
   nassauStroke:       { fontSize: 13, color: colors.textDark },

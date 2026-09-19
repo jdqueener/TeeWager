@@ -5,9 +5,7 @@ import {
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
-import { nassauMatchSummary, legMatchStatus, canPressLeg, activeLegStatus,
-         legMatchStatusTeam, canPressTeam, activeLegStatusTeam,
-         canPressPair } from '../utils/nassau';
+import { canPressTeam, activeLegStatusTeam } from '../utils/nassau';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -466,37 +464,29 @@ export default function ScorecardScreen() {
               { label: 'total', range: Array.from({ length: holeCount }, (_, i) => i), title: 'Total' },
             ];
             function statusLine(leg) {
-              const legPresses = nassauPresses[leg.label] || [];
-              if (isTeams) return activeLegStatusTeam(strokes, teamA, teamB, leg.range, legPresses, teamNames);
-              if (players.length === 2) return activeLegStatus(strokes, playerIdxs, leg.range, legPresses, players);
-              const { wins } = nassauMatchSummary(strokes, players, holeCount)[leg.label] || {};
-              if (!wins) return 'Not started';
-              const sorted = [...playerIdxs].sort((a, b) => (wins[b] || 0) - (wins[a] || 0));
-              return sorted.map(pi => `${players[pi].split(' ')[0]} ${wins[pi] || 0}W`).join(' · ');
-            }
-            // Pressable items: one per eligible leg (2-player / teams), or one per
-            // eligible opponent PAIR per leg for 3-5 player round-robin — each pair
-            // runs its own independent side bet, so each gets its own press button.
-            const pressableItems = [];
-            for (const leg of legs) {
-              if (!leg.range.includes(hole)) continue;
-              const legPresses = nassauPresses[leg.label] || [];
               if (isTeams) {
+                const legPresses = nassauPresses[leg.label] || [];
+                return activeLegStatusTeam(strokes, teamA, teamB, leg.range, legPresses, teamNames);
+              }
+              // Stroke-Play: show each player's running total strokes for this leg —
+              // there's no "up/down" match-play status, just who's ahead on strokes.
+              const totals = playerIdxs.map(pi => {
+                const entered = leg.range.filter(h => (strokes[pi]?.[h] ?? 0) > 0);
+                return { pi, sum: entered.reduce((s, h) => s + strokes[pi][h], 0), entered: entered.length };
+              });
+              if (totals.every(t => t.entered === 0)) return 'Not started';
+              const sorted = [...totals].sort((a, b) => a.sum - b.sum);
+              return sorted.map(t => `${players[t.pi].split(' ')[0]} ${t.sum}`).join(' · ');
+            }
+            // Pressable items: teams only — Stroke-Play has no press (a stroke total
+            // has no natural "2 down" trigger to press off of).
+            const pressableItems = [];
+            if (isTeams) {
+              for (const leg of legs) {
+                if (!leg.range.includes(hole)) continue;
+                const legPresses = nassauPresses[leg.label] || [];
                 if (canPressTeam(strokes, teamA, teamB, leg.range, legPresses, hole)) {
                   pressableItems.push({ leg: leg.label, label: `Press ${leg.title}`, dispatchPlayers: null });
-                }
-              } else if (players.length === 2) {
-                if (canPressLeg(strokes, playerIdxs, leg.range, legPresses, hole)) {
-                  pressableItems.push({ leg: leg.label, label: `Press ${leg.title}`, dispatchPlayers: null });
-                }
-              } else {
-                for (let i = 0; i < playerIdxs.length; i++) {
-                  for (let j = i + 1; j < playerIdxs.length; j++) {
-                    if (canPressPair(strokes, i, j, leg.range, legPresses, hole)) {
-                      const nameI = players[i].split(' ')[0], nameJ = players[j].split(' ')[0];
-                      pressableItems.push({ leg: leg.label, label: `Press ${leg.title}: ${nameI} vs ${nameJ}`, dispatchPlayers: [i, j] });
-                    }
-                  }
                 }
               }
             }

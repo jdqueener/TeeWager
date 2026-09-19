@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { totalBeansForPlayer, computeSettleUp, minimumCashFlow } from '../utils/beans';
-import { computeNassauSettleUp, computeNassauSettleUpTeamFormat, legStandings, legMatchStatus, legMatchStatusTeam } from '../utils/nassau';
+import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, legMatchStatusPairStroke, legMatchStatusTeam } from '../utils/nassau';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
 import { saveStats, loadStats } from '../utils/storage';
@@ -74,7 +74,7 @@ export default function SettleUpScreen() {
   if (isNassau) {
     payments = nassauTeams
       ? computeNassauSettleUpTeamFormat(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses, nassauTeamFormat)
-      : computeNassauSettleUp(players, strokes, nassauStake, holeCount, nassauPresses);
+      : computeNassauSettleUpStroke(players, strokes, nassauStake, holeCount);
   } else if (isBeansTeams) {
     // Award-time, beans only ever land on a team's representative player (see
     // ScorecardScreen's toggleTeam/togglePlayer wiring). Settle as a virtual 2-player
@@ -230,9 +230,15 @@ export default function SettleUpScreen() {
                   </View>
                 );
               }
-              const standing = legStandings(strokes, playerIdxs, range);
+              // Stroke-Play: show each player's total strokes for the leg, lowest
+              // first — that's what actually decides each pairwise bet now.
+              const totals = playerIdxs.map(pi => ({
+                pi,
+                sum: range.reduce((s, h) => s + (strokes[pi]?.[h] ?? 0), 0),
+                entered: range.filter(h => (strokes[pi]?.[h] ?? 0) > 0).length,
+              }));
               const status = players.length === 2
-                ? legMatchStatus(strokes, playerIdxs, range, players)
+                ? legMatchStatusPairStroke(strokes, 0, 1, range, players)
                 : null;
               return (
                 <View key={label} style={styles.nassauLegCard}>
@@ -241,9 +247,9 @@ export default function SettleUpScreen() {
                     <Text style={styles.nassauLegStatus}>{status}</Text>
                   ) : (
                     <View style={styles.nassauLegPlayers}>
-                      {players.map((name, pi) => (
-                        <Text key={pi} style={styles.nassauLegPlayer}>
-                          {name.split(' ')[0]}: {standing.wins[pi]}W {standing.halves[pi]}H {standing.losses[pi]}L
+                      {[...totals].sort((a, b) => a.sum - b.sum).map(t => (
+                        <Text key={t.pi} style={styles.nassauLegPlayer}>
+                          {players[t.pi].split(' ')[0]}: {t.entered > 0 ? `${t.sum} strokes` : '—'}
                         </Text>
                       ))}
                     </View>

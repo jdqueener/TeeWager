@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { totalBeansForPlayer } from '../utils/beans';
-import { legStandings, netNassauTeamFormat } from '../utils/nassau';
+import { netNassauStroke, netNassauTeamFormat } from '../utils/nassau';
 import { colors, spacing, radius } from '../utils/theme';
 import Avatar from '../components/Avatar';
 import ProBanner from '../components/ProBanner';
@@ -60,25 +60,8 @@ export default function LeaderboardScreen() {
     nassauPot = rankedNassau.reduce((s, p) => s + Math.max(p.net, 0), 0);
     firstNassauNet = rankedNassau[0]?.net ?? 0;
   } else {
-    // Aggregate leg wins per player (each won leg = +nassauStake net)
-    const nassauNet = new Array(n).fill(0);
-    for (const range of nassauLegsRanges) {
-      if (n === 2) {
-        const { wins } = legStandings(strokes, playerIdxs, range);
-        const diff = wins[0] - wins[1];
-        if (diff > 0) { nassauNet[0] += nassauStake; nassauNet[1] -= nassauStake; }
-        else if (diff < 0) { nassauNet[1] += nassauStake; nassauNet[0] -= nassauStake; }
-      } else {
-        for (let i = 0; i < n; i++) {
-          for (let j = i + 1; j < n; j++) {
-            const { wins } = legStandings(strokes, [i, j], range);
-            const diff = wins[i] - wins[j];
-            if (diff > 0) { nassauNet[i] += nassauStake; nassauNet[j] -= nassauStake; }
-            else if (diff < 0) { nassauNet[j] += nassauStake; nassauNet[i] -= nassauStake; }
-          }
-        }
-      }
-    }
+    // Stroke-Play: same pairwise, per-leg net every other screen uses.
+    const nassauNet = netNassauStroke(players, strokes, nassauStake, holeCount);
     rankedNassau = players
       .map((name, i) => ({ name, i, net: nassauNet[i] }))
       .sort((a, b) => b.net - a.net);
