@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, 
 import { useGame } from '../context/GameContext';
 import { totalBeansForPlayer, computeSettleUp, minimumCashFlow } from '../utils/beans';
 import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, legMatchStatusPairStroke, legMatchStatusTeam } from '../utils/nassau';
+import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
 import { saveStats, loadStats } from '../utils/storage';
@@ -58,10 +59,14 @@ export default function SettleUpScreen() {
   const isNassau = gameMode === 'nassau';
   const isTeams = isNassau && !!nassauTeams;
   const isBeansTeams = !isNassau && beansTeams?.length === 2;
-  const teamNames = isTeams
-    ? nassauTeams.map(team => team.map(pi => players[pi]?.split(' ')[0]).join(' & '))
-    : isBeansTeams
-    ? beansTeams.map(team => team.map(pi => players[pi]?.split(' ')[0]).join(' & '))
+  // Short "Team A"/"Team B" labels are the primary name used everywhere
+  // (payment sub-labels, leg cards); full player names are shown once, as a
+  // subtitle, so a longer roster never truncates a tight label or chip.
+  const teamNames = isTeams || isBeansTeams
+    ? (isTeams ? nassauTeams : beansTeams).map((_, ti) => teamShortName(ti))
+    : [];
+  const teamPlayerLabels = isTeams || isBeansTeams
+    ? (isTeams ? nassauTeams : beansTeams).map(team => teamPlayerNames(players, team))
     : [];
   function teamOfPlayer(pi) {
     if (isTeams) return nassauTeams.findIndex(team => team.includes(pi));
@@ -217,7 +222,9 @@ export default function SettleUpScreen() {
           <>
             <Text style={styles.sectionLabel}>Match Results · ${nassauStake.toFixed(2)}/leg</Text>
             {isTeams && (
-              <Text style={styles.nassauTeamsLabel} numberOfLines={1}>{teamNames[0]} vs {teamNames[1]}</Text>
+              <Text style={styles.nassauTeamsLabel} numberOfLines={2}>
+                {teamNames[0]} ({teamPlayerLabels[0]}) vs {teamNames[1]} ({teamPlayerLabels[1]})
+              </Text>
             )}
             {nassauLegs.map(({ label, range }) => {
               if (isTeams) {
@@ -262,7 +269,9 @@ export default function SettleUpScreen() {
           <>
             <Text style={styles.sectionLabel}>Bean totals</Text>
             {isBeansTeams && (
-              <Text style={styles.nassauTeamsLabel} numberOfLines={1}>{teamNames[0]} vs {teamNames[1]}</Text>
+              <Text style={styles.nassauTeamsLabel} numberOfLines={2}>
+                {teamNames[0]} ({teamPlayerLabels[0]}) vs {teamNames[1]} ({teamPlayerLabels[1]})
+              </Text>
             )}
             {players.map((name, i) => {
               const beans = beanTotals[i];

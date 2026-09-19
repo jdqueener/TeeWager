@@ -6,6 +6,7 @@ import {
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
 import { canPressTeam, activeLegStatusTeam } from '../utils/nassau';
+import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -378,7 +379,7 @@ export default function ScorecardScreen() {
   // team instead of one per player (both teammates carry identical strokes).
   const isScrambleTeams = gameMode === 'nassau' && nassauTeams && nassauTeamFormat === 'scramble';
   const gridRows = isScrambleTeams
-    ? nassauTeams.map(team => ({ label: team.map(pi => players[pi]?.split(' ')[0]).join(' & '), pi: team[0] }))
+    ? nassauTeams.map((team, ti) => ({ label: teamShortName(ti), pi: team[0] }))
     : players.map((name, pi) => ({ label: name, pi }));
 
   function sumStrokes(pi, holeArr) {
@@ -481,9 +482,12 @@ export default function ScorecardScreen() {
             const playerIdxs = players.map((_, i) => i);
             const isTeams = !!nassauTeams;
             const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
-            const teamNames = isTeams
-              ? [teamA.map(i => players[i]?.split(' ')[0]).join(' & '),
-                 teamB.map(i => players[i]?.split(' ')[0]).join(' & ')]
+            // Short "Team A"/"Team B" labels drive the status bar, press
+            // buttons, and anywhere else space is tight; full player names
+            // are shown once, as a subtitle, in the banner below.
+            const teamNames = isTeams ? [teamShortName(0), teamShortName(1)] : [];
+            const teamPlayerLabels = isTeams
+              ? [teamPlayerNames(players, teamA), teamPlayerNames(players, teamB)]
               : [];
             const frontRange = Array.from({ length: 9 }, (_, i) => i);
             const backRange  = holeCount >= 18 ? Array.from({ length: 9 }, (_, i) => i + 9) : [];
@@ -523,10 +527,10 @@ export default function ScorecardScreen() {
               <>
                 {isTeams && (
                   <View style={styles.nassauTeamBanner}>
-                    <Text style={styles.nassauTeamLabel} numberOfLines={1}>
-                      <Text style={styles.nassauTeamA}>{teamNames[0]}</Text>
+                    <Text style={styles.nassauTeamLabel} numberOfLines={2}>
+                      <Text style={styles.nassauTeamA}>{teamNames[0]} ({teamPlayerLabels[0]})</Text>
                       {'  vs  '}
-                      <Text style={styles.nassauTeamB}>{teamNames[1]}</Text>
+                      <Text style={styles.nassauTeamB}>{teamNames[1]} ({teamPlayerLabels[1]})</Text>
                     </Text>
                   </View>
                 )}
@@ -565,11 +569,19 @@ export default function ScorecardScreen() {
             );
           })()}
 
+          {/* 2v2 beans scramble: who's on each team, shown once here — everywhere
+              else (totals bar, bean cards) just says "Team A"/"Team B". */}
+          {gameMode !== 'nassau' && beansTeams?.length === 2 && (
+            <Text style={styles.beansTeamSubtitle} numberOfLines={2}>
+              Team A ({teamPlayerNames(players, beansTeams[0])})  vs  Team B ({teamPlayerNames(players, beansTeams[1])})
+            </Text>
+          )}
+
           {/* Running totals (beans only) */}
           {gameMode !== 'nassau' && (
           <View style={styles.totalsBar}>
             {(beansTeams?.length === 2
-              ? beansTeams.map(team => ({ pi: team[0], label: team.map(i => players[i]?.split(' ')[0]).join(' & ') }))
+              ? beansTeams.map((team, ti) => ({ pi: team[0], label: teamShortName(ti) }))
               : players.map((name, pi) => ({ pi, label: name.split(' ')[0] }))
             ).map(({ pi, label }) => {
               const t = playerTotalBeans(pi) + (state.spots?.[pi] || 0);
@@ -588,7 +600,7 @@ export default function ScorecardScreen() {
             {/* Nassau stroke entry — scramble: one shared ball, one input per team */}
             {gameMode === 'nassau' && nassauTeams && nassauTeamFormat === 'scramble' && nassauTeams.map((team, ti) => {
               const val = strokes[team[0]]?.[hole] || strokes[team[1]]?.[hole] || 0;
-              const teamName = team.map(pi => players[pi]?.split(' ')[0]).join(' & ');
+              const teamName = teamShortName(ti);
               return (
                 <View key={ti} style={styles.nassauStrokeRow}>
                   <Text style={styles.nassauPlayerName} numberOfLines={1}>{teamName}</Text>
@@ -649,7 +661,12 @@ export default function ScorecardScreen() {
               <Text style={styles.strokesLabel}>Strokes{beansTeams ? (beansTeams.length === 2 ? ' · 2v2 Scramble' : ' · Group Scramble') : ''}</Text>
               <View style={styles.strokesRow}>
                 {(beansTeams
-                  ? beansTeams.map(team => ({ pi: team[0], team, label: team.map(i => players[i]?.split(' ')[0]).join(' & ') }))
+                  ? beansTeams.map((team, ti) => ({
+                      pi: team[0], team,
+                      // Group scramble is one shared row, not a "team" to letter-label —
+                      // only 2v2 gets the short Team A/B label.
+                      label: beansTeams.length === 2 ? teamShortName(ti) : team.map(i => players[i]?.split(' ')[0]).join(' & '),
+                    }))
                   : players.map((name, pi) => ({ pi, team: null, label: name.split(' ')[0]}))
                 ).map(({ pi, team, label }) => {
                   const s  = getStroke(pi, hole);
@@ -707,6 +724,8 @@ export default function ScorecardScreen() {
             {(() => {
               const beansIsTeams = beansTeams?.length === 2;
               const beanRows = beansIsTeams
+                ? beansTeams.map((team, ti) => ({ label: teamShortName(ti), rep: team[0] }))
+                : beansTeams
                 ? beansTeams.map(team => ({ label: team.map(i => players[i]?.split(' ')[0]).join(' & '), rep: team[0] }))
                 : players.map((name, pi) => ({ label: name.split(' ')[0], rep: pi }));
               const beanPlayerLabels = beanRows.map(r => r.label);
@@ -1303,6 +1322,7 @@ const styles = StyleSheet.create({
   finishRoundBtnText: { color: colors.white, fontWeight: '800', fontSize: 15 },
 
   // Running totals bar
+  beansTeamSubtitle: { textAlign: 'center', fontSize: 12, fontWeight: '700', color: colors.textMid, backgroundColor: colors.white, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
   totalsBar:  { flexDirection: 'row', backgroundColor: colors.white, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, gap: spacing.xs, ...shadow.sm, zIndex: 5 },
   totalChip:  { flex: 1, alignItems: 'center', backgroundColor: colors.greenPale, borderRadius: radius.sm, paddingVertical: 8, paddingHorizontal: 4 },
   totalName:  { fontSize: 10, color: colors.textMid, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },

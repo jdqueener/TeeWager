@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-nati
 import { useGame } from '../context/GameContext';
 import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer, computePressSettleUp, computeSettleUp } from '../utils/beans';
 import { holeWinner, holeResultTeam } from '../utils/nassau';
+import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -16,13 +17,14 @@ export default function BreakdownScreen() {
   const isNassau = gameMode === 'nassau';
   const isTeams = isNassau && !!nassauTeams;
   const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
-  const teamNames = isTeams
-    ? [teamA.map(i => players[i]?.split(' ')[0]).join(' & '), teamB.map(i => players[i]?.split(' ')[0]).join(' & ')]
-    : [];
+  // Short "Team A"/"Team B" labels are the primary name used everywhere
+  // (tabs, results, payments); full player names are shown once, as a
+  // subtitle, so a longer roster never truncates a tight label or chip.
+  const teamNames = isTeams ? [teamShortName(0), teamShortName(1)] : [];
+  const teamPlayerLabels = isTeams ? [teamPlayerNames(players, teamA), teamPlayerNames(players, teamB)] : [];
   const isBeansTeams = !isNassau && beansTeams?.length === 2;
-  const beansTeamNames = isBeansTeams
-    ? beansTeams.map(team => team.map(i => players[i]?.split(' ')[0]).join(' & '))
-    : [];
+  const beansTeamNames = isBeansTeams ? beansTeams.map((_, ti) => teamShortName(ti)) : [];
+  const beansTeamPlayerLabels = isBeansTeams ? beansTeams.map(team => teamPlayerNames(players, team)) : [];
   const [selectedPlayer, setSelectedPlayer] = useState(0);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -140,9 +142,9 @@ export default function BreakdownScreen() {
   }
   const grossPaid = grossEarned - netDollars;
 
-  const displayName = isBeansTeams
-    ? beansTeamNames[beansTeams.findIndex(team => team.includes(selectedPlayer))]
-    : players[selectedPlayer];
+  const myBeansTeamIdx = isBeansTeams ? beansTeams.findIndex(team => team.includes(selectedPlayer)) : -1;
+  const displayName = isBeansTeams ? beansTeamNames[myBeansTeamIdx] : players[selectedPlayer];
+  const displaySubtitle = isBeansTeams ? beansTeamPlayerLabels[myBeansTeamIdx] : null;
 
   function beanDesc(event) {
     const { bean, count, isFirst, incoming, from } = event;
@@ -205,7 +207,9 @@ export default function BreakdownScreen() {
                 ${nassauStake.toFixed(2)}/leg{isTeams ? ` · 2v2 ${nassauTeamFormat.replace('-', ' ')}` : ''} · hole-by-hole results
               </Text>
               {isTeams && (
-                <Text style={styles.nassauHeaderSub} numberOfLines={1}>{teamNames[0]} vs {teamNames[1]}</Text>
+                <Text style={styles.nassauHeaderSub} numberOfLines={2}>
+                  {teamNames[0]} ({teamPlayerLabels[0]}) vs {teamNames[1]} ({teamPlayerLabels[1]})
+                </Text>
               )}
             </View>
             <View style={styles.nassauTableHeader}>
@@ -268,6 +272,9 @@ export default function BreakdownScreen() {
             <View style={styles.summaryCard}>
               <View style={styles.summaryGlow} />
               <Text style={styles.summaryName}>{displayName}</Text>
+              {displaySubtitle && (
+                <Text style={styles.summarySubtitle} numberOfLines={1}>{displaySubtitle}</Text>
+              )}
               <View style={styles.summaryRow}>
                 <View style={styles.summaryItem}>
                   <Text style={styles.summaryVal}>+${grossEarned.toFixed(2)}</Text>
@@ -347,8 +354,9 @@ const styles = StyleSheet.create({
 
   summaryCard:   { backgroundColor: colors.green, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md, overflow: 'hidden', ...shadow.green },
   summaryGlow:   { position: 'absolute', top: -60, right: -30, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(45,107,68,0.45)' },
-  summaryName:   { fontSize: 20, fontWeight: '900', color: colors.white, marginBottom: spacing.md, letterSpacing: -0.4 },
-  summaryRow:    { flexDirection: 'row', alignItems: 'center' },
+  summaryName:   { fontSize: 20, fontWeight: '900', color: colors.white, letterSpacing: -0.4 },
+  summarySubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  summaryRow:    { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md },
   summaryItem:   { flex: 1, alignItems: 'center' },
   summaryVal:    { fontSize: 27, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
   summaryLabel:  { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 4 },
