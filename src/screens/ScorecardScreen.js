@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
-import { canPressTeam, activeLegStatusTeam } from '../utils/nassau';
+import { canPressTeam, activeLegStatusTeam, teamBestBall } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
@@ -375,15 +375,21 @@ export default function ScorecardScreen() {
   const front = holes.slice(0, Math.min(9, holeCount));
   const back  = holeCount > 9 ? holes.slice(9) : [];
 
-  // Scramble: one shared ball per team, so the scorecard grid shows one row per
-  // team instead of one per player (both teammates carry identical strokes).
-  const isScrambleTeams = gameMode === 'nassau' && nassauTeams && nassauTeamFormat === 'scramble';
-  const gridRows = isScrambleTeams
-    ? nassauTeams.map((team, ti) => ({ label: teamShortName(ti), pi: team[0] }))
+  // 2v2 Nassau: the grid shows one row per TEAM, not one per player — the
+  // value recorded is the team's best-ball score for that hole (scramble's
+  // shared entry and match-play's better-of-two-players collapse to the same
+  // "lowest entered score" computation, so one function covers both).
+  const isGridTeams = gameMode === 'nassau' && !!nassauTeams;
+  const gridRows = isGridTeams
+    ? nassauTeams.map((team, ti) => ({ label: teamShortName(ti), pi: ti }))
     : players.map((name, pi) => ({ label: name, pi }));
 
+  function gridGetStroke(rowIdx, hi) {
+    if (isGridTeams) return teamBestBall(strokes, nassauTeams[rowIdx], hi) ?? 0;
+    return getStroke(rowIdx, hi);
+  }
   function sumStrokes(pi, holeArr) {
-    return holeArr.reduce((s, hi) => s + (getStroke(pi, hi) || 0), 0);
+    return holeArr.reduce((s, hi) => s + (gridGetStroke(pi, hi) || 0), 0);
   }
   function sumPar(holeArr) {
     return holeArr.reduce((s, hi) => s + getHolePar(hi), 0);
@@ -809,13 +815,13 @@ export default function ScorecardScreen() {
           ) : null}
 
           <GridHalf label="OUT" holes={front} rows={gridRows} holeOffset={holeOffset}
-            getHolePar={getHolePar} getStroke={getStroke} getHoleBeans={getHoleBeans}
+            getHolePar={getHolePar} getStroke={gridGetStroke} getHoleBeans={getHoleBeans}
             strokeColor={strokeColor} sumStrokes={sumStrokes} sumPar={sumPar} course={course}
             showBeans={gameMode !== 'nassau'} />
 
           {back.length > 0 && (
             <GridHalf label="IN" holes={back} rows={gridRows} holeOffset={holeOffset}
-              getHolePar={getHolePar} getStroke={getStroke} getHoleBeans={getHoleBeans}
+              getHolePar={getHolePar} getStroke={gridGetStroke} getHoleBeans={getHoleBeans}
               strokeColor={strokeColor} sumStrokes={sumStrokes} sumPar={sumPar} course={course}
               showBeans={gameMode !== 'nassau'} />
           )}
@@ -829,7 +835,7 @@ export default function ScorecardScreen() {
               const tot   = outS + inS;
               // Only count par for holes actually played, so mid-round totals don't
               // compare a partial score against the full round's par.
-              const playedHoles = holes.filter(hi => getStroke(pi, hi) > 0);
+              const playedHoles = holes.filter(hi => gridGetStroke(pi, hi) > 0);
               const totP  = sumPar(playedHoles);
               const diff  = tot > 0 ? tot - totP : null;
               const earned = holes.reduce((s, hi) => s + getHoleBeans(pi, hi), 0);

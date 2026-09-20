@@ -214,20 +214,26 @@ export default function BreakdownScreen() {
             </View>
             <View style={styles.nassauTableHeader}>
               <Text style={[styles.nassauCol, styles.nassauColHole]}>HOLE</Text>
-              {players.map((name, pi) => (
-                <Text key={pi} style={styles.nassauCol}>
-                  {name.split(' ')[0].toUpperCase()}
-                </Text>
-              ))}
+              {isTeams
+                ? teamNames.map((tn, ti) => <Text key={ti} style={styles.nassauCol}>{tn.toUpperCase()}</Text>)
+                : players.map((name, pi) => (
+                    <Text key={pi} style={styles.nassauCol}>
+                      {name.split(' ')[0].toUpperCase()}
+                    </Text>
+                  ))}
               <Text style={[styles.nassauCol, styles.nassauColResult]}>RESULT</Text>
             </View>
             {Array.from({ length: holeCount }, (_, h) => {
               const par = getHolePar(h);
               const playerIdxs = players.map((_, i) => i);
-              let winner, allEntered;
+              let winner, allEntered, teamResult;
               if (isTeams) {
-                const result = holeResultTeam(strokes, teamA, teamB, h, nassauTeamFormat);
-                winner = result.winner;
+                // scoreA/scoreB are already each team's recorded score for the
+                // hole — best-ball for match play, the shared entry for
+                // scramble — so the table shows one column per team, not one
+                // per player.
+                teamResult = holeResultTeam(strokes, teamA, teamB, h, nassauTeamFormat);
+                winner = teamResult.winner;
                 allEntered = winner !== null;
               } else {
                 winner = holeWinner(strokes, playerIdxs, h);
@@ -249,14 +255,11 @@ export default function BreakdownScreen() {
                     <Text style={styles.nassauHoleNum}>{holeOffset + h + 1}</Text>
                     <Text style={styles.nassauHolePar}>P{par}</Text>
                   </View>
-                  {players.map((_, pi) => {
-                    const s = strokes[pi]?.[h] ?? 0;
+                  {(isTeams ? [teamResult.scoreA, teamResult.scoreB] : players.map((_, pi) => strokes[pi]?.[h] ?? 0)).map((s, idx) => {
                     const relPar = s > 0 ? s - par : null;
-                    const isWin = isTeams
-                      ? allEntered && winner === (teamA.includes(pi) ? 0 : 1)
-                      : allEntered && winner === pi;
+                    const isWin = allEntered && winner === idx;
                     return (
-                      <Text key={pi} style={[styles.nassauCol, styles.nassauStroke, isWin && styles.nassauStrokeWin]}>
+                      <Text key={idx} style={[styles.nassauCol, styles.nassauStroke, isWin && styles.nassauStrokeWin]}>
                         {s > 0 ? s : '—'}{relPar !== null ? ` (${relPar >= 0 ? '+' : ''}${relPar === 0 ? 'E' : relPar})` : ''}
                       </Text>
                     );
