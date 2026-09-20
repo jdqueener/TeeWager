@@ -842,7 +842,12 @@ export default function ScorecardScreen() {
               const beans  = earned + (state.spots?.[pi] || 0);
               return (
                 <View key={pi} style={styles.totalRow}>
-                  <Text style={styles.totalName2}>{rowLabel}</Text>
+                  <View style={styles.totalNameWrap}>
+                    <Text style={styles.totalName2} numberOfLines={1}>{rowLabel}</Text>
+                    {isGridTeams && (
+                      <Text style={styles.totalNameSub} numberOfLines={1}>{teamPlayerNames(players, nassauTeams[pi])}</Text>
+                    )}
+                  </View>
                   {back.length > 0 && (
                     <>
                       <Text style={styles.totalSplit}>{outS || '-'}</Text>
@@ -1412,7 +1417,9 @@ const styles = StyleSheet.create({
   totalsCard:         { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
   totalsSectionLabel: { fontSize: 12, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: spacing.sm },
   totalRow:           { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  totalName2:         { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textDark },
+  totalNameWrap:      { flex: 1 },
+  totalName2:         { fontSize: 14, fontWeight: '700', color: colors.textDark },
+  totalNameSub:       { fontSize: 11, color: colors.textMid, marginTop: 1 },
   totalSplit:         { fontSize: 13, color: colors.textMid, width: 32, textAlign: 'center' },
   totalScore:         { fontSize: 18, fontWeight: '900', color: colors.textDark, width: 40, textAlign: 'center' },
   totalDiff:          { fontSize: 13, fontWeight: '700', color: colors.textMid, width: 36, textAlign: 'center' },
