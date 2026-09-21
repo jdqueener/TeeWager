@@ -4,7 +4,7 @@ import {
   Alert, Platform, Modal, TextInput,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
+import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansTeams } from '../utils/beans';
 import { canPressTeam, activeLegStatusTeam, teamBestBall } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
@@ -154,10 +154,6 @@ export default function ScorecardScreen() {
     } else {
       dispatch({ type: 'AWARD_BEAN', playerIdx, holeIdx: hole, beanId: bean.id, delta: currently ? -1 : 1, bean });
     }
-  }
-
-  function playerTotalBeans(pi) {
-    return totalBeansForPlayer(pi, scores, activeBeans, firstBonus);
   }
 
   function getStroke(pi, hi) { return strokes?.[pi]?.[hi] ?? 0; }
@@ -583,23 +579,33 @@ export default function ScorecardScreen() {
             </Text>
           )}
 
-          {/* Running totals (beans only) */}
-          {gameMode !== 'nassau' && (
-          <View style={styles.totalsBar}>
-            {(beansTeams?.length === 2
-              ? beansTeams.map((team, ti) => ({ pi: team[0], label: teamShortName(ti) }))
-              : players.map((name, pi) => ({ pi, label: name.split(' ')[0] }))
-            ).map(({ pi, label }) => {
-              const t = playerTotalBeans(pi) + (state.spots?.[pi] || 0);
-              return (
-                <View key={pi} style={styles.totalChip}>
-                  <Text style={styles.totalName} numberOfLines={1}>{label}</Text>
-                  <Text style={[styles.totalVal, t < 0 && styles.neg]}>{t >= 0 ? `+${t}` : t}</Text>
-                </View>
-              );
-            })}
-          </View>
-          )}
+          {/* Running totals — net $ (same figure Breakdown/Settle Up finalize
+              with), not a raw bean count, so this bar always agrees with what
+              those screens show. */}
+          {gameMode !== 'nassau' && (() => {
+            const isBeansScrambleTeams = beansTeams?.length === 2;
+            const teamNet = isBeansScrambleTeams
+              ? netDollarsBeansTeams(beansTeams, players, scores, activeBeans, firstBonus, beanValue)
+              : null;
+            const rows = isBeansScrambleTeams
+              ? beansTeams.map((team, ti) => ({ pi: team[0], label: teamShortName(ti), net: teamNet[ti] }))
+              : players.map((name, pi) => ({
+                  pi, label: name.split(' ')[0],
+                  net: netDollarsForPlayer(pi, players, scores, activeBeans, firstBonus, beanValue, pressMode, presses, tenthPressed, tenthPressValue, holePresses, holeCount),
+                }));
+            return (
+              <View style={styles.totalsBar}>
+                {rows.map(({ pi, label, net }) => (
+                  <View key={pi} style={styles.totalChip}>
+                    <Text style={styles.totalName} numberOfLines={1}>{label}</Text>
+                    <Text style={[styles.totalVal, net < 0 && styles.neg]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                      {net >= 0 ? `+$${net.toFixed(2)}` : `-$${Math.abs(net).toFixed(2)}`}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            );
+          })()}
 
 
           <ScrollView contentContainerStyle={styles.holeContent}>
@@ -1337,7 +1343,7 @@ const styles = StyleSheet.create({
   totalsBar:  { flexDirection: 'row', backgroundColor: colors.white, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, gap: spacing.xs, ...shadow.sm, zIndex: 5 },
   totalChip:  { flex: 1, alignItems: 'center', backgroundColor: colors.greenPale, borderRadius: radius.sm, paddingVertical: 8, paddingHorizontal: 4 },
   totalName:  { fontSize: 10, color: colors.textMid, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
-  totalVal:   { fontSize: 22, fontWeight: '900', color: colors.green, marginTop: 2, letterSpacing: -0.5 },
+  totalVal:   { fontSize: 18, fontWeight: '900', color: colors.green, marginTop: 2, letterSpacing: -0.5 },
 
   holeContent: { padding: spacing.md, paddingBottom: 120 },
 

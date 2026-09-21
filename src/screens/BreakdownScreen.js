@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer, computePressSettleUp, computeSettleUp } from '../utils/beans';
+import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer, netDollarsForPlayer, netDollarsBeansTeams } from '../utils/beans';
 import { holeWinner, holeResultTeam } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
@@ -72,34 +72,14 @@ export default function BreakdownScreen() {
   const n           = players.length;
 
   // Press-aware net dollars: compute per-hole with effective bean value
-  let netDollars = 0;
-  for (let h = 0; h < holeCount; h++) {
-    const effVal = getEffectiveBeanValue(beanValue, h, pressMode, presses, tenthPressed, tenthPressValue);
-    const myB = beansAtHoleForPlayer(selectedPlayer, h, scores, activeBeans, firstBonus, n);
-    const totalHB = players.reduce((s, _, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
-    netDollars += effVal * (myB * n - totalHB);
-    const holePress = holePresses[h];
-    if (pressMode === 'perHole' && holePress?.playerIdxs?.includes(selectedPlayer)) {
-      const { playerIdxs, value: pressVal = beanValue } = holePress;
-      const np = playerIdxs.length;
-      const myPB = beansAtHoleForPlayer(selectedPlayer, h, scores, activeBeans, firstBonus, n);
-      const totalPB = playerIdxs.reduce((s, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
-      netDollars += pressVal * (myPB * np - totalPB);
-    }
-  }
+  let netDollars = netDollarsForPlayer(selectedPlayer, players, scores, activeBeans, firstBonus, beanValue, pressMode, presses, tenthPressed, tenthPressValue, holePresses, holeCount);
 
   // 2v2 beans scramble: beans only ever land on a team's representative, so the
   // per-player formula above (scaled by the real player count) overstates the
   // swing. Recompute the bottom-line net the same way SettleUpScreen does — as a
   // virtual 2-team game, split evenly per team — so the two screens agree.
   if (isBeansTeams) {
-    const reps = beansTeams.map(team => team[0]);
-    const repNames = reps.map(pi => players[pi]);
-    const repScores = reps.map(pi => scores[pi]);
-    const repBeanTotals = [0, 1].map(i => totalBeansForPlayer(i, repScores, activeBeans, firstBonus));
-    const repPayments = computeSettleUp(repNames, repBeanTotals, beanValue, []);
-    const teamNet = [0, 0];
-    repPayments.forEach(p => { teamNet[p.from] -= p.amt; teamNet[p.to] += p.amt; });
+    const teamNet = netDollarsBeansTeams(beansTeams, players, scores, activeBeans, firstBonus, beanValue);
     const myTeamIdx = beansTeams.findIndex(team => team.includes(selectedPlayer));
     netDollars = myTeamIdx >= 0 ? teamNet[myTeamIdx] : 0;
   }
