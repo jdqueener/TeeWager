@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { totalBeansForPlayer, computeSettleUp, minimumCashFlow } from '../utils/beans';
-import { computeNassauSettleUp, computeNassauSettleUpTeamFormat, legStandings, legMatchStatus, legMatchStatusTeam } from '../utils/nassau';
+import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, legMatchStatusPairStroke, legMatchStatusTeam } from '../utils/nassau';
+import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
 import { saveStats, loadStats } from '../utils/storage';
@@ -58,10 +59,14 @@ export default function SettleUpScreen() {
   const isNassau = gameMode === 'nassau';
   const isTeams = isNassau && !!nassauTeams;
   const isBeansTeams = !isNassau && beansTeams?.length === 2;
-  const teamNames = isTeams
-    ? nassauTeams.map(team => team.map(pi => players[pi]?.split(' ')[0]).join(' & '))
-    : isBeansTeams
-    ? beansTeams.map(team => team.map(pi => players[pi]?.split(' ')[0]).join(' & '))
+  // Short "Team A"/"Team B" labels are the primary name used everywhere
+  // (payment sub-labels, leg cards); full player names are shown once, as a
+  // subtitle, so a longer roster never truncates a tight label or chip.
+  const teamNames = isTeams || isBeansTeams
+    ? (isTeams ? nassauTeams : beansTeams).map((_, ti) => teamShortName(ti))
+    : [];
+  const teamPlayerLabels = isTeams || isBeansTeams
+    ? (isTeams ? nassauTeams : beansTeams).map(team => teamPlayerNames(players, team))
     : [];
   function teamOfPlayer(pi) {
     if (isTeams) return nassauTeams.findIndex(team => team.includes(pi));
@@ -74,7 +79,7 @@ export default function SettleUpScreen() {
   if (isNassau) {
     payments = nassauTeams
       ? computeNassauSettleUpTeamFormat(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses, nassauTeamFormat)
-      : computeNassauSettleUp(players, strokes, nassauStake, holeCount, nassauPresses);
+      : computeNassauSettleUpStroke(players, strokes, nassauStake, holeCount);
   } else if (isBeansTeams) {
     // Award-time, beans only ever land on a team's representative player (see
     // ScorecardScreen's toggleTeam/togglePlayer wiring). Settle as a virtual 2-player
@@ -217,7 +222,9 @@ export default function SettleUpScreen() {
           <>
             <Text style={styles.sectionLabel}>Match Results · ${nassauStake.toFixed(2)}/leg</Text>
             {isTeams && (
-              <Text style={styles.nassauTeamsLabel} numberOfLines={1}>{teamNames[0]} vs {teamNames[1]}</Text>
+              <Text style={styles.nassauTeamsLabel} numberOfLines={2}>
+                {teamNames[0]} ({teamPlayerLabels[0]}) vs {teamNames[1]} ({teamPlayerLabels[1]})
+              </Text>
             )}
             {nassauLegs.map(({ label, range }) => {
               if (isTeams) {
@@ -230,9 +237,15 @@ export default function SettleUpScreen() {
                   </View>
                 );
               }
-              const standing = legStandings(strokes, playerIdxs, range);
+              // Stroke-Play: show each player's total strokes for the leg, lowest
+              // first — that's what actually decides each pairwise bet now.
+              const totals = playerIdxs.map(pi => ({
+                pi,
+                sum: range.reduce((s, h) => s + (strokes[pi]?.[h] ?? 0), 0),
+                entered: range.filter(h => (strokes[pi]?.[h] ?? 0) > 0).length,
+              }));
               const status = players.length === 2
-                ? legMatchStatus(strokes, playerIdxs, range, players)
+                ? legMatchStatusPairStroke(strokes, 0, 1, range, players)
                 : null;
               return (
                 <View key={label} style={styles.nassauLegCard}>
@@ -241,9 +254,9 @@ export default function SettleUpScreen() {
                     <Text style={styles.nassauLegStatus}>{status}</Text>
                   ) : (
                     <View style={styles.nassauLegPlayers}>
-                      {players.map((name, pi) => (
-                        <Text key={pi} style={styles.nassauLegPlayer}>
-                          {name.split(' ')[0]}: {standing.wins[pi]}W {standing.halves[pi]}H {standing.losses[pi]}L
+                      {[...totals].sort((a, b) => a.sum - b.sum).map(t => (
+                        <Text key={t.pi} style={styles.nassauLegPlayer}>
+                          {players[t.pi].split(' ')[0]}: {t.entered > 0 ? `${t.sum} strokes` : '—'}
                         </Text>
                       ))}
                     </View>
@@ -256,7 +269,9 @@ export default function SettleUpScreen() {
           <>
             <Text style={styles.sectionLabel}>Bean totals</Text>
             {isBeansTeams && (
-              <Text style={styles.nassauTeamsLabel} numberOfLines={1}>{teamNames[0]} vs {teamNames[1]}</Text>
+              <Text style={styles.nassauTeamsLabel} numberOfLines={2}>
+                {teamNames[0]} ({teamPlayerLabels[0]}) vs {teamNames[1]} ({teamPlayerLabels[1]})
+              </Text>
             )}
             {players.map((name, i) => {
               const beans = beanTotals[i];

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useReducer, useState } from 'react';
+import React, { createContext, useContext, useEffect, useReducer, useRef, useState } from 'react';
 import { BEAN_DEFS, DEFAULT_PARS } from '../utils/beans';
 import { saveGame, loadGame, clearGame, loadCustomDefs } from '../utils/storage';
 import { fetchProfile, ensureProfile, isTrialExpired, trialRoundsLeft } from '../utils/pro';
@@ -311,11 +311,32 @@ export function GameProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // auto-save whenever round state changes; clear on reset
+  // Auto-save whenever round state changes; clear on reset. Writes are queued
+  // sequentially (never more than one in flight) so a slow write for an older
+  // state can't complete after — and overwrite — a newer one already saved.
+  const saveQueueRef = useRef({ inFlight: false, latestState: null, dirty: false });
   useEffect(() => {
     if (loading) return;
-    if (state.phase === 'round') saveGame(state).catch(e => console.warn('Auto-save failed', e));
-    else clearGame().catch(e => console.warn('Clear game failed', e));
+    if (state.phase !== 'round') {
+      clearGame().catch(e => console.warn('Clear game failed', e));
+      return;
+    }
+    const q = saveQueueRef.current;
+    q.latestState = state;
+    q.dirty = true;
+    if (q.inFlight) return;
+    const runSave = () => {
+      q.inFlight = true;
+      q.dirty = false;
+      const toSave = q.latestState;
+      saveGame(toSave)
+        .catch(e => console.warn('Auto-save failed', e))
+        .finally(() => {
+          q.inFlight = false;
+          if (q.dirty) runSave();
+        });
+    };
+    runSave();
   }, [state, loading]);
 
   const allBeans = [...BEAN_DEFS, ...(state.customBeans || [])];

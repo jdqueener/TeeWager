@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions,
   Alert, Platform, Modal, TextInput,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { isParAllowed, getEffectiveValue, beanLabel, totalBeansForPlayer, getEffectiveBeanValue } from '../utils/beans';
-import { nassauMatchSummary, legMatchStatus, canPressLeg, activeLegStatus,
-         legMatchStatusTeam, canPressTeam, activeLegStatusTeam,
-         canPressPair } from '../utils/nassau';
+import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansTeams } from '../utils/beans';
+import { canPressTeam, activeLegStatusTeam, teamBestBall } from '../utils/nassau';
+import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -44,6 +43,7 @@ export default function ScorecardScreen() {
   const [pressAmountModal, setPressAmountModal] = useState(null); // { mode: 'anytime'|'tenth' }
   const [customPressAmt, setCustomPressAmt] = useState('');
   const [chosenPressAmt, setChosenPressAmt] = useState(null);
+  const [roundFinished, setRoundFinished] = useState(false);
 
   const hole = currentHole;
   const par  = getHolePar(hole);
@@ -94,41 +94,48 @@ export default function ScorecardScreen() {
     return (scores[playerIdx]?.[hole]?.[beanId] || 0) > 0;
   }
 
+  // Guards against mobile browsers occasionally firing a single tap's touch
+  // and click events as two separate presses — without this, the delta-based
+  // award dispatches below would double-count (0 → 1 → 2) on one real tap.
+  const lastPressRef = useRef({});
+  function isDuplicatePress(key) {
+    const now = Date.now();
+    const last = lastPressRef.current[key] || 0;
+    lastPressRef.current[key] = now;
+    return now - last < 500;
+  }
+
   function togglePlayer(bean, playerIdx) {
     if (!bean.free && !pro) { setPaywallVisible(true); return; }
+    if (isDuplicatePress(`${bean.id}:${playerIdx}:${hole}`)) return;
     const currently = hasBean(playerIdx, bean.id);
 
     if (bean.id === 'longDrive') {
       if (!currently) {
-        if (ldCarryover > 0) {
-          dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + ldCarryover });
-        } else {
-          players.forEach((_, pi) => {
-            if (pi !== playerIdx && hasBean(pi, bean.id))
-              dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hole, beanId: bean.id, delta: -1, bean });
-          });
-          dispatch({ type: 'AWARD_BEAN', playerIdx, holeIdx: hole, beanId: bean.id, delta: 1, bean });
-        }
+        // Always dispatch an absolute total (not a +1 delta) — idempotent, so a
+        // duplicate press (e.g. a mobile browser double-firing one tap) is a
+        // harmless no-op instead of stacking to 2.
+        //
+        // Advancing off a hole without awarding Long Drive starts a carryover
+        // pot for it to be claimed on a later hole — but if the user instead
+        // goes BACK to that same hole and awards it there, they're correcting
+        // that one hole retroactively, not claiming the pot going forward, so
+        // the pot shouldn't inflate this award.
+        const totalBeans = isPastHole ? 1 : 1 + ldCarryover;
+        dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans });
       } else {
         const awarded = scores[playerIdx]?.[hole]?.longDrive || 1;
         dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
-        if (awarded > 1) dispatch({ type: 'LD_RESTORE_CARRYOVER', value: awarded - 1 });
+        if (awarded > 1 && !isPastHole) dispatch({ type: 'LD_RESTORE_CARRYOVER', value: awarded - 1 });
       }
     } else if (bean.id === 'kp') {
       if (!currently) {
-        if (kpCarryover > 0) {
-          dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans: 1 + kpCarryover });
-        } else {
-          players.forEach((_, pi) => {
-            if (pi !== playerIdx && hasBean(pi, bean.id))
-              dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hole, beanId: bean.id, delta: -1, bean });
-          });
-          dispatch({ type: 'AWARD_BEAN', playerIdx, holeIdx: hole, beanId: bean.id, delta: 1, bean });
-        }
+        const totalBeans = isPastHole ? 1 : 1 + kpCarryover;
+        dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: hole, totalBeans });
       } else {
         const awarded = scores[playerIdx]?.[hole]?.kp || 1;
         dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: hole, totalBeans: 0 });
-        if (awarded > 1) dispatch({ type: 'KP_RESTORE_CARRYOVER', value: awarded - 1 });
+        if (awarded > 1 && !isPastHole) dispatch({ type: 'KP_RESTORE_CARRYOVER', value: awarded - 1 });
       }
     } else if (bean.id === 'lowBall') {
       if (!currently) {
@@ -149,103 +156,124 @@ export default function ScorecardScreen() {
     }
   }
 
-  function playerTotalBeans(pi) {
-    return totalBeansForPlayer(pi, scores, activeBeans, firstBonus);
-  }
-
   function getStroke(pi, hi) { return strokes?.[pi]?.[hi] ?? 0; }
 
-  function advanceHole() {
-    if (hole >= lastHole) return;
-
-    // Missing-score guard: warn before advancing off a hole where not everyone
-    // (or every team, for a shared scramble score) has a score entered yet —
-    // applies to both Nassau and Beans, individual or team.
+  // Shared missing-score guard for both "advance to next hole" and "finish round
+  // on the last hole" — same check, just a different message and follow-up action.
+  function checkMissingScores(msgVerb, onConfirm) {
     const teams = gameMode === 'nassau' ? nassauTeams : beansTeams;
     const checkRows = teams
       ? teams.map(team => ({ pi: team[0], label: team.map(i => players[i]?.split(' ')[0]).join(' & ') }))
       : players.map((name, pi) => ({ pi, label: name.split(' ')[0] }));
     const missing = checkRows.filter(row => getStroke(row.pi, hole) === 0);
 
-    if (missing.length > 0) {
-      const names = missing.map(m => m.label).join(', ');
-      const title = 'Missing score';
-      const msg = `${names} ${missing.length === 1 ? "doesn't" : "don't"} have a score entered for this hole. Advance anyway?`;
-      if (Platform.OS !== 'web') {
-        Alert.alert(title, msg, [
-          { text: 'Go Back', style: 'cancel' },
-          { text: 'Advance Anyway', onPress: proceedAdvanceHole },
-        ]);
-      } else {
-        setConflictPrompt({ title, msg, onConfirm: proceedAdvanceHole });
-      }
-      return;
+    if (missing.length === 0) return false;
+    const names = missing.map(m => m.label).join(', ');
+    const title = 'Missing score';
+    const msg = `${names} ${missing.length === 1 ? "doesn't" : "don't"} have a score entered for this hole. ${msgVerb} anyway?`;
+    const confirmLabel = `${msgVerb} Anyway`;
+    if (Platform.OS !== 'web') {
+      Alert.alert(title, msg, [
+        { text: 'Go Back', style: 'cancel' },
+        { text: confirmLabel, onPress: onConfirm },
+      ]);
+    } else {
+      setConflictPrompt({ title, msg, onConfirm, confirmLabel });
     }
-
-    proceedAdvanceHole();
+    return true;
   }
 
-  function proceedAdvanceHole() {
+  function advanceHole() {
+    if (hole >= lastHole) return;
+    if (checkMissingScores('Advance', () => proceedAdvanceHole(true))) return;
+    proceedAdvanceHole(true);
+  }
+
+  // The auto-award/carryover logic below only ever runs as part of advancing
+  // off a hole — but there's no hole after the 18th to advance to, so without
+  // this, the final hole's Skins/Long Drive/KP were never evaluated at all.
+  // "Finish Round" resolves the last hole the same way, without advancing.
+  function finishRound() {
+    if (hole !== lastHole) return;
+    if (checkMissingScores('Finish', () => { proceedAdvanceHole(false); setRoundFinished(true); })) return;
+    proceedAdvanceHole(false);
+    setRoundFinished(true);
+  }
+
+  function proceedAdvanceHole(advance) {
     const ldBean     = activeBeans.find(b => b.id === 'longDrive');
     const kpBean     = activeBeans.find(b => b.id === 'kp');
     const skinsBean  = activeBeans.find(b => b.id === 'lowBall');
     const ldEligible = ldBean && isParAllowed(ldBean, par);
     const kpEligible = kpBean && isParAllowed(kpBean, par);
-    const ldWon      = players.some((_, pi) => hasBean(pi, 'longDrive'));
-    const kpWon      = players.some((_, pi) => hasBean(pi, 'kp'));
+
+    // In a 2v2 beans scramble, every "row" is a team sharing one score —
+    // both teammates hold the identical stroke value, so comparing raw
+    // per-player strokes makes a clear team win look like an internal tie
+    // between teammates. Compare by team representative instead.
+    const beansIsTeams = beansTeams?.length === 2;
+    const rowRealIdx = beansIsTeams ? beansTeams.map(team => team[0]) : players.map((_, pi) => pi);
+    const rowLabel   = idx => beansIsTeams
+      ? beansTeams[idx].map(i => players[i]?.split(' ')[0]).join(' & ')
+      : players[rowRealIdx[idx]].split(' ')[0];
+
+    const ldWon      = rowRealIdx.some(pi => hasBean(pi, 'longDrive'));
+    const kpWon      = rowRealIdx.some(pi => hasBean(pi, 'kp'));
 
     const doCarryovers = () => {
       if (ldCarryoverEnabled && ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER', holeIdx: hole });
       if (kpCarryoverEnabled && kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER', holeIdx: hole });
     };
 
+    const verb = advance ? 'Advance' : 'Finish';
     const next = () => {
       doCarryovers();
-      dispatch({ type: 'SET_HOLE', hole: hole + 1 });
+      if (advance) dispatch({ type: 'SET_HOLE', hole: hole + 1 });
     };
 
-    const holeStrokes = players.map((_, pi) => getStroke(pi, hole));
+    const holeStrokes = rowRealIdx.map(pi => getStroke(pi, hole));
     const allEntered  = holeStrokes.every(s => s > 0);
-    const winner      = players.findIndex((_, pi) => hasBean(pi, 'lowBall'));
+    const winnerRow   = rowRealIdx.findIndex(pi => hasBean(pi, 'lowBall'));
 
     if (!allEntered) {
       // Can't determine a low-score leader without every stroke entered —
       // carry the skins pot forward rather than letting it silently drop,
       // unless a winner was already manually awarded on this hole.
-      if (winner < 0 && skinsBean) dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
+      if (winnerRow < 0 && skinsBean) dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
       next();
       return;
     }
 
     const minS     = Math.min(...holeStrokes);
-    const hLeaders = players.map((_, pi) => holeStrokes[pi] === minS);
+    const hLeaders = holeStrokes.map(s => s === minS);
     const outright = hLeaders.filter(Boolean).length === 1;
 
     const confirm = (title, msg) => {
+      const confirmLabel = `${verb} Anyway`;
       if (Platform.OS !== 'web') {
         Alert.alert(title, msg, [
           { text: 'Go Back', style: 'cancel' },
-          { text: 'Advance Anyway', onPress: next },
+          { text: confirmLabel, onPress: () => { next(); if (!advance) setRoundFinished(true); } },
         ]);
       } else {
-        setConflictPrompt({ title, msg, onConfirm: next });
+        setConflictPrompt({ title, msg, onConfirm: () => { next(); if (!advance) setRoundFinished(true); }, confirmLabel });
       }
     };
 
-    if (winner >= 0 && !hLeaders[winner]) {
-      const leaderName = players[hLeaders.indexOf(true)].split(' ')[0];
-      const winnerName = players[winner].split(' ')[0];
+    if (winnerRow >= 0 && !hLeaders[winnerRow]) {
+      const leaderName = rowLabel(hLeaders.indexOf(true));
+      const winnerName = rowLabel(winnerRow);
       confirm(
         'Skins Conflict',
-        `${winnerName} is awarded Skins but ${leaderName} has the low score (${minS}). Advance anyway?`
+        `${winnerName} is awarded Skins but ${leaderName} has the low score (${minS}). ${verb} anyway?`
       );
       return;
     }
 
     // No skins winner — auto-award outright winner or carry over tie
-    if (winner < 0 && skinsBean) {
+    if (winnerRow < 0 && skinsBean) {
       if (outright) {
-        dispatch({ type: 'SKINS_AWARD', playerIdx: hLeaders.indexOf(true), holeIdx: hole, totalBeans: 1 + skinsCarryover });
+        dispatch({ type: 'SKINS_AWARD', playerIdx: rowRealIdx[hLeaders.indexOf(true)], holeIdx: hole, totalBeans: 1 + skinsCarryover });
       } else {
         dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
       }
@@ -310,10 +338,14 @@ export default function ScorecardScreen() {
       }
     });
 
+    // Credit only the team's representative (team[0]) — the same real index
+    // every other team-scramble bean (Skins/LD/KP) and the Strokes card's one
+    // shared row already use — so the normal "first of the round earns 2x"
+    // tracking applies correctly instead of being permanently disabled.
     if (diff === -1 && birdieBean) {
-      team.forEach(pi => dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'birdie', delta: 1, bean: birdieBean, skipFirstBonus: true }));
+      dispatch({ type: 'AWARD_BEAN', playerIdx: team[0], holeIdx: hi, beanId: 'birdie', delta: 1, bean: birdieBean });
     } else if (diff <= -2 && eagleBean) {
-      team.forEach(pi => dispatch({ type: 'AWARD_BEAN', playerIdx: pi, holeIdx: hi, beanId: 'eagle', delta: 1, bean: eagleBean, skipFirstBonus: true }));
+      dispatch({ type: 'AWARD_BEAN', playerIdx: team[0], holeIdx: hi, beanId: 'eagle', delta: 1, bean: eagleBean });
     }
   }
 
@@ -339,15 +371,21 @@ export default function ScorecardScreen() {
   const front = holes.slice(0, Math.min(9, holeCount));
   const back  = holeCount > 9 ? holes.slice(9) : [];
 
-  // Scramble: one shared ball per team, so the scorecard grid shows one row per
-  // team instead of one per player (both teammates carry identical strokes).
-  const isScrambleTeams = gameMode === 'nassau' && nassauTeams && nassauTeamFormat === 'scramble';
-  const gridRows = isScrambleTeams
-    ? nassauTeams.map(team => ({ label: team.map(pi => players[pi]?.split(' ')[0]).join(' & '), pi: team[0] }))
+  // 2v2 Nassau: the grid shows one row per TEAM, not one per player — the
+  // value recorded is the team's best-ball score for that hole (scramble's
+  // shared entry and match-play's better-of-two-players collapse to the same
+  // "lowest entered score" computation, so one function covers both).
+  const isGridTeams = gameMode === 'nassau' && !!nassauTeams;
+  const gridRows = isGridTeams
+    ? nassauTeams.map((team, ti) => ({ label: teamShortName(ti), pi: ti }))
     : players.map((name, pi) => ({ label: name, pi }));
 
+  function gridGetStroke(rowIdx, hi) {
+    if (isGridTeams) return teamBestBall(strokes, nassauTeams[rowIdx], hi) ?? 0;
+    return getStroke(rowIdx, hi);
+  }
   function sumStrokes(pi, holeArr) {
-    return holeArr.reduce((s, hi) => s + (getStroke(pi, hi) || 0), 0);
+    return holeArr.reduce((s, hi) => s + (gridGetStroke(pi, hi) || 0), 0);
   }
   function sumPar(holeArr) {
     return holeArr.reduce((s, hi) => s + getHolePar(hi), 0);
@@ -427,14 +465,31 @@ export default function ScorecardScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Finish Round — the 18th hole has no "next hole" to advance to, so
+              this is what actually runs the final hole's bean/carryover logic. */}
+          {hole === lastHole && (
+            <TouchableOpacity
+              style={[styles.finishRoundBtn, roundFinished && styles.finishRoundBtnDone]}
+              onPress={finishRound}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.finishRoundBtnText}>
+                {roundFinished ? '✓ Round Complete' : '🏁 Finish Round'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Nassau match status bar + press buttons */}
           {gameMode === 'nassau' && (() => {
             const playerIdxs = players.map((_, i) => i);
             const isTeams = !!nassauTeams;
             const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
-            const teamNames = isTeams
-              ? [teamA.map(i => players[i]?.split(' ')[0]).join(' & '),
-                 teamB.map(i => players[i]?.split(' ')[0]).join(' & ')]
+            // Short "Team A"/"Team B" labels drive the status bar, press
+            // buttons, and anywhere else space is tight; full player names
+            // are shown once, as a subtitle, in the banner below.
+            const teamNames = isTeams ? [teamShortName(0), teamShortName(1)] : [];
+            const teamPlayerLabels = isTeams
+              ? [teamPlayerNames(players, teamA), teamPlayerNames(players, teamB)]
               : [];
             const frontRange = Array.from({ length: 9 }, (_, i) => i);
             const backRange  = holeCount >= 18 ? Array.from({ length: 9 }, (_, i) => i + 9) : [];
@@ -444,37 +499,29 @@ export default function ScorecardScreen() {
               { label: 'total', range: Array.from({ length: holeCount }, (_, i) => i), title: 'Total' },
             ];
             function statusLine(leg) {
-              const legPresses = nassauPresses[leg.label] || [];
-              if (isTeams) return activeLegStatusTeam(strokes, teamA, teamB, leg.range, legPresses, teamNames);
-              if (players.length === 2) return activeLegStatus(strokes, playerIdxs, leg.range, legPresses, players);
-              const { wins } = nassauMatchSummary(strokes, players, holeCount)[leg.label] || {};
-              if (!wins) return 'Not started';
-              const sorted = [...playerIdxs].sort((a, b) => (wins[b] || 0) - (wins[a] || 0));
-              return sorted.map(pi => `${players[pi].split(' ')[0]} ${wins[pi] || 0}W`).join(' · ');
-            }
-            // Pressable items: one per eligible leg (2-player / teams), or one per
-            // eligible opponent PAIR per leg for 3-5 player round-robin — each pair
-            // runs its own independent side bet, so each gets its own press button.
-            const pressableItems = [];
-            for (const leg of legs) {
-              if (!leg.range.includes(hole)) continue;
-              const legPresses = nassauPresses[leg.label] || [];
               if (isTeams) {
+                const legPresses = nassauPresses[leg.label] || [];
+                return activeLegStatusTeam(strokes, teamA, teamB, leg.range, legPresses, teamNames);
+              }
+              // Stroke-Play: show each player's running total strokes for this leg —
+              // there's no "up/down" match-play status, just who's ahead on strokes.
+              const totals = playerIdxs.map(pi => {
+                const entered = leg.range.filter(h => (strokes[pi]?.[h] ?? 0) > 0);
+                return { pi, sum: entered.reduce((s, h) => s + strokes[pi][h], 0), entered: entered.length };
+              });
+              if (totals.every(t => t.entered === 0)) return 'Not started';
+              const sorted = [...totals].sort((a, b) => a.sum - b.sum);
+              return sorted.map(t => `${players[t.pi].split(' ')[0]} ${t.sum}`).join(' · ');
+            }
+            // Pressable items: teams only — Stroke-Play has no press (a stroke total
+            // has no natural "2 down" trigger to press off of).
+            const pressableItems = [];
+            if (isTeams) {
+              for (const leg of legs) {
+                if (!leg.range.includes(hole)) continue;
+                const legPresses = nassauPresses[leg.label] || [];
                 if (canPressTeam(strokes, teamA, teamB, leg.range, legPresses, hole)) {
                   pressableItems.push({ leg: leg.label, label: `Press ${leg.title}`, dispatchPlayers: null });
-                }
-              } else if (players.length === 2) {
-                if (canPressLeg(strokes, playerIdxs, leg.range, legPresses, hole)) {
-                  pressableItems.push({ leg: leg.label, label: `Press ${leg.title}`, dispatchPlayers: null });
-                }
-              } else {
-                for (let i = 0; i < playerIdxs.length; i++) {
-                  for (let j = i + 1; j < playerIdxs.length; j++) {
-                    if (canPressPair(strokes, i, j, leg.range, legPresses, hole)) {
-                      const nameI = players[i].split(' ')[0], nameJ = players[j].split(' ')[0];
-                      pressableItems.push({ leg: leg.label, label: `Press ${leg.title}: ${nameI} vs ${nameJ}`, dispatchPlayers: [i, j] });
-                    }
-                  }
                 }
               }
             }
@@ -482,10 +529,10 @@ export default function ScorecardScreen() {
               <>
                 {isTeams && (
                   <View style={styles.nassauTeamBanner}>
-                    <Text style={styles.nassauTeamLabel} numberOfLines={1}>
-                      <Text style={styles.nassauTeamA}>{teamNames[0]}</Text>
+                    <Text style={styles.nassauTeamLabel} numberOfLines={2}>
+                      <Text style={styles.nassauTeamA}>{teamNames[0]} ({teamPlayerLabels[0]})</Text>
                       {'  vs  '}
-                      <Text style={styles.nassauTeamB}>{teamNames[1]}</Text>
+                      <Text style={styles.nassauTeamB}>{teamNames[1]} ({teamPlayerLabels[1]})</Text>
                     </Text>
                   </View>
                 )}
@@ -524,30 +571,48 @@ export default function ScorecardScreen() {
             );
           })()}
 
-          {/* Running totals (beans only) */}
-          {gameMode !== 'nassau' && (
-          <View style={styles.totalsBar}>
-            {(beansTeams?.length === 2
-              ? beansTeams.map(team => ({ pi: team[0], label: team.map(i => players[i]?.split(' ')[0]).join(' & ') }))
-              : players.map((name, pi) => ({ pi, label: name.split(' ')[0] }))
-            ).map(({ pi, label }) => {
-              const t = playerTotalBeans(pi) + (state.spots?.[pi] || 0);
-              return (
-                <View key={pi} style={styles.totalChip}>
-                  <Text style={styles.totalName} numberOfLines={1}>{label}</Text>
-                  <Text style={[styles.totalVal, t < 0 && styles.neg]}>{t >= 0 ? `+${t}` : t}</Text>
-                </View>
-              );
-            })}
-          </View>
+          {/* 2v2 beans scramble: who's on each team, shown once here — everywhere
+              else (totals bar, bean cards) just says "Team A"/"Team B". */}
+          {gameMode !== 'nassau' && beansTeams?.length === 2 && (
+            <Text style={styles.beansTeamSubtitle} numberOfLines={2}>
+              Team A ({teamPlayerNames(players, beansTeams[0])})  vs  Team B ({teamPlayerNames(players, beansTeams[1])})
+            </Text>
           )}
+
+          {/* Running totals — net $ (same figure Breakdown/Settle Up finalize
+              with), not a raw bean count, so this bar always agrees with what
+              those screens show. */}
+          {gameMode !== 'nassau' && (() => {
+            const isBeansScrambleTeams = beansTeams?.length === 2;
+            const teamNet = isBeansScrambleTeams
+              ? netDollarsBeansTeams(beansTeams, players, scores, activeBeans, firstBonus, beanValue)
+              : null;
+            const rows = isBeansScrambleTeams
+              ? beansTeams.map((team, ti) => ({ pi: team[0], label: teamShortName(ti), net: teamNet[ti] }))
+              : players.map((name, pi) => ({
+                  pi, label: name.split(' ')[0],
+                  net: netDollarsForPlayer(pi, players, scores, activeBeans, firstBonus, beanValue, pressMode, presses, tenthPressed, tenthPressValue, holePresses, holeCount),
+                }));
+            return (
+              <View style={styles.totalsBar}>
+                {rows.map(({ pi, label, net }) => (
+                  <View key={pi} style={styles.totalChip}>
+                    <Text style={styles.totalName} numberOfLines={1}>{label}</Text>
+                    <Text style={[styles.totalVal, net < 0 && styles.neg]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                      {net >= 0 ? `+$${net.toFixed(2)}` : `-$${Math.abs(net).toFixed(2)}`}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            );
+          })()}
 
 
           <ScrollView contentContainerStyle={styles.holeContent}>
             {/* Nassau stroke entry — scramble: one shared ball, one input per team */}
             {gameMode === 'nassau' && nassauTeams && nassauTeamFormat === 'scramble' && nassauTeams.map((team, ti) => {
               const val = strokes[team[0]]?.[hole] || strokes[team[1]]?.[hole] || 0;
-              const teamName = team.map(pi => players[pi]?.split(' ')[0]).join(' & ');
+              const teamName = teamShortName(ti);
               return (
                 <View key={ti} style={styles.nassauStrokeRow}>
                   <Text style={styles.nassauPlayerName} numberOfLines={1}>{teamName}</Text>
@@ -608,7 +673,12 @@ export default function ScorecardScreen() {
               <Text style={styles.strokesLabel}>Strokes{beansTeams ? (beansTeams.length === 2 ? ' · 2v2 Scramble' : ' · Group Scramble') : ''}</Text>
               <View style={styles.strokesRow}>
                 {(beansTeams
-                  ? beansTeams.map(team => ({ pi: team[0], team, label: team.map(i => players[i]?.split(' ')[0]).join(' & ') }))
+                  ? beansTeams.map((team, ti) => ({
+                      pi: team[0], team,
+                      // Group scramble is one shared row, not a "team" to letter-label —
+                      // only 2v2 gets the short Team A/B label.
+                      label: beansTeams.length === 2 ? teamShortName(ti) : team.map(i => players[i]?.split(' ')[0]).join(' & '),
+                    }))
                   : players.map((name, pi) => ({ pi, team: null, label: name.split(' ')[0]}))
                 ).map(({ pi, team, label }) => {
                   const s  = getStroke(pi, hole);
@@ -666,6 +736,8 @@ export default function ScorecardScreen() {
             {(() => {
               const beansIsTeams = beansTeams?.length === 2;
               const beanRows = beansIsTeams
+                ? beansTeams.map((team, ti) => ({ label: teamShortName(ti), rep: team[0] }))
+                : beansTeams
                 ? beansTeams.map(team => ({ label: team.map(i => players[i]?.split(' ')[0]).join(' & '), rep: team[0] }))
                 : players.map((name, pi) => ({ label: name.split(' ')[0], rep: pi }));
               const beanPlayerLabels = beanRows.map(r => r.label);
@@ -749,13 +821,13 @@ export default function ScorecardScreen() {
           ) : null}
 
           <GridHalf label="OUT" holes={front} rows={gridRows} holeOffset={holeOffset}
-            getHolePar={getHolePar} getStroke={getStroke} getHoleBeans={getHoleBeans}
+            getHolePar={getHolePar} getStroke={gridGetStroke} getHoleBeans={getHoleBeans}
             strokeColor={strokeColor} sumStrokes={sumStrokes} sumPar={sumPar} course={course}
             showBeans={gameMode !== 'nassau'} />
 
           {back.length > 0 && (
             <GridHalf label="IN" holes={back} rows={gridRows} holeOffset={holeOffset}
-              getHolePar={getHolePar} getStroke={getStroke} getHoleBeans={getHoleBeans}
+              getHolePar={getHolePar} getStroke={gridGetStroke} getHoleBeans={getHoleBeans}
               strokeColor={strokeColor} sumStrokes={sumStrokes} sumPar={sumPar} course={course}
               showBeans={gameMode !== 'nassau'} />
           )}
@@ -769,14 +841,19 @@ export default function ScorecardScreen() {
               const tot   = outS + inS;
               // Only count par for holes actually played, so mid-round totals don't
               // compare a partial score against the full round's par.
-              const playedHoles = holes.filter(hi => getStroke(pi, hi) > 0);
+              const playedHoles = holes.filter(hi => gridGetStroke(pi, hi) > 0);
               const totP  = sumPar(playedHoles);
               const diff  = tot > 0 ? tot - totP : null;
               const earned = holes.reduce((s, hi) => s + getHoleBeans(pi, hi), 0);
               const beans  = earned + (state.spots?.[pi] || 0);
               return (
                 <View key={pi} style={styles.totalRow}>
-                  <Text style={styles.totalName2}>{rowLabel}</Text>
+                  <View style={styles.totalNameWrap}>
+                    <Text style={styles.totalName2} numberOfLines={1}>{rowLabel}</Text>
+                    {isGridTeams && (
+                      <Text style={styles.totalNameSub} numberOfLines={1}>{teamPlayerNames(players, nassauTeams[pi])}</Text>
+                    )}
+                  </View>
                   {back.length > 0 && (
                     <>
                       <Text style={styles.totalSplit}>{outS || '-'}</Text>
@@ -947,7 +1024,7 @@ export default function ScorecardScreen() {
               style={styles.confirmAdvance}
               onPress={() => { conflictPrompt?.onConfirm(); setConflictPrompt(null); }}
             >
-              <Text style={styles.confirmAdvanceText}>Advance Anyway</Text>
+              <Text style={styles.confirmAdvanceText}>{conflictPrompt?.confirmLabel || 'Advance Anyway'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.confirmBack} onPress={() => setConflictPrompt(null)}>
               <Text style={styles.confirmBackText}>Go Back</Text>
@@ -1257,11 +1334,16 @@ const styles = StyleSheet.create({
   holeLabel:   { fontSize: 25, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
   parLabel:    { fontSize: 12, color: 'rgba(255,255,255,0.82)', textAlign: 'center', flexWrap: 'wrap', marginTop: 3, fontWeight: '600' },
 
+  finishRoundBtn:     { backgroundColor: colors.gold, paddingVertical: 12, alignItems: 'center' },
+  finishRoundBtnDone: { backgroundColor: colors.green },
+  finishRoundBtnText: { color: colors.white, fontWeight: '800', fontSize: 15 },
+
   // Running totals bar
+  beansTeamSubtitle: { textAlign: 'center', fontSize: 12, fontWeight: '700', color: colors.textMid, backgroundColor: colors.white, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
   totalsBar:  { flexDirection: 'row', backgroundColor: colors.white, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, gap: spacing.xs, ...shadow.sm, zIndex: 5 },
   totalChip:  { flex: 1, alignItems: 'center', backgroundColor: colors.greenPale, borderRadius: radius.sm, paddingVertical: 8, paddingHorizontal: 4 },
   totalName:  { fontSize: 10, color: colors.textMid, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
-  totalVal:   { fontSize: 22, fontWeight: '900', color: colors.green, marginTop: 2, letterSpacing: -0.5 },
+  totalVal:   { fontSize: 18, fontWeight: '900', color: colors.green, marginTop: 2, letterSpacing: -0.5 },
 
   holeContent: { padding: spacing.md, paddingBottom: 120 },
 
@@ -1341,7 +1423,9 @@ const styles = StyleSheet.create({
   totalsCard:         { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
   totalsSectionLabel: { fontSize: 12, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: spacing.sm },
   totalRow:           { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  totalName2:         { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textDark },
+  totalNameWrap:      { flex: 1 },
+  totalName2:         { fontSize: 14, fontWeight: '700', color: colors.textDark },
+  totalNameSub:       { fontSize: 11, color: colors.textMid, marginTop: 1 },
   totalSplit:         { fontSize: 13, color: colors.textMid, width: 32, textAlign: 'center' },
   totalScore:         { fontSize: 18, fontWeight: '900', color: colors.textDark, width: 40, textAlign: 'center' },
   totalDiff:          { fontSize: 13, fontWeight: '700', color: colors.textMid, width: 36, textAlign: 'center' },

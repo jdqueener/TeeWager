@@ -783,7 +783,7 @@ export default function SetupScreen() {
             <Text style={styles.label}>Format</Text>
             <View style={styles.gameModeRow}>
               {[
-                { id: 'individual', label: '👤 Individual' },
+                { id: 'individual', label: '👤 Stroke-Play' },
                 { id: 'teams',      label: '👥 2v2 Teams' },
               ].map(({ id, label }) => (
                 <TouchableOpacity
@@ -810,7 +810,7 @@ export default function SetupScreen() {
               <>
                 <Text style={styles.label}>Team Format</Text>
                 {[
-                  { id: 'match-play', label: 'Match Play', desc: 'Each player\'s own ball — hole-by-hole wins using each team\'s best ball' },
+                  { id: 'match-play', label: 'Best Ball', desc: 'Each player plays their own ball, best score of hole recorded' },
                   { id: 'scramble',   label: 'Scramble',   desc: 'One shared ball — scored hole-by-hole, just like match play' },
                 ].map(({ id, label, desc }) => (
                   <TouchableOpacity

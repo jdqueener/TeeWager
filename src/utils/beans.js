@@ -100,6 +100,44 @@ export function beansAtHoleForPlayer(playerIdx, holeIdx, scores, activeBeans, fi
   return total;
 }
 
+// Press-aware net dollars for a single player — the same per-hole math
+// SettleUpScreen/BreakdownScreen use, factored out so any screen (e.g. a
+// live running total) shows the same $ figure that finalizes at settle-up.
+export function netDollarsForPlayer(playerIdx, players, scores, activeBeans, firstBonus, beanValue, pressMode, presses, tenthPressed, tenthPressValue, holePresses, holeCount = 18) {
+  const n = players.length;
+  let netDollars = 0;
+  for (let h = 0; h < holeCount; h++) {
+    const effVal = getEffectiveBeanValue(beanValue, h, pressMode, presses, tenthPressed, tenthPressValue);
+    const myB = beansAtHoleForPlayer(playerIdx, h, scores, activeBeans, firstBonus, n);
+    const totalHB = players.reduce((s, _, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
+    netDollars += effVal * (myB * n - totalHB);
+    const holePress = holePresses?.[h];
+    if (pressMode === 'perHole' && holePress?.playerIdxs?.includes(playerIdx)) {
+      const { playerIdxs, value: pressVal = beanValue } = holePress;
+      const np = playerIdxs.length;
+      const myPB = beansAtHoleForPlayer(playerIdx, h, scores, activeBeans, firstBonus, n);
+      const totalPB = playerIdxs.reduce((s, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
+      netDollars += pressVal * (myPB * np - totalPB);
+    }
+  }
+  return netDollars;
+}
+
+// 2v2 beans scramble: beans only ever land on a team's representative, so the
+// per-player formula above (scaled by the real player count) overstates the
+// swing. Compute the bottom line as a virtual 2-team game and split evenly
+// per team, matching SettleUpScreen's settlement.
+export function netDollarsBeansTeams(beansTeams, players, scores, activeBeans, firstBonus, beanValue) {
+  const reps = beansTeams.map(team => team[0]);
+  const repNames = reps.map(pi => players[pi]);
+  const repScores = reps.map(pi => scores[pi]);
+  const repBeanTotals = [0, 1].map(i => totalBeansForPlayer(i, repScores, activeBeans, firstBonus));
+  const repPayments = computeSettleUp(repNames, repBeanTotals, beanValue, []);
+  const teamNet = [0, 0];
+  repPayments.forEach(p => { teamNet[p.from] -= p.amt; teamNet[p.to] += p.amt; });
+  return teamNet;
+}
+
 // Press-aware settlement: handles all three press modes
 export function computePressSettleUp(players, scores, activeBeans, firstBonus, beanValue, pressState, wagers, holeCount = 18, spots = []) {
   const { pressMode, presses, tenthPressed, tenthPressValue, holePresses } = pressState || {};

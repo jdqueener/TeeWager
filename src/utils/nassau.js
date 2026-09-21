@@ -210,7 +210,7 @@ export function holeResultTeam(strokes, teamA, teamB, holeIdx, teamFormat = 'mat
 
 // Stroke-play team standings: compare team stroke totals over a range.
 // scorer: function(strokes, teamPlayers, holeIdx) → number | null
-function legStandingsTeamStroke(strokes, teamA, teamB, holeRange, scorer) {
+export function legStandingsTeamStroke(strokes, teamA, teamB, holeRange, scorer) {
   let totalA = 0, totalB = 0, holesPlayed = 0;
   for (const h of holeRange) {
     const sA = scorer(strokes, teamA, h);
@@ -357,6 +357,51 @@ export function activeStatusPair(strokes, a, b, legRange, legPresses, playerName
   const activeStart = lastPress ? lastPress.startHole : legRange[0];
   const activeRange = legRange.filter(h => h >= activeStart);
   return legMatchStatus(strokes, [a, b], activeRange, playerNames);
+}
+
+// ─── Individual round-robin stroke-play ──────────────────────────────────────
+// "Stroke-Play" individual Nassau: each pair's leg is settled by comparing
+// total strokes over the leg — lower total wins the full stake, a tie means
+// no money changes hands for that pair/leg. No hole-by-hole match play, and
+// no press (a stroke total has no natural "2 down" trigger).
+
+// Human-readable stroke-play status for a pair of individual players.
+export function legMatchStatusPairStroke(strokes, a, b, holeRange, playerNames) {
+  const { totalA, totalB, holesPlayed } = legStandingsTeamStroke(strokes, [a], [b], holeRange, teamCombined);
+  if (holesPlayed === 0) return 'Not started';
+  const diff = totalA - totalB;
+  if (diff === 0) return holesPlayed === holeRange.length ? 'Halved' : 'All Square';
+  const leader = (diff < 0 ? playerNames[a] : playerNames[b]).split(' ')[0];
+  return `${leader} leads by ${Math.abs(diff)}`;
+}
+
+// Net dollar amounts per player for individual round-robin stroke play: for
+// every pair and every leg, whichever player has fewer total strokes wins the
+// full nassauStake from the other; a tie is a push (no money for that pair/leg).
+export function netNassauStroke(players, strokes, nassauStake, holeCount = 18) {
+  const n = players.length;
+  const frontRange = Array.from({ length: 9 }, (_, i) => i);
+  const backRange  = Array.from({ length: Math.min(9, holeCount - 9) }, (_, i) => i + 9);
+  const totalRange = Array.from({ length: holeCount }, (_, i) => i);
+  const legDefs = holeCount >= 18 ? [frontRange, backRange, totalRange] : [frontRange];
+
+  const net = new Array(n).fill(0);
+
+  for (const range of legDefs) {
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const { totalA, totalB } = legStandingsTeamStroke(strokes, [i], [j], range, teamCombined);
+        if (totalA < totalB) { net[i] += nassauStake; net[j] -= nassauStake; }
+        else if (totalB < totalA) { net[j] += nassauStake; net[i] -= nassauStake; }
+      }
+    }
+  }
+
+  return net;
+}
+
+export function computeNassauSettleUpStroke(players, strokes, nassauStake, holeCount = 18) {
+  return minimumCashFlowNassau(players, netNassauStroke(players, strokes, nassauStake, holeCount));
 }
 
 // ─── Settlement ──────────────────────────────────────────────────────────────

@@ -15,7 +15,8 @@ const Tab = createBottomTabNavigator();
 const ICON = { Scorecard: '⛳', Leaderboard: '🏆', Breakdown: '📊', 'Settle Up': '💰', Stats: '🎖️' };
 
 export default function RoundNavigator() {
-  const { pro, setPro } = useGame();
+  const { state, pro, setPro } = useGame();
+  const isNassau = state.gameMode === 'nassau';
   const [modalVisible, setModalVisible] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
   const insets = useSafeAreaInsets();
@@ -44,13 +45,15 @@ export default function RoundNavigator() {
         <Tab.Screen name="Stats"       component={StatsScreen} />
       </Tab.Navigator>
 
-      {/* FAB */}
-      <TouchableOpacity style={[styles.fab, { bottom: tabBarHeight + 16 }]} onPress={onFabPress} activeOpacity={0.85}>
-        <Text style={styles.fabText}>+</Text>
-        {!pro && <Text style={styles.fabLock}>🔒</Text>}
-      </TouchableOpacity>
+      {/* FAB — bonus beans don't exist in Nassau, so hide it there entirely */}
+      {!isNassau && (
+        <TouchableOpacity style={[styles.fab, { bottom: tabBarHeight + 16 }]} onPress={onFabPress} activeOpacity={0.85}>
+          <Text style={styles.fabText}>+</Text>
+          {!pro && <Text style={styles.fabLock}>🔒</Text>}
+        </TouchableOpacity>
+      )}
 
-      <ImpromptuBeanModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+      {!isNassau && <ImpromptuBeanModal visible={modalVisible} onClose={() => setModalVisible(false)} />}
 
       {/* Inline paywall — lazy import to avoid circular deps */}
       {paywallVisible && (() => {

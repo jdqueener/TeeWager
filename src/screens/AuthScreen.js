@@ -8,11 +8,38 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { colors, spacing, radius } from '../utils/theme';
+import { setPro as storePro } from '../utils/storage';
+import { grantPro } from '../utils/pro';
 
-// Replace with real Stripe links when ready
+// Web-only Stripe links — native purchases go through RevenueCat/StoreKit
+// (see nativePurchase below), required for App Store guideline 3.1.1.
 const STRIPE_ANNUAL   = 'https://buy.stripe.com/8x24gsh0H4OqbyZbhU3AY01';
 const STRIPE_MONTHLY  = 'https://buy.stripe.com/6oU14g4dV94G8mNeu63AY00';
 const STRIPE_LIFETIME = 'https://buy.stripe.com/5kQ00cbGn6WyeLb1Hk3AY02';
+
+const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';
+const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
+const PRODUCT_LIFETIME = 'io.teewager.app.pro.lifetime';
+
+async function nativePurchase(productId, onDone) {
+  try {
+    const Purchases = (await import('react-native-purchases')).default;
+    const offerings = await Purchases.getOfferings();
+    const all = offerings.current?.availablePackages ?? [];
+    const pkg = all.find(p => p.product.identifier === productId);
+    if (!pkg) throw new Error('Product not found');
+    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    if (customerInfo.entitlements.active['pro']) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) await grantPro(session.user.id);
+      await storePro(true);
+      onDone(true);
+    }
+  } catch (e) {
+    if (!e.userCancelled) console.warn('Purchase error', e);
+    onDone(false);
+  }
+}
 
 const FREE_FEATURES = [
   { label: '3 free rounds', pro: false },
@@ -339,7 +366,8 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
 }
 
 // ─── Step 2: Plan picker ──────────────────────────────────────────────────────
-function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetime }) {
+function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetime, busy }) {
+  const anyBusy = !!busy;
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
@@ -354,7 +382,7 @@ function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetim
         <Text style={styles.planSub}>You can upgrade or change anytime.</Text>
 
         {/* Monthly — featured */}
-        <TouchableOpacity style={[styles.planCard, styles.planCardPro]} onPress={onSelectPro} activeOpacity={0.85}>
+        <TouchableOpacity style={[styles.planCard, styles.planCardPro]} onPress={onSelectPro} activeOpacity={0.85} disabled={anyBusy}>
           <View style={styles.proBadge}><Text style={styles.proBadgeText}>MOST POPULAR</Text></View>
           <View style={styles.planCardHeader}>
             <Text style={[styles.planName, { color: colors.white }]}>Pro Monthly</Text>
@@ -362,36 +390,42 @@ function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetim
           </View>
           <Text style={styles.planDesc}>Try Pro with no commitment. All premium features unlocked — cancel anytime. Best way to get started.</Text>
           <View style={[styles.planCta, styles.planCtaPro]}>
-            <Text style={[styles.planCtaText, { color: colors.green }]}>Start Pro for $4.99 →</Text>
+            {busy === PRODUCT_MONTHLY
+              ? <ActivityIndicator color={colors.green} />
+              : <Text style={[styles.planCtaText, { color: colors.green }]}>Start Pro for $4.99 →</Text>}
           </View>
         </TouchableOpacity>
 
         {/* Annual */}
-        <TouchableOpacity style={styles.planCard} onPress={onSelectAnnual} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.planCard} onPress={onSelectAnnual} activeOpacity={0.85} disabled={anyBusy}>
           <View style={styles.planCardHeader}>
             <Text style={styles.planName}>Pro Annual</Text>
             <Text style={styles.planPrice}>$49.90<Text style={styles.planPer}>/yr</Text></Text>
           </View>
           <Text style={[styles.planDesc, { color: colors.textMid }]}>Save 2 months vs monthly — just $4.16/month. Great if you play year-round and want the best deal on Pro.</Text>
           <View style={[styles.planCta, styles.planCtaFree]}>
-            <Text style={[styles.planCtaText, { color: colors.green }]}>Save with Annual →</Text>
+            {busy === PRODUCT_ANNUAL
+              ? <ActivityIndicator color={colors.green} />
+              : <Text style={[styles.planCtaText, { color: colors.green }]}>Save with Annual →</Text>}
           </View>
         </TouchableOpacity>
 
         {/* Lifetime */}
-        <TouchableOpacity style={styles.planCard} onPress={onSelectLifetime} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.planCard} onPress={onSelectLifetime} activeOpacity={0.85} disabled={anyBusy}>
           <View style={styles.planCardHeader}>
             <Text style={styles.planName}>Pro Lifetime</Text>
             <Text style={styles.planPrice}>$79.99<Text style={styles.planPer}> once</Text></Text>
           </View>
           <Text style={[styles.planDesc, { color: colors.textMid }]}>Pay once, play forever. No recurring charges, ever.</Text>
           <View style={[styles.planCta, styles.planCtaFree]}>
-            <Text style={[styles.planCtaText, { color: colors.green }]}>Own it forever →</Text>
+            {busy === PRODUCT_LIFETIME
+              ? <ActivityIndicator color={colors.green} />
+              : <Text style={[styles.planCtaText, { color: colors.green }]}>Own it forever →</Text>}
           </View>
         </TouchableOpacity>
 
         {/* Free */}
-        <TouchableOpacity style={[styles.planCard, { borderStyle: 'dashed' }]} onPress={onSelectFree} activeOpacity={0.85}>
+        <TouchableOpacity style={[styles.planCard, { borderStyle: 'dashed' }]} onPress={onSelectFree} activeOpacity={0.85} disabled={anyBusy}>
           <View style={styles.planCardHeader}>
             <Text style={styles.planName}>Free</Text>
             <Text style={styles.planPrice}>$0</Text>
@@ -402,14 +436,16 @@ function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetim
           </View>
         </TouchableOpacity>
 
-        <Text style={styles.planFootnote}>Pro subscriptions billed through Stripe. Cancel anytime.</Text>
+        <Text style={styles.planFootnote}>
+          {Platform.OS === 'web' ? 'Pro subscriptions billed through Stripe. Cancel anytime.' : 'Pro subscriptions billed through the App Store. Cancel anytime.'}
+        </Text>
       </ScrollView>
     </View>
   );
 }
 
 // ─── Step 3: Welcome screen ───────────────────────────────────────────────────
-function WelcomeScreen({ plan, onDone }) {
+function WelcomeScreen({ plan, onDone, onUpgradeAnnual, upgrading }) {
   const isPro = plan === 'pro';
   return (
     <View style={styles.root}>
@@ -445,10 +481,13 @@ function WelcomeScreen({ plan, onDone }) {
             </Text>
             <TouchableOpacity
               style={styles.upgradeNudgeBtn}
-              onPress={() => Linking.openURL(STRIPE_ANNUAL)}
+              onPress={onUpgradeAnnual}
               activeOpacity={0.85}
+              disabled={!!upgrading}
             >
-              <Text style={styles.upgradeNudgeBtnText}>Upgrade to Pro</Text>
+              {upgrading
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.upgradeNudgeBtnText}>Upgrade to Pro</Text>}
             </TouchableOpacity>
           </View>
         )}
@@ -467,6 +506,7 @@ function WelcomeScreen({ plan, onDone }) {
 export default function AuthScreen({ onSkip, initialMode }) {
   const [step, setStep] = useState('auth'); // 'auth' | 'forgot' | 'reset' | 'plan' | 'welcome'
   const [plan, setPlan] = useState('free');
+  const [purchasing, setPurchasing] = useState(null);
 
   // Detect password-reset redirect (?mode=reset in URL)
   useEffect(() => {
@@ -481,23 +521,27 @@ export default function AuthScreen({ onSkip, initialMode }) {
     }
   }, []);
 
-  function handleSelectMonthly() {
-    setPlan('pro');
-    Linking.openURL(STRIPE_MONTHLY);
-    setStep('welcome');
+  function selectPlan(productId, stripeUrl) {
+    if (Platform.OS === 'web') {
+      setPlan('pro');
+      Linking.openURL(stripeUrl);
+      setStep('welcome');
+      return;
+    }
+    setPurchasing(productId);
+    nativePurchase(productId, (success) => {
+      setPurchasing(null);
+      if (success) {
+        setPlan('pro');
+        setStep('welcome');
+      }
+      // Cancelled or failed — stay on the plan picker so they can retry.
+    });
   }
 
-  function handleSelectAnnual() {
-    setPlan('pro');
-    Linking.openURL(STRIPE_ANNUAL);
-    setStep('welcome');
-  }
-
-  function handleSelectLifetime() {
-    setPlan('pro');
-    Linking.openURL(STRIPE_LIFETIME);
-    setStep('welcome');
-  }
+  function handleSelectMonthly()  { selectPlan(PRODUCT_MONTHLY, STRIPE_MONTHLY); }
+  function handleSelectAnnual()   { selectPlan(PRODUCT_ANNUAL, STRIPE_ANNUAL); }
+  function handleSelectLifetime() { selectPlan(PRODUCT_LIFETIME, STRIPE_LIFETIME); }
 
   function handleSelectFree() {
     setPlan('free');
@@ -508,11 +552,25 @@ export default function AuthScreen({ onSkip, initialMode }) {
   if (step === 'reset')  return <ResetScreen onDone={onSkip} />;
 
   if (step === 'plan') {
-    return <PlanPicker onSelectFree={handleSelectFree} onSelectPro={handleSelectMonthly} onSelectAnnual={handleSelectAnnual} onSelectLifetime={handleSelectLifetime} />;
+    return <PlanPicker onSelectFree={handleSelectFree} onSelectPro={handleSelectMonthly} onSelectAnnual={handleSelectAnnual} onSelectLifetime={handleSelectLifetime} busy={purchasing} />;
   }
 
   if (step === 'welcome') {
-    return <WelcomeScreen plan={plan} onDone={onSkip} />;
+    return (
+      <WelcomeScreen
+        plan={plan}
+        onDone={onSkip}
+        upgrading={purchasing}
+        onUpgradeAnnual={() => {
+          if (Platform.OS === 'web') { Linking.openURL(STRIPE_ANNUAL); return; }
+          setPurchasing(PRODUCT_ANNUAL);
+          nativePurchase(PRODUCT_ANNUAL, (success) => {
+            setPurchasing(null);
+            if (success) setPlan('pro');
+          });
+        }}
+      />
+    );
   }
 
   return (

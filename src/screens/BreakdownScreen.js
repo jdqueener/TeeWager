@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer, computePressSettleUp, computeSettleUp } from '../utils/beans';
+import { getEffectiveValue, totalBeansForPlayer, getEffectiveBeanValue, beansAtHoleForPlayer, netDollarsForPlayer, netDollarsBeansTeams } from '../utils/beans';
 import { holeWinner, holeResultTeam } from '../utils/nassau';
+import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
@@ -16,13 +17,14 @@ export default function BreakdownScreen() {
   const isNassau = gameMode === 'nassau';
   const isTeams = isNassau && !!nassauTeams;
   const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
-  const teamNames = isTeams
-    ? [teamA.map(i => players[i]?.split(' ')[0]).join(' & '), teamB.map(i => players[i]?.split(' ')[0]).join(' & ')]
-    : [];
+  // Short "Team A"/"Team B" labels are the primary name used everywhere
+  // (tabs, results, payments); full player names are shown once, as a
+  // subtitle, so a longer roster never truncates a tight label or chip.
+  const teamNames = isTeams ? [teamShortName(0), teamShortName(1)] : [];
+  const teamPlayerLabels = isTeams ? [teamPlayerNames(players, teamA), teamPlayerNames(players, teamB)] : [];
   const isBeansTeams = !isNassau && beansTeams?.length === 2;
-  const beansTeamNames = isBeansTeams
-    ? beansTeams.map(team => team.map(i => players[i]?.split(' ')[0]).join(' & '))
-    : [];
+  const beansTeamNames = isBeansTeams ? beansTeams.map((_, ti) => teamShortName(ti)) : [];
+  const beansTeamPlayerLabels = isBeansTeams ? beansTeams.map(team => teamPlayerNames(players, team)) : [];
   const [selectedPlayer, setSelectedPlayer] = useState(0);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -70,34 +72,14 @@ export default function BreakdownScreen() {
   const n           = players.length;
 
   // Press-aware net dollars: compute per-hole with effective bean value
-  let netDollars = 0;
-  for (let h = 0; h < holeCount; h++) {
-    const effVal = getEffectiveBeanValue(beanValue, h, pressMode, presses, tenthPressed, tenthPressValue);
-    const myB = beansAtHoleForPlayer(selectedPlayer, h, scores, activeBeans, firstBonus, n);
-    const totalHB = players.reduce((s, _, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
-    netDollars += effVal * (myB * n - totalHB);
-    const holePress = holePresses[h];
-    if (pressMode === 'perHole' && holePress?.playerIdxs?.includes(selectedPlayer)) {
-      const { playerIdxs, value: pressVal = beanValue } = holePress;
-      const np = playerIdxs.length;
-      const myPB = beansAtHoleForPlayer(selectedPlayer, h, scores, activeBeans, firstBonus, n);
-      const totalPB = playerIdxs.reduce((s, pi) => s + beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, n), 0);
-      netDollars += pressVal * (myPB * np - totalPB);
-    }
-  }
+  let netDollars = netDollarsForPlayer(selectedPlayer, players, scores, activeBeans, firstBonus, beanValue, pressMode, presses, tenthPressed, tenthPressValue, holePresses, holeCount);
 
   // 2v2 beans scramble: beans only ever land on a team's representative, so the
   // per-player formula above (scaled by the real player count) overstates the
   // swing. Recompute the bottom-line net the same way SettleUpScreen does — as a
   // virtual 2-team game, split evenly per team — so the two screens agree.
   if (isBeansTeams) {
-    const reps = beansTeams.map(team => team[0]);
-    const repNames = reps.map(pi => players[pi]);
-    const repScores = reps.map(pi => scores[pi]);
-    const repBeanTotals = [0, 1].map(i => totalBeansForPlayer(i, repScores, activeBeans, firstBonus));
-    const repPayments = computeSettleUp(repNames, repBeanTotals, beanValue, []);
-    const teamNet = [0, 0];
-    repPayments.forEach(p => { teamNet[p.from] -= p.amt; teamNet[p.to] += p.amt; });
+    const teamNet = netDollarsBeansTeams(beansTeams, players, scores, activeBeans, firstBonus, beanValue);
     const myTeamIdx = beansTeams.findIndex(team => team.includes(selectedPlayer));
     netDollars = myTeamIdx >= 0 ? teamNet[myTeamIdx] : 0;
   }
@@ -140,9 +122,9 @@ export default function BreakdownScreen() {
   }
   const grossPaid = grossEarned - netDollars;
 
-  const displayName = isBeansTeams
-    ? beansTeamNames[beansTeams.findIndex(team => team.includes(selectedPlayer))]
-    : players[selectedPlayer];
+  const myBeansTeamIdx = isBeansTeams ? beansTeams.findIndex(team => team.includes(selectedPlayer)) : -1;
+  const displayName = isBeansTeams ? beansTeamNames[myBeansTeamIdx] : players[selectedPlayer];
+  const displaySubtitle = isBeansTeams ? beansTeamPlayerLabels[myBeansTeamIdx] : null;
 
   function beanDesc(event) {
     const { bean, count, isFirst, incoming, from } = event;
@@ -166,63 +148,77 @@ export default function BreakdownScreen() {
     <View style={styles.root}>
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
 
-      {/* Player tabs */}
-      <View style={styles.playerTabsWrap}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ padding: spacing.sm, gap: spacing.xs }}
-        >
-          {(isBeansTeams
-            ? beansTeams.map((team, ti) => ({ pi: team[0], label: beansTeamNames[ti] }))
-            : players.map((p, i) => ({ pi: i, label: p }))
-          ).map(({ pi, label }) => (
-            <TouchableOpacity
-              key={pi}
-              style={[styles.tab, selectedPlayer === pi && styles.tabActive]}
-              onPress={() => setSelectedPlayer(pi)}
-            >
-              <Text style={[styles.tabText, selectedPlayer === pi && styles.tabTextActive]} numberOfLines={1}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      {/* Player tabs — Nassau's hole-by-hole table already shows every
+          player's strokes and the actual winner of each hole, so there's no
+          "selected player" perspective to switch between; only beans mode
+          needs a tab to pick whose earned/paid/net summary to view. */}
+      {!isNassau && (
+        <View style={styles.playerTabsWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ padding: spacing.sm, gap: spacing.xs }}
+          >
+            {(isBeansTeams
+              ? beansTeams.map((team, ti) => ({ pi: team[0], label: beansTeamNames[ti] }))
+              : players.map((p, i) => ({ pi: i, label: p }))
+            ).map(({ pi, label }) => (
+              <TouchableOpacity
+                key={pi}
+                style={[styles.tab, selectedPlayer === pi && styles.tabActive]}
+                onPress={() => setSelectedPlayer(pi)}
+              >
+                <Text style={[styles.tabText, selectedPlayer === pi && styles.tabTextActive]} numberOfLines={1}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={styles.content}>
         {isNassau ? (
-          /* Nassau: hole-by-hole stroke comparison */
+          /* Nassau: hole-by-hole stroke comparison — winner shown absolutely
+             (not relative to a selected player), so every hole is readable
+             from one table with no tabbing required. */
           <>
             <View style={styles.nassauHeader}>
-              <Text style={styles.nassauHeaderName}>{players[selectedPlayer]}</Text>
+              <Text style={styles.nassauHeaderName}>Nassau Results</Text>
               <Text style={styles.nassauHeaderSub}>
                 ${nassauStake.toFixed(2)}/leg{isTeams ? ` · 2v2 ${nassauTeamFormat.replace('-', ' ')}` : ''} · hole-by-hole results
               </Text>
               {isTeams && (
-                <Text style={styles.nassauHeaderSub} numberOfLines={1}>{teamNames[0]} vs {teamNames[1]}</Text>
+                <Text style={styles.nassauHeaderSub} numberOfLines={2}>
+                  {teamNames[0]} ({teamPlayerLabels[0]}) vs {teamNames[1]} ({teamPlayerLabels[1]})
+                </Text>
               )}
             </View>
             <View style={styles.nassauTableHeader}>
               <Text style={[styles.nassauCol, styles.nassauColHole]}>HOLE</Text>
-              {players.map((name, pi) => (
-                <Text key={pi} style={[styles.nassauCol, pi === selectedPlayer && styles.nassauColActive]}>
-                  {name.split(' ')[0].toUpperCase()}
-                </Text>
-              ))}
+              {isTeams
+                ? teamNames.map((tn, ti) => <Text key={ti} style={styles.nassauCol}>{tn.toUpperCase()}</Text>)
+                : players.map((name, pi) => (
+                    <Text key={pi} style={styles.nassauCol}>
+                      {name.split(' ')[0].toUpperCase()}
+                    </Text>
+                  ))}
               <Text style={[styles.nassauCol, styles.nassauColResult]}>RESULT</Text>
             </View>
             {Array.from({ length: holeCount }, (_, h) => {
               const par = getHolePar(h);
               const playerIdxs = players.map((_, i) => i);
-              let winner, allEntered;
+              let winner, allEntered, teamResult;
               if (isTeams) {
-                const result = holeResultTeam(strokes, teamA, teamB, h, nassauTeamFormat);
-                winner = result.winner;
+                // scoreA/scoreB are already each team's recorded score for the
+                // hole — best-ball for match play, the shared entry for
+                // scramble — so the table shows one column per team, not one
+                // per player.
+                teamResult = holeResultTeam(strokes, teamA, teamB, h, nassauTeamFormat);
+                winner = teamResult.winner;
                 allEntered = winner !== null;
               } else {
                 winner = holeWinner(strokes, playerIdxs, h);
                 allEntered = playerIdxs.every(pi => (strokes[pi]?.[h] ?? 0) > 0);
               }
-              const myTeam = isTeams ? (teamA.includes(selectedPlayer) ? 0 : 1) : null;
               let resultText = '—';
               let resultStyle = styles.nassauResultPending;
               if (allEntered) {
@@ -230,9 +226,8 @@ export default function BreakdownScreen() {
                 else if (isTeams) {
                   // Always name the winning team — never just "WIN" — so 2v2 results read as team, not individual.
                   resultText = `${teamNames[winner]} win`;
-                  resultStyle = winner === myTeam ? styles.nassauResultWin : styles.nassauResultLoss;
-                } else if (winner === selectedPlayer) { resultText = 'WIN'; resultStyle = styles.nassauResultWin; }
-                else { resultText = `${players[winner].split(' ')[0]} wins`; resultStyle = styles.nassauResultLoss; }
+                  resultStyle = styles.nassauResultWin;
+                } else { resultText = `${players[winner].split(' ')[0]} wins`; resultStyle = styles.nassauResultWin; }
               }
               return (
                 <View key={h} style={styles.nassauTableRow}>
@@ -240,19 +235,16 @@ export default function BreakdownScreen() {
                     <Text style={styles.nassauHoleNum}>{holeOffset + h + 1}</Text>
                     <Text style={styles.nassauHolePar}>P{par}</Text>
                   </View>
-                  {players.map((_, pi) => {
-                    const s = strokes[pi]?.[h] ?? 0;
+                  {(isTeams ? [teamResult.scoreA, teamResult.scoreB] : players.map((_, pi) => strokes[pi]?.[h] ?? 0)).map((s, idx) => {
                     const relPar = s > 0 ? s - par : null;
-                    const isWin = isTeams
-                      ? allEntered && winner === (teamA.includes(pi) ? 0 : 1)
-                      : allEntered && winner === pi;
+                    const isWin = allEntered && winner === idx;
                     return (
-                      <Text key={pi} style={[styles.nassauCol, styles.nassauStroke, pi === selectedPlayer && styles.nassauColActive, isWin && styles.nassauStrokeWin]}>
+                      <Text key={idx} style={[styles.nassauCol, styles.nassauStroke, isWin && styles.nassauStrokeWin]}>
                         {s > 0 ? s : '—'}{relPar !== null ? ` (${relPar >= 0 ? '+' : ''}${relPar === 0 ? 'E' : relPar})` : ''}
                       </Text>
                     );
                   })}
-                  <Text style={[styles.nassauCol, styles.nassauColResult, resultStyle]}>{resultText}</Text>
+                  <Text style={[styles.nassauCol, styles.nassauColResult, resultStyle]} numberOfLines={2}>{resultText}</Text>
                 </View>
               );
             })}
@@ -263,6 +255,9 @@ export default function BreakdownScreen() {
             <View style={styles.summaryCard}>
               <View style={styles.summaryGlow} />
               <Text style={styles.summaryName}>{displayName}</Text>
+              {displaySubtitle && (
+                <Text style={styles.summarySubtitle} numberOfLines={1}>{displaySubtitle}</Text>
+              )}
               <View style={styles.summaryRow}>
                 <View style={styles.summaryItem}>
                   <Text style={styles.summaryVal}>+${grossEarned.toFixed(2)}</Text>
@@ -308,7 +303,11 @@ export default function BreakdownScreen() {
                     </View>
                     <Text style={[styles.eventBeans, event.beans < 0 && styles.neg]}>
                       {(() => {
-                        const total = event.incoming ? event.beans : event.beans * (n - 1);
+                        // In a 2v2 beans scramble there's only ONE opposing team, not
+                        // (n-1) separate opponents — each own bean swings against just
+                        // that one team, not every other real player individually.
+                        const opponentMultiplier = isBeansTeams ? 1 : (n - 1);
+                        const total = event.incoming ? event.beans : event.beans * opponentMultiplier;
                         return total >= 0 ? `+${total}` : `${total}`;
                       })()}
                     </Text>
@@ -338,8 +337,9 @@ const styles = StyleSheet.create({
 
   summaryCard:   { backgroundColor: colors.green, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md, overflow: 'hidden', ...shadow.green },
   summaryGlow:   { position: 'absolute', top: -60, right: -30, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(45,107,68,0.45)' },
-  summaryName:   { fontSize: 20, fontWeight: '900', color: colors.white, marginBottom: spacing.md, letterSpacing: -0.4 },
-  summaryRow:    { flexDirection: 'row', alignItems: 'center' },
+  summaryName:   { fontSize: 20, fontWeight: '900', color: colors.white, letterSpacing: -0.4 },
+  summarySubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  summaryRow:    { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md },
   summaryItem:   { flex: 1, alignItems: 'center' },
   summaryVal:    { fontSize: 27, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
   summaryLabel:  { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 4 },
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   nassauColActive:    { color: colors.green },
   nassauColHole:      { flex: 0.7, textAlign: 'left' },
   nassauColHoleCell:  { flex: 0.7, alignItems: 'flex-start' },
-  nassauColResult:    { flex: 1.4, textAlign: 'right' },
+  nassauColResult:    { flex: 1.8, textAlign: 'right', lineHeight: 16 },
   nassauHoleNum:      { fontSize: 14, fontWeight: '900', color: colors.textDark },
   nassauHolePar:      { fontSize: 10, color: colors.textLight, fontWeight: '600' },
   nassauStroke:       { fontSize: 13, color: colors.textDark },
