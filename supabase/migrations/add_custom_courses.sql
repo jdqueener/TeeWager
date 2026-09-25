@@ -17,3 +17,9 @@ create policy "authenticated users can insert"
 
 create policy "owner can update"
   on custom_courses for update using (auth.uid() = created_by);
+
+-- Explicit Data API grants (required from Oct 30, 2026 — Supabase stops
+-- auto-granting new tables; RLS policies above still govern actual access).
+grant select on public.custom_courses to anon;
+grant select, insert, update, delete on public.custom_courses to authenticated;
+grant select, insert, update, delete on public.custom_courses to service_role;
