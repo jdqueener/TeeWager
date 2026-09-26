@@ -241,6 +241,19 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
               </TouchableOpacity>
             </View>
 
+            {/* Legal */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Legal</Text>
+              <TouchableOpacity style={styles.supportRow} onPress={() => Linking.openURL('https://teewager.io/terms')}>
+                <Text style={styles.supportIcon}>📄</Text>
+                <Text style={styles.supportText}>Terms of Service</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.supportRow} onPress={() => Linking.openURL('https://teewager.io/privacy')}>
+                <Text style={styles.supportIcon}>🔒</Text>
+                <Text style={styles.supportText}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Sign out */}
             <TouchableOpacity
               style={styles.signOutBtn}
