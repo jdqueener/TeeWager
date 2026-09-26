@@ -306,7 +306,6 @@
 <script>
 const SUPABASE_URL      = 'https://zzhilgpznznwxvzgpzwt.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6aGlsZ3B6bnpud3h2emdwend0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NDI5MzEsImV4cCI6MjA5ODQxODkzMX0.2QfdhOb7QI-0fEvVpgYcIF2AhpO0usL2fhfZQFuCnxM';
-const ADMIN_PASSWORD    = 'TeeTime2026';
 const PAYOUT_PER_SIGNUP = 1.00;
 
 let allPartners = [];
@@ -317,51 +316,63 @@ let sortDir = -1;
 let statusView = 'active';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-function checkAdminPwd() {
-  if (document.getElementById('admin-pwd').value === ADMIN_PASSWORD) {
-    sessionStorage.setItem('tw_admin', '1');
+// The admin password is checked server-side by the admin-api Edge Function,
+// which returns a signed, time-limited token — the password itself never
+// touches sessionStorage or gets sent on any request after login.
+async function adminApi(action, params) {
+  const token = sessionStorage.getItem('tw_admin_token');
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-api`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+    body: JSON.stringify({ action, token, ...params }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401) {
+    sessionStorage.removeItem('tw_admin_token');
+    document.getElementById('main').style.display = 'none';
+    document.getElementById('auth-gate').style.display = 'flex';
+    throw new Error(data.error || 'unauthorized');
+  }
+  if (!r.ok) throw new Error(data.error || `request failed (${r.status})`);
+  return data;
+}
+
+async function checkAdminPwd() {
+  const pwd = document.getElementById('admin-pwd').value;
+  try {
+    const { token } = await adminApi('login', { password: pwd });
+    sessionStorage.setItem('tw_admin_token', token);
     document.getElementById('auth-gate').style.display = 'none';
     document.getElementById('main').style.display = 'block';
     loadData();
-  } else {
+  } catch {
     document.getElementById('auth-error').style.display = 'block';
   }
 }
 document.getElementById('admin-pwd').addEventListener('keydown', e => { if (e.key === 'Enter') checkAdminPwd(); });
 
 function signOut() {
-  sessionStorage.removeItem('tw_admin');
+  sessionStorage.removeItem('tw_admin_token');
   document.getElementById('main').style.display = 'none';
   document.getElementById('auth-gate').style.display = 'flex';
   document.getElementById('admin-pwd').value = '';
 }
 
-if (sessionStorage.getItem('tw_admin')) {
+if (sessionStorage.getItem('tw_admin_token')) {
   document.getElementById('auth-gate').style.display = 'none';
   document.getElementById('main').style.display = 'block';
   loadData();
 }
 
 window.addEventListener('pageshow', function(e) {
-  if (e.persisted && sessionStorage.getItem('tw_admin')) loadData();
+  if (e.persisted && sessionStorage.getItem('tw_admin_token')) loadData();
 });
 
 // ── Data ──────────────────────────────────────────────────────────────────────
-async function sbFetch(path) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-  });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-
 async function loadData() {
   document.getElementById('table-body').innerHTML = '<tr><td colspan="7" class="loading">Loading…</td></tr>';
   try {
-    const [partners, profiles] = await Promise.all([
-      sbFetch('partners?select=*&order=created_at.desc'),
-      sbFetch('profiles?select=id,display_name,email,referred_by,created_at&referred_by=not.is.null'),
-    ]);
+    const { partners, profiles } = await adminApi('list');
     allPartners = partners;
     allProfiles = profiles;
     populateStateFilter();
@@ -535,40 +546,32 @@ function closeDrawer() {
 async function saveStatus() {
   if (!currentDrawerPartner) return;
   const status = document.getElementById('drawer-status').value;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
-    body: JSON.stringify({ status }),
-  });
-  if (r.ok) {
+  try {
+    await adminApi('update', { id: currentDrawerPartner.id, fields: { status } });
     allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, status } : p);
     currentDrawerPartner.status = status;
     document.getElementById('drawer-winback').style.display = status === 'inactive' ? 'block' : 'none';
     updateStats();
     renderTable();
     alert('Status updated.');
-  } else {
-    alert('Failed: ' + await r.text());
+  } catch(e) {
+    alert('Failed: ' + e.message);
   }
 }
 
 async function saveNotes() {
   if (!currentDrawerPartner) return;
   const notes = document.getElementById('drawer-notes').value.trim();
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
-    body: JSON.stringify({ placement_notes: notes || null }),
-  });
-  if (r.ok) {
+  try {
+    await adminApi('update', { id: currentDrawerPartner.id, fields: { placement_notes: notes || null } });
     allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, placement_notes: notes } : p);
     currentDrawerPartner.placement_notes = notes;
     const saved = document.getElementById('notes-saved');
     saved.style.display = 'inline';
     renderTable();
     setTimeout(() => saved.style.display = 'none', 2000);
-  } else {
-    alert('Failed: ' + await r.text());
+  } catch(e) {
+    alert('Failed: ' + e.message);
   }
 }
 

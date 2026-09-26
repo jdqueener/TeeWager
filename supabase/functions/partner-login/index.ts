@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import bcrypt from 'npm:bcryptjs@2.4.3';
 
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -45,7 +46,39 @@ serve(async (req) => {
   const rows = await res.json();
   const partner = Array.isArray(rows) && rows[0];
 
-  if (!partner || partner.portal_password !== password) {
+  if (!partner) {
+    return new Response(JSON.stringify({ error: 'invalid credentials' }), {
+      status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const stored = partner.portal_password ?? '';
+  const isHashed = stored.startsWith('$2a$') || stored.startsWith('$2b$') || stored.startsWith('$2y$');
+  let valid = false;
+
+  if (isHashed) {
+    valid = bcrypt.compareSync(password, stored);
+  } else {
+    // Legacy plaintext row (pre-dating password hashing). Verify directly,
+    // then transparently upgrade it to a bcrypt hash so it's never compared
+    // in plaintext again.
+    valid = stored === password;
+    if (valid) {
+      const upgraded = bcrypt.hashSync(password, 10);
+      await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${partner.id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({ portal_password: upgraded }),
+      }).catch((e) => console.error('password upgrade failed', e));
+    }
+  }
+
+  if (!valid) {
     return new Response(JSON.stringify({ error: 'invalid credentials' }), {
       status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
     });

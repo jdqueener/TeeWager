@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import bcrypt from 'npm:bcryptjs@2.4.3';
 
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -62,7 +63,7 @@ serve(async (req) => {
         Prefer: 'return=minimal',
       },
       body: JSON.stringify({
-        portal_password: password,
+        portal_password: bcrypt.hashSync(password, 10),
         reset_token: null,
         reset_token_expires: null,
       }),

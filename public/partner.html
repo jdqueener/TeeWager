@@ -279,7 +279,7 @@
       <div class="field-grid">
         <div class="field">
           <label for="partner-code">Access code <span>*</span></label>
-          <input type="text" id="partner-code" name="partner_code" required placeholder="TeeWagerRevenue" autocomplete="off" />
+          <input type="text" id="partner-code" name="partner_code" required placeholder="Enter the code from your mailer" autocomplete="off" />
           <div id="partner-code-error" style="display:none;color:var(--red);font-size:13px;margin-top:4px;">Invalid access code. Check your mailer and try again.</div>
         </div>
       </div>
@@ -674,14 +674,10 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 document.getElementById('partner-form').addEventListener('submit', async function(e) {
   e.preventDefault();
 
-  // Validate partner code
+  // The access code itself is now checked server-side (see partner-signup
+  // Edge Function) — it's a real secret and never lives in client JS.
   const codeInput = document.getElementById('partner-code');
   const codeError = document.getElementById('partner-code-error');
-  if (codeInput.value.trim().toLowerCase() !== 'teewagerrevenue') {
-    codeError.style.display = 'block';
-    codeInput.focus();
-    return;
-  }
   codeError.style.display = 'none';
 
   // Validate passwords
@@ -735,16 +731,15 @@ document.getElementById('partner-form').addEventListener('submit', async functio
     placement_notes:      get('placement_notes') || null,
     referral_code:        get('referral_code') || null,
     portal_password:      pw,
+    access_code:          codeInput.value.trim(),
   };
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/partner-signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Prefer': 'return=minimal',
       },
       body: JSON.stringify(payload),
     });
@@ -754,7 +749,14 @@ document.getElementById('partner-form').addEventListener('submit', async functio
       document.getElementById('success-msg').style.display = 'block';
     } else {
       const err = await res.json().catch(() => ({}));
-      console.error('Supabase error', err);
+      if (res.status === 403 && err.error === 'invalid access code') {
+        codeError.style.display = 'block';
+        codeInput.focus();
+        btn.disabled = false;
+        btn.textContent = 'Submit partner application →';
+        return;
+      }
+      console.error('Partner signup error', err);
       btn.disabled = false;
       btn.textContent = 'Submit partner application →';
       alert('Something went wrong. Please email partners@teewager.io directly.');

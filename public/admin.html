@@ -752,7 +752,6 @@
 <script>
 const SUPABASE_URL     = 'https://zzhilgpznznwxvzgpzwt.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6aGlsZ3B6bnpud3h2emdwend0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NDI5MzEsImV4cCI6MjA5ODQxODkzMX0.2QfdhOb7QI-0fEvVpgYcIF2AhpO0usL2fhfZQFuCnxM';
-const ADMIN_PASSWORD   = 'TeeTime2026';
 // Per-signup payout to partners (dollars)
 const PAYOUT_PER_SIGNUP = 1.00;
 
@@ -764,27 +763,50 @@ let sortDir = -1;
 let period  = 'all';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-function checkAdminPwd() {
+// The admin password is checked server-side by the admin-api Edge Function,
+// which returns a signed, time-limited token — the password itself never
+// touches sessionStorage or gets sent on any request after login. This same
+// token/session is shared with /dashboard (same origin, same sessionStorage key).
+async function adminApi(action, params) {
+  const token = sessionStorage.getItem('tw_admin_token');
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-api`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+    body: JSON.stringify({ action, token, ...params }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401) {
+    sessionStorage.removeItem('tw_admin_token');
+    document.getElementById('main').style.display = 'none';
+    document.getElementById('auth-gate').style.display = 'flex';
+    throw new Error(data.error || 'unauthorized');
+  }
+  if (!r.ok) throw new Error(data.error || `request failed (${r.status})`);
+  return data;
+}
+
+async function checkAdminPwd() {
   const val = document.getElementById('admin-pwd').value;
-  if (val === ADMIN_PASSWORD) {
-    sessionStorage.setItem('tw_admin', '1');
+  try {
+    const { token } = await adminApi('login', { password: val });
+    sessionStorage.setItem('tw_admin_token', token);
     document.getElementById('auth-gate').style.display = 'none';
     document.getElementById('main').style.display = 'block';
     loadData();
-  } else {
+  } catch {
     document.getElementById('auth-error').style.display = 'block';
   }
 }
 document.getElementById('admin-pwd').addEventListener('keydown', e => { if (e.key === 'Enter') checkAdminPwd(); });
 
 function signOut() {
-  sessionStorage.removeItem('tw_admin');
+  sessionStorage.removeItem('tw_admin_token');
   document.getElementById('main').style.display = 'none';
   document.getElementById('auth-gate').style.display = 'flex';
   document.getElementById('admin-pwd').value = '';
 }
 
-if (sessionStorage.getItem('tw_admin')) {
+if (sessionStorage.getItem('tw_admin_token')) {
   document.getElementById('auth-gate').style.display = 'none';
   document.getElementById('main').style.display = 'block';
   loadData();
@@ -792,26 +814,14 @@ if (sessionStorage.getItem('tw_admin')) {
 
 // Force fresh data when browser restores page from bfcache
 window.addEventListener('pageshow', function(e) {
-  if (e.persisted && sessionStorage.getItem('tw_admin')) loadData();
+  if (e.persisted && sessionStorage.getItem('tw_admin_token')) loadData();
 });
 
 // ── Data loading ──────────────────────────────────────────────────────────────
-async function sbFetch(path) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    cache: 'no-store',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-  });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-
 async function loadData() {
   document.getElementById('table-body').innerHTML = '<tr><td colspan="7" class="loading">Loading…</td></tr>';
   try {
-    const [partners, profiles] = await Promise.all([
-      sbFetch('partners?select=*&order=created_at.desc'),
-      sbFetch('profiles?select=id,display_name,email,referred_by,created_at&referred_by=not.is.null'),
-    ]);
+    const { partners, profiles } = await adminApi('list');
     allPartners = partners;
     allProfiles = profiles;
     populateStateFilter();
@@ -1072,38 +1082,25 @@ function downloadDrawerQR() {
 async function clearRegistered() {
   if (!currentDrawerPartner) return;
   if (!confirm('Remove self-registered status for this partner?')) return;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
-    body: JSON.stringify({ portal_password: null }),
-  });
-  if (r.ok) {
+  try {
+    await adminApi('clear-password', { id: currentDrawerPartner.id });
     currentDrawerPartner.portal_password = null;
     allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, portal_password: null } : p);
     document.getElementById('drawer-reg-status').innerHTML = '<span style="color:#888;">Admin added</span> — partner has not self-registered &nbsp;<button type="button" onclick="markAsRegistered()" style="padding:4px 12px;background:#1A4A2E;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Mark as registered</button>';
     renderTable();
-  } else { alert('Failed: ' + await r.text()); }
+  } catch(e) { alert('Failed: ' + e.message); }
 }
 
 async function markAsRegistered() {
   if (!currentDrawerPartner) return;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'Prefer': 'return=minimal',
-    },
-    body: JSON.stringify({ portal_password: null, status: 'registered' }),
-  });
-  if (r.ok) {
+  try {
+    await adminApi('mark-registered', { id: currentDrawerPartner.id });
     currentDrawerPartner.portal_password = 'admin-marked';
     allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, portal_password: 'admin-marked' } : p);
     document.getElementById('drawer-reg-status').innerHTML = '<span style="color:#166534;font-weight:700;">✓ Marked as registered</span> — manually confirmed by admin';
     renderTable();
-  } else {
-    alert('Failed: ' + await r.text());
+  } catch(e) {
+    alert('Failed: ' + e.message);
   }
 }
 
@@ -1133,17 +1130,7 @@ async function saveEdit() {
   };
 
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify(fields),
-    });
-    if (!r.ok) throw new Error(await r.text());
+    await adminApi('update', { id: currentDrawerPartner.id, fields });
     Object.assign(currentDrawerPartner, fields);
     allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, ...fields } : p);
     renderTable();
@@ -1166,43 +1153,28 @@ async function deletePartner() {
   if (!currentDrawerPartner) return;
   if (!confirm(`Delete "${currentDrawerPartner.course_name}"? This cannot be undone.`)) return;
 
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
-    method: 'DELETE',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-  });
-  if (r.ok) {
+  try {
+    await adminApi('delete', { id: currentDrawerPartner.id });
     allPartners = allPartners.filter(p => p.id !== currentDrawerPartner.id);
     renderTable();
     updateStats();
     closeDrawer();
-  } else {
-    alert('Delete failed: ' + await r.text());
+  } catch(e) {
+    alert('Delete failed: ' + e.message);
   }
 }
 
 async function saveStatus() {
   if (!currentDrawerPartner) return;
   const status = document.getElementById('drawer-status').value;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'Prefer': 'return=minimal',
-    },
-    body: JSON.stringify({ status }),
-  });
-  if (r.ok) {
+  try {
+    await adminApi('update', { id: currentDrawerPartner.id, fields: { status } });
     currentDrawerPartner.status = status;
     allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, status } : p);
     renderTable();
     updateStats();
     alert('Status updated.');
-  } else {
+  } catch(e) {
     alert('Failed to update status.');
   }
 }
@@ -1210,20 +1182,16 @@ async function saveStatus() {
 async function convertToPartner() {
   if (!currentDrawerPartner) return;
   if (!confirm(`Convert "${currentDrawerPartner.course_name}" to an Active Partner? This will set status to Active and clear the outreach stage.`)) return;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
-    body: JSON.stringify({ status: 'active', outreach_stage: null, outreach_last_date: null }),
-  });
-  if (r.ok) {
+  try {
+    await adminApi('update', { id: currentDrawerPartner.id, fields: { status: 'active', outreach_stage: null, outreach_last_date: null } });
     allPartners = allPartners.map(p => p.id === currentDrawerPartner.id
       ? { ...p, status: 'active', outreach_stage: null, outreach_last_date: null } : p);
     closeDrawer();
     renderTable();
     updateStats();
     if (confirm('Partner activated! Go to Partner Dashboard now?')) window.location.href = '/dashboard';
-  } else {
-    alert('Failed: ' + await r.text());
+  } catch(e) {
+    alert('Failed: ' + e.message);
   }
 }
 
@@ -1364,18 +1332,7 @@ async function submitAddPartner() {
   };
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) throw new Error(await res.text());
+    await adminApi('create', { fields: payload });
 
     const qrUrl = `https://www.teewager.io/app?ref=${refCode}`;
     document.getElementById('add-qr-url').textContent = qrUrl;
@@ -1488,31 +1445,22 @@ async function submitBulk() {
   for (const r of bulkParsed) {
     prog.textContent = `Importing ${done + failed + 1} of ${bulkParsed.length}…`;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify({
-          course_name:     r.course_name,
-          city:            r.city,
-          state:           r.state,
-          referral_code:   r.refCode,
-          status:          'pending',
-          first_name:      r.contact_name ? r.contact_name.split(' ')[0] : null,
-          last_name:       r.contact_name ? r.contact_name.split(' ').slice(1).join(' ') || null : null,
-          email:           r.email  || null,
-          phone:           r.phone  || null,
-          mailing_address: r.address || null,
-          outreach_stage:  'Prospect',
-          outreach_last_date: null,
-        }),
-      });
-      if (res.ok) done++; else { console.error('Bulk import row failed', r.course_name, await res.text()); failed++; }
-    } catch(e) { console.error('Bulk import row error', r.course_name, e); failed++; }
+      await adminApi('create', { fields: {
+        course_name:     r.course_name,
+        city:            r.city,
+        state:           r.state,
+        referral_code:   r.refCode,
+        status:          'pending',
+        first_name:      r.contact_name ? r.contact_name.split(' ')[0] : null,
+        last_name:       r.contact_name ? r.contact_name.split(' ').slice(1).join(' ') || null : null,
+        email:           r.email  || null,
+        phone:           r.phone  || null,
+        mailing_address: r.address || null,
+        outreach_stage:  'Prospect',
+        outreach_last_date: null,
+      }});
+      done++;
+    } catch(e) { console.error('Bulk import row failed', r.course_name, e); failed++; }
   }
 
   prog.textContent = `Done — ${done} imported${failed ? ', ' + failed + ' failed' : ''}.`;
@@ -1595,26 +1543,9 @@ function getOutreachStage(id) {
 
 async function setOutreachStage(id, stage) {
   const now = stage ? new Date().toISOString() : null;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'Prefer': 'return=representation',
-    },
-    body: JSON.stringify({ outreach_stage: stage, outreach_last_date: now }),
-  });
-  const text = await r.text();
-  console.log('setOutreachStage response', r.status, text);
-  if (!r.ok) throw new Error(text);
-  let updated;
-  try { updated = JSON.parse(text); } catch(e) { updated = []; }
-  if (!Array.isArray(updated) || updated.length === 0) {
-    throw new Error(`No rows updated (id=${id}). Check Supabase RLS policies allow UPDATE on partners.`);
-  }
+  await adminApi('update', { id, fields: { outreach_stage: stage, outreach_last_date: now } });
   const idx = allPartners.findIndex(x => x.id === id);
-  if (idx >= 0) allPartners[idx] = { ...allPartners[idx], ...updated[0] };
+  if (idx >= 0) allPartners[idx] = { ...allPartners[idx], outreach_stage: stage, outreach_last_date: now };
 }
 
 async function saveOutreachNotes() {
@@ -1622,12 +1553,7 @@ async function saveOutreachNotes() {
   const notes = document.getElementById('drawer-outreach-notes').value.trim() || null;
   const msg   = document.getElementById('drawer-outreach-notes-msg');
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ outreach_notes: notes }),
-    });
-    if (!r.ok) throw new Error(await r.text());
+    await adminApi('update', { id: currentDrawerPartner.id, fields: { outreach_notes: notes } });
     currentDrawerPartner.outreach_notes = notes;
     allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, outreach_notes: notes } : p);
     msg.style.display = 'inline';
@@ -1821,12 +1747,7 @@ async function logContact() {
   const ts = dateVal ? new Date(dateVal).toISOString() : new Date().toISOString();
   const msg = document.getElementById('drawer-log-msg');
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${currentDrawerPartner.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ outreach_stage: stage, outreach_last_date: ts }),
-    });
-    if (!r.ok) throw new Error(await r.text());
+    await adminApi('update', { id: currentDrawerPartner.id, fields: { outreach_stage: stage, outreach_last_date: ts } });
     currentDrawerPartner.outreach_stage = stage;
     currentDrawerPartner.outreach_last_date = ts;
     allPartners = allPartners.map(p => p.id === currentDrawerPartner.id ? { ...p, outreach_stage: stage, outreach_last_date: ts } : p);
