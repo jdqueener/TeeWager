@@ -81,7 +81,10 @@ serve(async (req) => {
         svc('profiles?select=id,display_name,email,referred_by,created_at&referred_by=not.is.null'),
       ]);
       if (!partnersRes.ok || !profilesRes.ok) {
-        return json({ error: 'lookup failed' }, 502);
+        const partnersErr = partnersRes.ok ? null : await partnersRes.text();
+        const profilesErr = profilesRes.ok ? null : await profilesRes.text();
+        console.error('list lookup failed', { partnersStatus: partnersRes.status, partnersErr, profilesStatus: profilesRes.status, profilesErr });
+        return json({ error: 'lookup failed', partnersStatus: partnersRes.status, partnersErr, profilesStatus: profilesRes.status, profilesErr }, 502);
       }
       return json({ partners: await partnersRes.json(), profiles: await profilesRes.json() });
     }
