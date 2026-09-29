@@ -35,22 +35,22 @@ const INFO_CONTENT = {
   game: {
     title: 'Game Modes',
     items: [
-      { label: '🫘 Beans', desc: 'Earn "beans" for skins, birdies, long drive, closest-to-pin, and more. Settle up in dollars per bean at the end of the round.' },
-      { label: '⛳ Nassau', desc: 'A classic match-play bet — three separate wagers: front 9, back 9, and the full 18, each won hole-by-hole.' },
+      { id: 'beans',  label: '🫘 Beans', desc: 'Earn "beans" for skins, birdies, long drive, closest-to-pin, and more. Settle up in dollars per bean at the end of the round.' },
+      { id: 'nassau', label: '⛳ Nassau', desc: 'A classic match-play bet — three separate wagers: front 9, back 9, and the full 18, each won hole-by-hole.' },
     ],
   },
   nassauFormat: {
     title: 'Nassau Format',
     items: [
-      { label: '👤 Stroke-Play', desc: 'Every player competes on their own — lowest score wins each hole. Works for 2-5 players, with presses available between any pair.' },
-      { label: '👥 2v2 Teams', desc: 'Split into two teams of 2. Best Ball or Scramble — team vs. team, hole-by-hole.' },
+      { id: 'individual', label: '👤 Stroke-Play', desc: 'Every player competes on their own — lowest score wins each hole. Works for 2-5 players, with presses available between any pair.' },
+      { id: 'teams',      label: '👥 2v2 Teams', desc: 'Split into two teams of 2. Best Ball or Scramble — team vs. team, hole-by-hole.' },
     ],
   },
   beansFormat: {
     title: 'Beans Format',
     items: [
-      { label: '👤 Individual', desc: 'Every player enters their own score and earns beans on their own.' },
-      { label: '🎯 Scramble', desc: 'Players share one score per hole — either the whole group, or two 2-player teams. Some beans (like Long Drive and KP) are still tracked per player.' },
+      { id: 'individual', label: '👤 Individual', desc: 'Every player enters their own score and earns beans on their own.' },
+      { id: 'scramble',   label: '🎯 Scramble', desc: 'Players share one score per hole — either the whole group, or two 2-player teams. Some beans (like Long Drive and KP) are still tracked per player.' },
     ],
   },
 };
@@ -807,7 +807,7 @@ export default function SetupScreen() {
         ))}
 
         {/* Game mode selector */}
-        <LabelInfo text="Game" onPress={() => setInfoModal(INFO_CONTENT.game)} />
+        <LabelInfo text="Game" onPress={() => setInfoModal({ ...INFO_CONTENT.game, current: gameMode })} />
         <View style={styles.gameModeRow}>
           {[
             { id: 'beans',  label: '🫘 Beans' },
@@ -828,7 +828,7 @@ export default function SetupScreen() {
 
         {gameMode === 'nassau' && (
           <>
-            <LabelInfo text="Format" onPress={() => setInfoModal(INFO_CONTENT.nassauFormat)} />
+            <LabelInfo text="Format" onPress={() => setInfoModal({ ...INFO_CONTENT.nassauFormat, current: nassauFormat })} />
             <View style={styles.gameModeRow}>
               {[
                 { id: 'individual', label: '👤 Stroke-Play' },
@@ -898,7 +898,7 @@ export default function SetupScreen() {
 
         {gameMode === 'beans' && <>
         {/* Beans format: individual (default) or scramble */}
-        <LabelInfo text="Format" onPress={() => setInfoModal(INFO_CONTENT.beansFormat)} />
+        <LabelInfo text="Format" onPress={() => setInfoModal({ ...INFO_CONTENT.beansFormat, current: beansFormat })} />
         <View style={styles.gameModeRow}>
           {[
             { id: 'individual', label: '👤 Individual' },
@@ -1193,12 +1193,18 @@ export default function SetupScreen() {
               {infoModal && (
                 <>
                   <Text style={styles.infoTitle}>{infoModal.title}</Text>
-                  {infoModal.items.map((it, idx) => (
-                    <View key={idx} style={styles.infoItemRow}>
-                      <Text style={styles.infoItemLabel}>{it.label}</Text>
-                      <Text style={styles.infoItemDesc}>{it.desc}</Text>
-                    </View>
-                  ))}
+                  {infoModal.items.map((it, idx) => {
+                    const selected = it.id === infoModal.current;
+                    return (
+                      <View key={idx} style={[styles.infoItemRow, selected && styles.infoItemRowSelected]}>
+                        <View style={styles.infoItemLabelRow}>
+                          <Text style={styles.infoItemLabel}>{it.label}</Text>
+                          {selected && <Text style={styles.infoItemSelectedTag}>✓ Selected</Text>}
+                        </View>
+                        <Text style={styles.infoItemDesc}>{it.desc}</Text>
+                      </View>
+                    );
+                  })}
                   <TouchableOpacity style={styles.infoCloseBtn} onPress={() => setInfoModal(null)}>
                     <Text style={styles.infoCloseBtnText}>Got it</Text>
                   </TouchableOpacity>
@@ -1257,8 +1263,11 @@ const styles = StyleSheet.create({
   infoOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   infoCard:      { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 360, ...shadow.md },
   infoTitle:     { fontSize: 16, fontWeight: '900', color: colors.textDark, marginBottom: spacing.md },
-  infoItemRow:   { marginBottom: spacing.md },
-  infoItemLabel: { fontSize: 14, fontWeight: '800', color: colors.textDark, marginBottom: 2 },
+  infoItemRow:   { marginBottom: spacing.md, padding: spacing.sm, borderRadius: radius.md },
+  infoItemRowSelected: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.green },
+  infoItemLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  infoItemLabel: { fontSize: 14, fontWeight: '800', color: colors.textDark },
+  infoItemSelectedTag: { fontSize: 11, fontWeight: '800', color: colors.green },
   infoItemDesc:  { fontSize: 13, color: colors.textMid, lineHeight: 18 },
   infoCloseBtn:  { marginTop: spacing.xs, alignSelf: 'flex-end', paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
   infoCloseBtnText: { fontSize: 14, fontWeight: '800', color: colors.green },
