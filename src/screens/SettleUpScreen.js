@@ -37,6 +37,7 @@ export default function SettleUpScreen() {
   const [saved, setSaved] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
+  const [showMath, setShowMath] = useState(false);
 
   const needsChipOff = ldCarryover > 0 || kpCarryover > 0 || skinsCarryover > 0;
 
@@ -75,6 +76,7 @@ export default function SettleUpScreen() {
   }
 
   const beanTotals = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
+  const totalBeansSum = beanTotals.reduce((a, b) => a + b, 0);
   let payments;
   if (isNassau) {
     payments = nassauTeams
@@ -310,6 +312,76 @@ export default function SettleUpScreen() {
 
         {/* Payments */}
         <Text style={styles.sectionLabel}>Payments</Text>
+
+        {!isNassau && (
+          <>
+            <TouchableOpacity style={styles.mathToggle} onPress={() => setShowMath(v => !v)} activeOpacity={0.7}>
+              <Text style={styles.mathToggleText}>🧮 {showMath ? 'Hide' : 'Show'} the math</Text>
+              <Text style={styles.mathToggleChevron}>{showMath ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+            {showMath && (
+              <View style={styles.mathCard}>
+                {isBeansTeams ? (() => {
+                  const reps = beansTeams.map(team => team[0]);
+                  const repBeans = reps.map(pi => beanTotals[pi]);
+                  const netRep0 = beanValue * (repBeans[0] - repBeans[1]);
+                  return (
+                    <>
+                      <Text style={styles.mathIntro}>
+                        Beans always land on one rep per team, so the two teams settle like a 1v1 bean game, then split evenly between teammates.
+                      </Text>
+                      <View style={styles.mathDivider} />
+                      <View style={styles.mathRow}>
+                        <Text style={styles.mathLabel}>{teamNames[0]} beans ({teamPlayerLabels[0]})</Text>
+                        <Text style={styles.mathValue}>{repBeans[0]}</Text>
+                      </View>
+                      <View style={styles.mathRow}>
+                        <Text style={styles.mathLabel}>{teamNames[1]} beans ({teamPlayerLabels[1]})</Text>
+                        <Text style={styles.mathValue}>{repBeans[1]}</Text>
+                      </View>
+                      <View style={styles.mathDivider} />
+                      <Text style={styles.mathFormula}>
+                        ${beanValue.toFixed(2)} × ({repBeans[0]} − {repBeans[1]}) = {netRep0 >= 0 ? '+' : ''}${netRep0.toFixed(2)} for {teamNames[0]}
+                      </Text>
+                      <Text style={styles.mathFormula}>
+                        Split evenly → {netRep0 >= 0 ? '+' : ''}${(netRep0 / 2).toFixed(2)} per {teamNames[0]} player, {-netRep0 >= 0 ? '+' : ''}${(-netRep0 / 2).toFixed(2)} per {teamNames[1]} player
+                      </Text>
+                    </>
+                  );
+                })() : (
+                  <>
+                    <Text style={styles.mathIntro}>
+                      Every bean you earn is owed to you by each other player, so your net is:
+                    </Text>
+                    <Text style={styles.mathFormulaHeader}>
+                      ${beanValue.toFixed(2)} × (your beans × {players.length} players − {totalBeansSum} total beans)
+                    </Text>
+                    <View style={styles.mathDivider} />
+                    {players.map((name, i) => {
+                      const beans = beanTotals[i];
+                      const net = beanValue * (beans * players.length - totalBeansSum);
+                      return (
+                        <View key={i} style={styles.mathPlayerRow}>
+                          <Text style={styles.mathPlayerName}>{name.split(' ')[0]}</Text>
+                          <Text style={styles.mathFormula}>
+                            {beans} × {players.length} − {totalBeansSum} = {net >= 0 ? '+' : ''}${net.toFixed(2)}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                    {wagers.length > 0 && (
+                      <Text style={styles.mathNote}>Side wager amounts (below) are added on top of these bean nets before settling.</Text>
+                    )}
+                  </>
+                )}
+                <Text style={styles.mathNote}>
+                  Payments below are the fewest transactions that settle everyone to $0 — the biggest debtor pays the biggest creditor, repeat until square.
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+
         {payments.length === 0 ? (
           <View style={styles.allSquareCard}>
             <Text style={styles.allSquareEmoji}>🎉</Text>
@@ -391,6 +463,22 @@ const styles = StyleSheet.create({
   name:   { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
   val:    { fontSize: 15, fontWeight: '800', color: colors.green, marginLeft: spacing.sm },
   neg:    { color: colors.red },
+
+  // Math breakdown
+  mathToggle:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.xs, marginBottom: spacing.xs },
+  mathToggleText:    { fontSize: 13, fontWeight: '700', color: colors.green },
+  mathToggleChevron: { fontSize: 10, color: colors.green },
+  mathCard:          { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 0.5, borderColor: colors.border, ...shadow.sm },
+  mathIntro:         { fontSize: 13, color: colors.textMid, marginBottom: spacing.xs, lineHeight: 18 },
+  mathFormulaHeader: { fontSize: 12, fontWeight: '700', color: colors.textDark, marginBottom: spacing.xs },
+  mathDivider:       { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
+  mathRow:           { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+  mathLabel:         { fontSize: 13, color: colors.textMid, fontWeight: '600' },
+  mathValue:         { fontSize: 13, color: colors.textDark, fontWeight: '800' },
+  mathPlayerRow:     { paddingVertical: 4 },
+  mathPlayerName:    { fontSize: 13, fontWeight: '800', color: colors.textDark },
+  mathFormula:       { fontSize: 12, color: colors.textMid, marginTop: 1, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  mathNote:          { fontSize: 11, color: colors.textLight, marginTop: spacing.sm, fontStyle: 'italic', lineHeight: 15 },
 
   // Payment cards
   paymentCard:      { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', borderLeftWidth: 4, borderLeftColor: colors.gold, ...shadow.md },
