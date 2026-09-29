@@ -482,7 +482,7 @@ function WelcomeScreen({ plan, onDone, onUpgradeAnnual, upgrading }) {
           <View style={styles.upgradeNudge}>
             <Text style={styles.upgradeNudgeTitle}>Want more?</Text>
             <Text style={styles.upgradeNudgeBody}>
-              Upgrade to Pro for a 5th player, exclusive bean types, and unlimited history — just $29.90/year.
+              Upgrade to Pro for a 5th player, exclusive bean types, and unlimited history — just $49.90/year.
             </Text>
             <TouchableOpacity
               style={styles.upgradeNudgeBtn}
