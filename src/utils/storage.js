@@ -123,6 +123,10 @@ export async function saveGuestFlag() {
   await AsyncStorage.setItem(KEYS.GUEST_MODE, '1');
 }
 
+export async function clearGuestFlag() {
+  await AsyncStorage.removeItem(KEYS.GUEST_MODE);
+}
+
 export async function deleteSavedPlayer(name) {
   const current = await loadSavedPlayers();
   const updated = current.filter(n => n !== name);

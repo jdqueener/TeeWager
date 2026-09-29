@@ -47,7 +47,14 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer
+        documentTitle={{
+          formatter: (options, route) => {
+            const name = options?.title ?? route?.name;
+            return name ? `${name} – TeeWager` : 'TeeWager';
+          },
+        }}
+      >
         <AuthProvider>
           <GameProvider>
             <AppContent />

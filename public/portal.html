@@ -364,9 +364,9 @@ function showDashboard(partner) {
     tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">📊</div>No subscription data yet. Hang your placard and check back soon!</div></td></tr>';
   } else {
     tbody.innerHTML = [
-      monthly_count  ? `<tr><td><span class="badge badge-monthly">Monthly Pro</span></td><td>${monthly_count}</td><td>$0.37/mo</td><td>$${(monthly_count*0.37).toFixed(2)}/mo</td></tr>` : '',
-      annual_count   ? `<tr><td><span class="badge badge-annual">Annual Pro</span></td><td>${annual_count}</td><td>$3.83/yr</td><td>$${(annual_count*3.83).toFixed(2)}/yr</td></tr>` : '',
-      lifetime_count ? `<tr><td><span class="badge badge-lifetime">Lifetime</span></td><td>${lifetime_count}</td><td>$6.33 once</td><td>$${(lifetime_count*6.33).toFixed(2)} total</td></tr>` : '',
+      monthly_count  ? `<tr><td><span class="badge badge-monthly">Monthly Pro</span></td><td>${monthly_count}</td><td>$0.64/mo</td><td>$${(monthly_count*0.64).toFixed(2)}/mo</td></tr>` : '',
+      annual_count   ? `<tr><td><span class="badge badge-annual">Annual Pro</span></td><td>${annual_count}</td><td>$6.36/yr</td><td>$${(annual_count*6.36).toFixed(2)}/yr</td></tr>` : '',
+      lifetime_count ? `<tr><td><span class="badge badge-lifetime">Lifetime</span></td><td>${lifetime_count}</td><td>$10.20 once</td><td>$${(lifetime_count*10.20).toFixed(2)} total</td></tr>` : '',
     ].join('');
   }
 
