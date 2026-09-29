@@ -30,42 +30,26 @@ const MAX_FREE_PLAYERS = 4;
 const MAX_PRO_PLAYERS  = 5;
 const TEE_COLORS = { Blue: '#1a6fb5', White: '#e0e0e0', Red: '#c0392b', Gold: '#B8860B', Black: '#222', Green: '#1A4A2E' };
 
-// Brief explanations shown by the "?" info buttons next to game/format toggles.
+// Brief explanations shown by the "?" badge on each Game mode button.
+// Each game's format options are listed inside its own popup.
 const INFO_CONTENT = {
-  game: {
-    title: 'Game Modes',
-    items: [
-      { id: 'beans',  label: '🫘 Beans', desc: 'Earn "beans" for skins, birdies, long drive, closest-to-pin, and more. Settle up in dollars per bean at the end of the round.' },
-      { id: 'nassau', label: '⛳ Nassau', desc: 'A classic match-play bet — three separate wagers: front 9, back 9, and the full 18, each won hole-by-hole.' },
+  beans: {
+    title: '🫘 Beans',
+    desc: 'Earn "beans" for skins, birdies, long drive, closest-to-pin, and more. Settle up in dollars per bean at the end of the round.',
+    formats: [
+      { label: '👤 Individual', desc: 'Every player enters their own score and earns beans on their own.' },
+      { label: '🎯 Scramble', desc: 'Players share one score per hole — either the whole group, or two 2-player teams. Some beans (like Long Drive and KP) are still tracked per player.' },
     ],
   },
-  nassauFormat: {
-    title: 'Nassau Format',
-    items: [
-      { id: 'individual', label: '👤 Stroke-Play', desc: 'Every player competes on their own — lowest score wins each hole. Works for 2-5 players, with presses available between any pair.' },
-      { id: 'teams',      label: '👥 2v2 Teams', desc: 'Split into two teams of 2. Best Ball or Scramble — team vs. team, hole-by-hole.' },
-    ],
-  },
-  beansFormat: {
-    title: 'Beans Format',
-    items: [
-      { id: 'individual', label: '👤 Individual', desc: 'Every player enters their own score and earns beans on their own.' },
-      { id: 'scramble',   label: '🎯 Scramble', desc: 'Players share one score per hole — either the whole group, or two 2-player teams. Some beans (like Long Drive and KP) are still tracked per player.' },
+  nassau: {
+    title: '⛳ Nassau',
+    desc: 'A classic match-play bet — three separate wagers: front 9, back 9, and the full 18, each won hole-by-hole.',
+    formats: [
+      { label: '👤 Stroke-Play', desc: 'Every player competes on their own — lowest score wins each hole. Works for 2-5 players, with presses available between any pair.' },
+      { label: '👥 2v2 Teams', desc: 'Split into two teams of 2. Best Ball or Scramble — team vs. team, hole-by-hole.' },
     ],
   },
 };
-
-// Section label with a "?" button that opens a brief explanation of the options below it.
-function LabelInfo({ text, onPress }) {
-  return (
-    <View style={styles.labelRow}>
-      <Text style={styles.label}>{text}</Text>
-      <TouchableOpacity style={styles.infoBtn} onPress={onPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
-        <Text style={styles.infoBtnText}>?</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
 
 // Shared 2v2 team-assignment picker — used for both Nassau Teams and Beans team scramble,
 // so the two-slot swap logic (and its selects) only live in one place.
@@ -807,28 +791,37 @@ export default function SetupScreen() {
         ))}
 
         {/* Game mode selector */}
-        <LabelInfo text="Game" onPress={() => setInfoModal({ ...INFO_CONTENT.game, current: gameMode })} />
+        <Text style={styles.label}>Game</Text>
         <View style={styles.gameModeRow}>
           {[
             { id: 'beans',  label: '🫘 Beans' },
             { id: 'nassau', label: '⛳ Nassau' },
           ].map(({ id, label }) => (
-            <TouchableOpacity
-              key={id}
-              style={[styles.gameModeBtn, gameMode === id && styles.gameModeBtnActive]}
-              onPress={() => setGameMode(id)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.gameModeBtnText, gameMode === id && styles.gameModeBtnTextActive]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
+            <View key={id} style={styles.gameModeBtnWrap}>
+              <TouchableOpacity
+                style={[styles.gameModeBtn, gameMode === id && styles.gameModeBtnActive]}
+                onPress={() => setGameMode(id)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.gameModeBtnText, gameMode === id && styles.gameModeBtnTextActive]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.gameModeInfoBadge}
+                onPress={() => setInfoModal(INFO_CONTENT[id])}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.gameModeInfoBadgeText}>?</Text>
+              </TouchableOpacity>
+            </View>
           ))}
         </View>
 
         {gameMode === 'nassau' && (
           <>
-            <LabelInfo text="Format" onPress={() => setInfoModal({ ...INFO_CONTENT.nassauFormat, current: nassauFormat })} />
+            <Text style={styles.label}>Format</Text>
             <View style={styles.gameModeRow}>
               {[
                 { id: 'individual', label: '👤 Stroke-Play' },
@@ -898,7 +891,7 @@ export default function SetupScreen() {
 
         {gameMode === 'beans' && <>
         {/* Beans format: individual (default) or scramble */}
-        <LabelInfo text="Format" onPress={() => setInfoModal({ ...INFO_CONTENT.beansFormat, current: beansFormat })} />
+        <Text style={styles.label}>Format</Text>
         <View style={styles.gameModeRow}>
           {[
             { id: 'individual', label: '👤 Individual' },
@@ -1185,26 +1178,24 @@ export default function SetupScreen() {
         </View>
       </Modal>
 
-      {/* Info popup for "?" buttons next to game/format labels */}
+      {/* Info popup for the "?" badge on each Game mode button. */}
       <Modal visible={!!infoModal} transparent animationType="fade" onRequestClose={() => setInfoModal(null)}>
         <TouchableOpacity style={styles.infoOverlay} activeOpacity={1} onPress={() => setInfoModal(null)}>
           <TouchableWithoutFeedback>
-            <View style={styles.infoCard}>
+            <View style={[styles.infoCard, { maxHeight: '85%' }]}>
               {infoModal && (
                 <>
                   <Text style={styles.infoTitle}>{infoModal.title}</Text>
-                  {infoModal.items.map((it, idx) => {
-                    const selected = it.id === infoModal.current;
-                    return (
-                      <View key={idx} style={[styles.infoItemRow, selected && styles.infoItemRowSelected]}>
-                        <View style={styles.infoItemLabelRow}>
-                          <Text style={styles.infoItemLabel}>{it.label}</Text>
-                          {selected && <Text style={styles.infoItemSelectedTag}>✓ Selected</Text>}
-                        </View>
-                        <Text style={styles.infoItemDesc}>{it.desc}</Text>
+                  <ScrollView style={styles.infoScroll} showsVerticalScrollIndicator={false}>
+                    <Text style={styles.infoDesc}>{infoModal.desc}</Text>
+                    <Text style={styles.infoFormatsHeading}>Formats</Text>
+                    {infoModal.formats.map((f, fi) => (
+                      <View key={fi} style={styles.infoSubItem}>
+                        <Text style={styles.infoSubLabel}>{f.label}</Text>
+                        <Text style={styles.infoSubDesc}>{f.desc}</Text>
                       </View>
-                    );
-                  })}
+                    ))}
+                  </ScrollView>
                   <TouchableOpacity style={styles.infoCloseBtn} onPress={() => setInfoModal(null)}>
                     <Text style={styles.infoCloseBtnText}>Got it</Text>
                   </TouchableOpacity>
@@ -1257,18 +1248,19 @@ const styles = StyleSheet.create({
 
   label:   { fontSize: 12, fontWeight: '800', color: colors.textMid, marginTop: spacing.lg, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 1 },
 
-  labelRow:      { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  infoBtn:       { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: colors.textLight, alignItems: 'center', justifyContent: 'center' },
-  infoBtnText:   { fontSize: 10, fontWeight: '800', color: colors.textLight, lineHeight: 12 },
+  gameModeBtnWrap:      { flex: 1, position: 'relative' },
+  gameModeInfoBadge:    { position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.textLight, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  gameModeInfoBadgeText:{ fontSize: 11, fontWeight: '800', color: colors.textLight, lineHeight: 13 },
+
   infoOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   infoCard:      { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 360, ...shadow.md },
-  infoTitle:     { fontSize: 16, fontWeight: '900', color: colors.textDark, marginBottom: spacing.md },
-  infoItemRow:   { marginBottom: spacing.md, padding: spacing.sm, borderRadius: radius.md },
-  infoItemRowSelected: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.green },
-  infoItemLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  infoItemLabel: { fontSize: 14, fontWeight: '800', color: colors.textDark },
-  infoItemSelectedTag: { fontSize: 11, fontWeight: '800', color: colors.green },
-  infoItemDesc:  { fontSize: 13, color: colors.textMid, lineHeight: 18 },
+  infoTitle:     { fontSize: 16, fontWeight: '900', color: colors.textDark, marginBottom: spacing.sm },
+  infoScroll:    { maxHeight: 420 },
+  infoDesc:      { fontSize: 13, color: colors.textMid, lineHeight: 18, marginBottom: spacing.md },
+  infoFormatsHeading: { fontSize: 11, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: spacing.sm },
+  infoSubItem:   { marginBottom: spacing.sm },
+  infoSubLabel:  { fontSize: 13, fontWeight: '700', color: colors.textDark },
+  infoSubDesc:   { fontSize: 12, color: colors.textMid, lineHeight: 16, marginTop: 1 },
   infoCloseBtn:  { marginTop: spacing.xs, alignSelf: 'flex-end', paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
   infoCloseBtnText: { fontSize: 14, fontWeight: '800', color: colors.green },
   row:     { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
