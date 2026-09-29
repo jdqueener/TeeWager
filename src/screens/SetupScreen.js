@@ -13,7 +13,7 @@ import NativeSelect from '../components/NativeSelect';
 import AccountMenu from '../components/AccountMenu';
 import AuthScreen from './AuthScreen';
 import OnboardingScreen from './OnboardingScreen';
-import { loadSavedPlayers, savePlayer, deleteSavedPlayer, hasOnboarded, setOnboarded, loadGuestFlag, saveGuestFlag } from '../utils/storage';
+import { loadSavedPlayers, savePlayer, deleteSavedPlayer, hasOnboarded, setOnboarded, loadGuestFlag, saveGuestFlag, clearGuestFlag } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
 import {
   searchCoursesByName,
@@ -129,6 +129,7 @@ export default function SetupScreen() {
   })();
   const isGuest = () => { try { return sessionStorage.getItem('tw_guest') === '1'; } catch { return false; } };
   const setGuest = () => { try { sessionStorage.setItem('tw_guest', '1'); } catch {} };
+  const clearGuest = () => { try { sessionStorage.removeItem('tw_guest'); } catch {} };
   const [guestMode, setGuestMode] = useState(isGuest);
   const guestModeRef = useRef(isGuest());
   const mountedRef = useRef(false);
@@ -184,6 +185,15 @@ export default function SetupScreen() {
     if (!mountedRef.current) { mountedRef.current = true; return; }
     if (user) {
       setAuthVisible(false);
+      // A real sign-in supersedes any earlier "continue as guest" choice —
+      // clear it so a later sign-out correctly reopens the auth screen
+      // instead of silently dropping back into guest mode.
+      if (guestModeRef.current) {
+        guestModeRef.current = false;
+        setGuestMode(false);
+        if (Platform.OS === 'web') clearGuest();
+        else clearGuestFlag().catch(() => {});
+      }
     } else if (!guestModeRef.current) {
       setAuthInitialMode('signin');
       setAuthVisible(true);
