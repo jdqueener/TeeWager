@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
-  StatusBar, Linking, SafeAreaView, Alert,
+  StatusBar, Linking, SafeAreaView,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
@@ -336,14 +336,8 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
               style={{ width: '100%', height: 50, marginTop: spacing.sm }}
               onPress={async () => {
                 try {
-                  const data = await signInWithApple();
-                  // TEMP diagnostic — remove once Apple sign-in is confirmed working.
-                  Alert.alert(
-                    'Apple Sign-In',
-                    `completed without throwing.\nsession: ${data?.session ? 'yes' : 'NO SESSION'}\nuser id: ${data?.user?.id || 'none'}`
-                  );
+                  await signInWithApple();
                 } catch (e) {
-                  Alert.alert('Apple Sign-In Error', `code: ${e?.code || 'none'}\nmessage: ${e?.message || 'none'}`);
                   if (e?.code !== 'ERR_REQUEST_CANCELED') setBusy_error(e.message || 'Apple sign-in failed.');
                 }
               }}

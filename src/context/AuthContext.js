@@ -102,7 +102,7 @@ export function AuthProvider({ children }) {
       if (error) throw error;
       return;
     }
-    return await signInWithAppleNative(supabase);
+    await signInWithAppleNative(supabase);
   }
 
   async function updatePassword(newPassword) {
