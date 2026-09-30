@@ -336,9 +336,12 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
               style={{ width: '100%', height: 50, marginTop: spacing.sm }}
               onPress={async () => {
                 try {
-                  await signInWithApple();
+                  const data = await signInWithApple();
                   // TEMP diagnostic — remove once Apple sign-in is confirmed working.
-                  Alert.alert('Apple Sign-In', 'signInWithApple() completed without throwing.');
+                  Alert.alert(
+                    'Apple Sign-In',
+                    `completed without throwing.\nsession: ${data?.session ? 'yes' : 'NO SESSION'}\nuser id: ${data?.user?.id || 'none'}`
+                  );
                 } catch (e) {
                   Alert.alert('Apple Sign-In Error', `code: ${e?.code || 'none'}\nmessage: ${e?.message || 'none'}`);
                   if (e?.code !== 'ERR_REQUEST_CANCELED') setBusy_error(e.message || 'Apple sign-in failed.');

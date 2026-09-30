@@ -22,7 +22,7 @@ export async function signInWithAppleNative(supabase) {
   );
   const { identityToken } = credential;
   if (!identityToken) throw new Error('Apple sign-in failed — no identity token.');
-  const { error } = await withTimeout(
+  const { data, error } = await withTimeout(
     supabase.auth.signInWithIdToken({
       provider: 'apple',
       token: identityToken,
@@ -31,4 +31,7 @@ export async function signInWithAppleNative(supabase) {
     'supabase.auth.signInWithIdToken'
   );
   if (error) throw error;
+  // TEMP diagnostic — confirms whether Supabase actually returned a session,
+  // since signInWithIdToken can resolve with no error but no session too.
+  return data;
 }
