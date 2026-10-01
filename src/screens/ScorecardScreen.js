@@ -856,15 +856,15 @@ export default function ScorecardScreen() {
                   </View>
                   {back.length > 0 && (
                     <>
-                      <Text style={styles.totalSplit}>{outS || '-'}</Text>
-                      <Text style={styles.totalSplit}>{inS || '-'}</Text>
+                      <Text style={styles.totalSplit} numberOfLines={1}>{outS || '-'}</Text>
+                      <Text style={styles.totalSplit} numberOfLines={1}>{inS || '-'}</Text>
                     </>
                   )}
-                  <Text style={styles.totalScore}>{tot || '-'}</Text>
+                  <Text style={styles.totalScore} numberOfLines={1}>{tot || '-'}</Text>
                   <Text style={[styles.totalDiff,
                     diff != null && diff < 0 && { color: colors.green },
                     diff != null && diff > 0 && { color: colors.red },
-                  ]}>
+                  ]} numberOfLines={1}>
                     {diff == null ? '' : diff === 0 ? 'E' : diff > 0 ? `+${diff}` : `${diff}`}
                   </Text>
                   {gameMode !== 'nassau' && (
@@ -1426,9 +1426,9 @@ const styles = StyleSheet.create({
   totalNameWrap:      { flex: 1 },
   totalName2:         { fontSize: 14, fontWeight: '700', color: colors.textDark },
   totalNameSub:       { fontSize: 11, color: colors.textMid, marginTop: 1 },
-  totalSplit:         { fontSize: 13, color: colors.textMid, width: 32, textAlign: 'center' },
-  totalScore:         { fontSize: 18, fontWeight: '900', color: colors.textDark, width: 40, textAlign: 'center' },
-  totalDiff:          { fontSize: 13, fontWeight: '700', color: colors.textMid, width: 36, textAlign: 'center' },
+  totalSplit:         { fontSize: 13, color: colors.textMid, width: 36, textAlign: 'center' },
+  totalScore:         { fontSize: 18, fontWeight: '900', color: colors.textDark, width: 48, textAlign: 'center' },
+  totalDiff:          { fontSize: 13, fontWeight: '700', color: colors.textMid, width: 42, textAlign: 'center' },
   totalBeans:         { fontSize: 13, fontWeight: '700', color: colors.green, width: 60, textAlign: 'right' },
 
   // Press bar
