@@ -351,8 +351,31 @@ export default function SettleUpScreen() {
                 })() : (
                   <>
                     <Text style={styles.mathIntro}>
-                      Every bean you earn is owed to you by each other player, so your net is:
+                      Every bean you earn is owed to you by each other player. Here's who owes whom directly:
                     </Text>
+                    {(() => {
+                      const owed = [];
+                      for (let i = 0; i < players.length; i++) {
+                        for (let j = i + 1; j < players.length; j++) {
+                          const diff = beanTotals[j] - beanTotals[i];
+                          if (diff === 0) continue;
+                          const [debtorIdx, creditorIdx] = diff > 0 ? [i, j] : [j, i];
+                          owed.push({
+                            debtor: players[debtorIdx].split(' ')[0],
+                            creditor: players[creditorIdx].split(' ')[0],
+                            amt: beanValue * Math.abs(diff),
+                          });
+                        }
+                      }
+                      return owed.length > 0 ? owed.map((o, idx) => (
+                        <View key={idx} style={styles.mathRow}>
+                          <Text style={styles.mathLabel}>{o.debtor} owes {o.creditor}</Text>
+                          <Text style={styles.mathValue}>${o.amt.toFixed(2)}</Text>
+                        </View>
+                      )) : <Text style={styles.mathNote}>Everyone's tied — no one owes anyone.</Text>;
+                    })()}
+                    <View style={styles.mathDivider} />
+                    <Text style={styles.mathIntro}>Summarized as a net per player:</Text>
                     <Text style={styles.mathFormulaHeader}>
                       ${beanValue.toFixed(2)} × (your beans × {players.length} players − {totalBeansSum} total beans)
                     </Text>
