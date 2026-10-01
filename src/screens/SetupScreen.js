@@ -144,10 +144,19 @@ export default function SetupScreen() {
   const { user } = useAuth();
   const [paywallVisible, setPaywallVisible] = useState(false);
 
-  // Read ?mode= from URL on web to auto-open auth in correct tab
+  // Read ?mode= or a /signup, /signin path from the URL on web to auto-open
+  // auth in the correct tab — e.g. a reviewer or marketing link landing on
+  // teewager.io/signup should open the signup form, not the guest setup flow.
   const urlMode = (() => {
     if (Platform.OS !== 'web') return null;
-    try { return (new URLSearchParams(window.location.search)).get('mode') ?? null; } catch { return null; }
+    try {
+      const qp = (new URLSearchParams(window.location.search)).get('mode');
+      if (qp) return qp;
+      const path = window.location.pathname.replace(/\/+$/, '');
+      if (path === '/signup' || path === '/app/signup') return 'signup';
+      if (path === '/signin' || path === '/app/signin') return 'signin';
+      return null;
+    } catch { return null; }
   })();
   const isGuest = () => { try { return sessionStorage.getItem('tw_guest') === '1'; } catch { return false; } };
   const setGuest = () => { try { sessionStorage.setItem('tw_guest', '1'); } catch {} };

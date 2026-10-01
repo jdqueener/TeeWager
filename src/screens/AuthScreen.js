@@ -222,8 +222,18 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setBusy_error]          = useState('');
   const [busy, setBusy]                 = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
 
   const isSignUp = mode === 'signup';
+
+  // Gates every account-creation path (email, Google, Apple) — sign-in is unaffected.
+  function checkAgeGate() {
+    if (isSignUp && !ageConfirmed) {
+      setBusy_error('Please confirm you are 18 years of age or older to continue.');
+      return false;
+    }
+    return true;
+  }
 
   async function submit() {
     setBusy_error('');
@@ -231,6 +241,7 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
     if (isSignUp && !fullName.trim()) { setBusy_error('Enter your name.'); return; }
     if (isSignUp && !scoringName.trim()) { setBusy_error('Enter a scoring name.'); return; }
     if (password.length < 6)          { setBusy_error('Password must be at least 6 characters.'); return; }
+    if (!checkAgeGate()) return;
     setBusy(true);
     try {
       if (isSignUp) {
@@ -307,6 +318,24 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
             </TouchableOpacity>
           )}
 
+          {isSignUp && (
+            <View style={styles.ageGateRow}>
+              <TouchableOpacity
+                style={[styles.ageGateCheckbox, ageConfirmed && styles.ageGateCheckboxChecked]}
+                onPress={() => setAgeConfirmed(v => !v)}
+                activeOpacity={0.7}
+              >
+                {ageConfirmed && <Text style={styles.ageGateCheckmark}>✓</Text>}
+              </TouchableOpacity>
+              <Text style={styles.ageGateText}>
+                I confirm I am 18 years of age or older and agree to the{' '}
+                <Text style={styles.termsLink} onPress={() => Linking.openURL('https://teewager.io/terms')}>Terms of Service</Text>
+                {' '}and{' '}
+                <Text style={styles.termsLink} onPress={() => Linking.openURL('https://teewager.io/privacy')}>Privacy Policy</Text>.
+              </Text>
+            </View>
+          )}
+
           {!!error && (
             <View style={styles.errorWrap}>
               <Text style={styles.errorText}>⚠️ {error}</Text>
@@ -323,7 +352,7 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
             <View style={styles.dividerLine} />
           </View>
 
-          <TouchableOpacity style={styles.googleBtn} onPress={signInWithGoogle} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.googleBtn} onPress={() => { if (checkAgeGate()) signInWithGoogle(); }} activeOpacity={0.85}>
             <Text style={styles.googleBtnIcon}>G</Text>
             <Text style={styles.googleBtnText}>Continue with Google</Text>
           </TouchableOpacity>
@@ -335,6 +364,7 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
               cornerRadius={radius.pill}
               style={{ width: '100%', height: 50, marginTop: spacing.sm }}
               onPress={async () => {
+                if (!checkAgeGate()) return;
                 try {
                   await signInWithApple();
                 } catch (e) {
@@ -343,19 +373,10 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
               }}
             />
           ) : (
-            <TouchableOpacity style={styles.appleBtn} onPress={signInWithApple} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.appleBtn} onPress={() => { if (checkAgeGate()) signInWithApple(); }} activeOpacity={0.85}>
               <Text style={styles.appleBtnIcon}></Text>
               <Text style={styles.appleBtnText}>Continue with Apple</Text>
             </TouchableOpacity>
-          )}
-
-          {isSignUp && (
-            <Text style={styles.terms}>
-              By creating an account you agree to our{' '}
-              <Text style={styles.termsLink} onPress={() => Linking.openURL('https://teewager.io/terms')}>Terms of Service</Text>
-              {' '}and{' '}
-              <Text style={styles.termsLink} onPress={() => Linking.openURL('https://teewager.io/privacy')}>Privacy Policy</Text>.
-            </Text>
           )}
 
           <TouchableOpacity onPress={() => onSkip(true)} style={styles.guestLink} activeOpacity={0.7}>
@@ -628,6 +649,12 @@ const styles = StyleSheet.create({
 
   terms:     { fontSize: 11, color: colors.textLight, textAlign: 'center', marginTop: spacing.md, lineHeight: 16 },
   termsLink: { color: colors.green, fontWeight: '700', textDecorationLine: 'underline' },
+
+  ageGateRow:           { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.xs },
+  ageGateCheckbox:      { width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, borderColor: colors.textLight, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  ageGateCheckboxChecked:{ backgroundColor: colors.green, borderColor: colors.green },
+  ageGateCheckmark:     { color: colors.white, fontSize: 13, fontWeight: '900' },
+  ageGateText:          { flex: 1, fontSize: 12, color: colors.textLight, lineHeight: 17 },
 
   forgotLink:     { alignSelf: 'flex-end', marginBottom: spacing.xs, marginTop: -spacing.xs },
   forgotLinkText: { fontSize: 13, color: colors.green, fontWeight: '600' },
