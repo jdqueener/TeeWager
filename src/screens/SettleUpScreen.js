@@ -364,7 +364,7 @@ export default function SettleUpScreen() {
                         <View key={i} style={styles.mathPlayerRow}>
                           <Text style={styles.mathPlayerName}>{name.split(' ')[0]}</Text>
                           <Text style={styles.mathFormula}>
-                            {beans} × {players.length} − {totalBeansSum} = {net >= 0 ? '+' : ''}${net.toFixed(2)}
+                            ${beanValue.toFixed(2)} × ({beans} × {players.length} − {totalBeansSum}) = {net >= 0 ? '+' : ''}${net.toFixed(2)}
                           </Text>
                         </View>
                       );
