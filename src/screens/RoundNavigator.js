@@ -39,7 +39,11 @@ export default function RoundNavigator() {
         })}
       >
         <Tab.Screen name="Scorecard"   component={ScorecardScreen} />
-        <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
+        {/* Beans mode: Scorecard's own totals bar + Settle Up already cover this —
+            a bean-count leaderboard duplicated that in a confusing unit (beans,
+            not $). Nassau's Scorecard shows match/stroke status, not $, so its
+            Leaderboard is the only live $ standings view and stays. */}
+        {isNassau && <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />}
         <Tab.Screen name="Breakdown"   component={BreakdownScreen} />
         <Tab.Screen name="Settle Up"   component={SettleUpScreen} />
         <Tab.Screen name="Stats"       component={StatsScreen} />

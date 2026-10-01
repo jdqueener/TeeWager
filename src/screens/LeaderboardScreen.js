@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { totalBeansForPlayer } from '../utils/beans';
 import { netNassauStroke, netNassauTeamFormat } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius } from '../utils/theme';
@@ -10,41 +9,17 @@ import ProBanner from '../components/ProBanner';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
+// Nassau-only — Beans mode has no Leaderboard tab. Scorecard's own totals bar
+// already shows live $ net there, and Settle Up has the full breakdown, so a
+// separate bean-count leaderboard was pure duplication in a confusing unit.
+// Nassau's Scorecard shows match/stroke status, never $, so this is the only
+// live $ standings view for it.
 export default function LeaderboardScreen() {
-  const { state, dispatch, pro, setPro, activeBeans } = useGame();
-  const { players, scores, firstBonus, beanValue, gameMode = 'beans', nassauStake = 5.00, strokes = [], holeCount = 18,
-    nassauPresses = { front: [], back: [], total: [] }, nassauTeams = null, nassauTeamFormat = 'match-play', beansTeams = null } = state;
-  const isNassau = gameMode === 'nassau';
-  const isTeams = isNassau && !!nassauTeams;
-  const isBeansTeams = !isNassau && beansTeams?.length === 2;
+  const { state, dispatch, pro, setPro } = useGame();
+  const { players, nassauStake = 5.00, strokes = [], holeCount = 18,
+    nassauPresses = { front: [], back: [], total: [] }, nassauTeams = null, nassauTeamFormat = 'match-play' } = state;
+  const isTeams = !!nassauTeams;
 
-  const n = players.length;
-  const playerIdxs = players.map((_, i) => i);
-
-  // Beans leaderboard
-  let rankedBeans, pot, firstNetBeans;
-  if (isBeansTeams) {
-    // 2v2 beans scramble — beans only ever land on a team's representative, so rank
-    // the 2 teams (combined bean count) rather than showing 2 empty player rows.
-    const teamRaw = beansTeams.map(team => team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, activeBeans, firstBonus), 0));
-    const totalRaw = teamRaw.reduce((a, b) => a + b, 0);
-    rankedBeans = beansTeams
-      .map((team, ti) => ({ name: teamShortName(ti), sub: teamPlayerNames(players, team), i: team[0], netBeans: teamRaw[ti] * 2 - totalRaw }))
-      .sort((a, b) => b.netBeans - a.netBeans);
-    pot = rankedBeans.reduce((s, p) => s + Math.max(p.netBeans * beanValue, 0), 0);
-    firstNetBeans = rankedBeans[0]?.netBeans ?? 0;
-  } else {
-    const rawBeans = players.map((_, i) => totalBeansForPlayer(i, scores, activeBeans, firstBonus));
-    const totalBeans = rawBeans.reduce((s, v) => s + v, 0);
-    const netBeans = rawBeans.map(b => b * n - totalBeans);
-    rankedBeans = players
-      .map((name, i) => ({ name, i, netBeans: netBeans[i] }))
-      .sort((a, b) => b.netBeans - a.netBeans);
-    pot = rankedBeans.reduce((s, p) => s + Math.max(p.netBeans * beanValue, 0), 0);
-    firstNetBeans = rankedBeans[0]?.netBeans ?? 0;
-  }
-
-  // Nassau leaderboard — rank by total wins across all legs
   const frontRange = Array.from({ length: Math.min(9, holeCount) }, (_, i) => i);
   const backRange  = holeCount >= 18 ? Array.from({ length: 9 }, (_, i) => i + 9) : [];
   const totalRange = Array.from({ length: holeCount }, (_, i) => i);
@@ -74,59 +49,29 @@ export default function LeaderboardScreen() {
     <View style={styles.root}>
       <ProBanner pro={pro} onUpgrade={() => {}} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
       <ScrollView contentContainerStyle={styles.content}>
-        {isNassau ? (
-          <>
-            <View style={styles.potCard}>
-              <Text style={styles.potLabel}>Nassau Pot</Text>
-              <Text style={styles.potValue}>${nassauPot.toFixed(2)}</Text>
-              <Text style={styles.potSub}>${nassauStake.toFixed(2)}/leg · {nassauLegsRanges.length} legs</Text>
+        <View style={styles.potCard}>
+          <Text style={styles.potLabel}>Nassau Pot</Text>
+          <Text style={styles.potValue}>${nassauPot.toFixed(2)}</Text>
+          <Text style={styles.potSub}>${nassauStake.toFixed(2)}/leg · {nassauLegsRanges.length} legs</Text>
+        </View>
+        {rankedNassau.map((p, rank) => {
+          const isFirst = p.net === firstNassauNet && firstNassauNet > 0;
+          return (
+            <View key={p.i} style={[styles.row, isFirst && styles.rowFirst]}>
+              <Text style={styles.medal}>{MEDALS[rank] || `${rank + 1}.`}</Text>
+              <Avatar name={p.name} size={40} />
+              <View style={styles.nameWrap}>
+                <Text style={styles.name} numberOfLines={1}>{p.name}</Text>
+                {p.sub && <Text style={styles.nameSub} numberOfLines={1}>{p.sub}</Text>}
+              </View>
+              <View style={styles.right}>
+                <Text style={[styles.beans, p.net < 0 && styles.neg]}>
+                  {p.net >= 0 ? `+$${p.net.toFixed(2)}` : `-$${Math.abs(p.net).toFixed(2)}`}
+                </Text>
+              </View>
             </View>
-            {rankedNassau.map((p, rank) => {
-              const isFirst = p.net === firstNassauNet && firstNassauNet > 0;
-              return (
-                <View key={p.i} style={[styles.row, isFirst && styles.rowFirst]}>
-                  <Text style={styles.medal}>{MEDALS[rank] || `${rank + 1}.`}</Text>
-                  <Avatar name={p.name} size={40} />
-                  <View style={styles.nameWrap}>
-                    <Text style={styles.name} numberOfLines={1}>{p.name}</Text>
-                    {p.sub && <Text style={styles.nameSub} numberOfLines={1}>{p.sub}</Text>}
-                  </View>
-                  <View style={styles.right}>
-                    <Text style={[styles.beans, p.net < 0 && styles.neg]}>
-                      {p.net >= 0 ? `+$${p.net.toFixed(2)}` : `-$${Math.abs(p.net).toFixed(2)}`}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </>
-        ) : (
-          <>
-            <View style={styles.potCard}>
-              <Text style={styles.potLabel}>Total Bean Pot</Text>
-              <Text style={styles.potValue}>${pot.toFixed(2)}</Text>
-              <Text style={styles.potSub}>${beanValue.toFixed(2)} per bean</Text>
-            </View>
-            {rankedBeans.map((p, rank) => {
-              const isFirst = p.netBeans === firstNetBeans && firstNetBeans > 0;
-              return (
-                <View key={p.i} style={[styles.row, isFirst && styles.rowFirst]}>
-                  <Text style={styles.medal}>{MEDALS[rank] || `${rank + 1}.`}</Text>
-                  <Avatar name={p.name} size={40} />
-                  <View style={styles.nameWrap}>
-                    <Text style={styles.name} numberOfLines={1}>{p.name}</Text>
-                    {p.sub && <Text style={styles.nameSub} numberOfLines={1}>{p.sub}</Text>}
-                  </View>
-                  <View style={styles.right}>
-                    <Text style={[styles.beans, p.netBeans < 0 && styles.neg]}>
-                      {p.netBeans >= 0 ? `+${p.netBeans}` : p.netBeans} beans
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </>
-        )}
+          );
+        })}
       </ScrollView>
     </View>
   );
