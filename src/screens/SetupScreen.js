@@ -28,6 +28,7 @@ import { searchCustomCourses, saveCustomCourse, parseScorecardImage } from '../u
 
 const MAX_FREE_PLAYERS = 4;
 const MAX_PRO_PLAYERS  = 5;
+const HERO_SETUP_RATIO = 1572 / 1001;
 const TEE_COLORS = { Blue: '#1a6fb5', White: '#e0e0e0', Red: '#c0392b', Gold: '#B8860B', Black: '#222', Green: '#1A4A2E' };
 
 // Brief explanations shown by the "?" badge on each Game mode button.
@@ -118,6 +119,7 @@ function TeamAssignmentPicker({ names, teamAssign, setTeamAssign }) {
 export default function SetupScreen() {
   const { dispatch, pro, setPro, canPlay, roundsLeft } = useGame();
   const [trialExpiredVisible, setTrialExpiredVisible] = useState(false);
+  const [heroWidth, setHeroWidth] = useState(0);
   const [playerCount, setPlayerCount] = useState(2);
   const [holeCount, setHoleCount] = useState(18);
   const [nineChoice, setNineChoice] = useState('front'); // 'front' | 'back'
@@ -534,14 +536,14 @@ export default function SetupScreen() {
     <View style={styles.root}>
       <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.hero}>
-          <View style={styles.heroGlow} />
-          <View style={styles.heroEmojiRing}>
-            <Text style={styles.heroEmoji}>⛳</Text>
-          </View>
-          <Text style={styles.heroTitle}>TeeWager</Text>
-          <View style={styles.heroDivider} />
-          <Text style={styles.heroSub}>Set up your round</Text>
+        <View style={styles.hero} onLayout={e => setHeroWidth(e.nativeEvent.layout.width)}>
+          {heroWidth > 0 && (
+            <Image
+              source={require('../../assets/hero-setup.webp')}
+              style={[styles.heroImage, { width: heroWidth, height: heroWidth / HERO_SETUP_RATIO }]}
+              resizeMode="cover"
+            />
+          )}
         </View>
 
         <Modal visible={onboardingVisible} animationType="fade">
@@ -1247,13 +1249,8 @@ const styles = StyleSheet.create({
   teamToggleBtnTextActive: { color: colors.white },
 
   // Hero header
-  hero:      { backgroundColor: colors.green, borderRadius: radius.xl, paddingVertical: spacing.xl, paddingHorizontal: spacing.md, marginBottom: spacing.lg, alignItems: 'center', overflow: 'hidden', ...shadow.green },
-  heroGlow:  { position: 'absolute', top: -70, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(45,107,68,0.55)' },
-  heroEmojiRing: { width: 74, height: 74, borderRadius: 37, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
-  heroEmoji: { fontSize: 38 },
-  heroTitle: { fontSize: 38, fontWeight: '900', color: colors.white, textAlign: 'center', letterSpacing: -1 },
-  heroDivider: { width: 40, height: 3, borderRadius: 2, backgroundColor: colors.goldLight, marginTop: spacing.sm, marginBottom: 2 },
-  heroSub:   { fontSize: 13, color: 'rgba(255,255,255,0.78)', textAlign: 'center', marginTop: 6, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.5 },
+  hero:      { borderRadius: radius.xl, marginBottom: spacing.lg, overflow: 'hidden', ...shadow.green },
+  heroImage: { width: '100%' },
 
   label:   { fontSize: 12, fontWeight: '800', color: colors.textMid, marginTop: spacing.lg, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 1 },
 

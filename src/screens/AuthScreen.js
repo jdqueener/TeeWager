@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Image,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
   StatusBar, Linking, SafeAreaView,
 } from 'react-native';
@@ -16,6 +16,8 @@ import { grantPro } from '../utils/pro';
 const STRIPE_ANNUAL   = 'https://buy.stripe.com/8x24gsh0H4OqbyZbhU3AY01';
 const STRIPE_MONTHLY  = 'https://buy.stripe.com/6oU14g4dV94G8mNeu63AY00';
 const STRIPE_LIFETIME = 'https://buy.stripe.com/5kQ00cbGn6WyeLb1Hk3AY02';
+
+const HERO_AUTH_RATIO = 1468 / 1071;
 
 const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';
 const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
@@ -223,6 +225,7 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
   const [error, setBusy_error]          = useState('');
   const [busy, setBusy]                 = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [heroWidth, setHeroWidth]       = useState(0);
 
   const isSignUp = mode === 'signup';
 
@@ -261,10 +264,14 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <View style={styles.hero}>
-        <Text style={styles.heroEmoji}>⛳</Text>
-        <Text style={styles.heroTitle}>TeeWager</Text>
-        <Text style={styles.heroSub}>Friendly wagers. Every round.</Text>
+      <View onLayout={e => setHeroWidth(e.nativeEvent.layout.width)}>
+        {heroWidth > 0 && (
+          <Image
+            source={require('../../assets/hero-auth.webp')}
+            style={[styles.heroImage, { width: heroWidth, height: heroWidth / HERO_AUTH_RATIO }]}
+            resizeMode="cover"
+          />
+        )}
       </View>
 
       <KeyboardAvoidingView style={styles.cardWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -614,6 +621,7 @@ const styles = StyleSheet.create({
   heroEmoji:{ fontSize: 52, marginBottom: spacing.sm },
   heroTitle:{ fontSize: 36, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
   heroSub:  { fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs },
+  heroImage:{ width: '100%' },
 
   cardWrap: { flex: 1 },
   card:     { backgroundColor: colors.white, padding: spacing.lg, paddingBottom: 44 },
