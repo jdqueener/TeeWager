@@ -662,14 +662,14 @@ export default function SetupScreen() {
         {selectedCourse && !showManualEntry && availableTees.length > 0 && (
           <>
             <Text style={styles.label}>Tees</Text>
-            <View style={styles.row}>
+            <View style={styles.teeRow}>
               {availableTees.map(tee => (
                 <TouchableOpacity
                   key={tee}
                   style={[styles.teeBtn, selectedTee === tee && { backgroundColor: TEE_COLORS[tee] ?? colors.green, borderColor: TEE_COLORS[tee] ?? colors.green }]}
                   onPress={() => setSelectedTee(tee)}
                 >
-                  <Text style={[styles.teeBtnText, selectedTee === tee && styles.teeBtnTextActive]}>{tee}</Text>
+                  <Text style={[styles.teeBtnText, selectedTee === tee && styles.teeBtnTextActive]} numberOfLines={1}>{tee}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -1297,7 +1297,8 @@ const styles = StyleSheet.create({
   courseChipClearText: { color: 'rgba(255,255,255,0.8)', fontSize: 18, fontWeight: '700' },
 
   // Tee selector
-  teeBtn:           { flex: 1, paddingVertical: 13, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white },
+  teeRow:           { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
+  teeBtn:           { paddingVertical: 13, paddingHorizontal: 16, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, minWidth: 54, maxWidth: 160 },
   teeBtnText:       { fontWeight: '700', color: colors.textDark, fontSize: 14 },
   teeBtnTextActive: { color: colors.white },
 
