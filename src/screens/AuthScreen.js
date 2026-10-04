@@ -481,7 +481,9 @@ function WelcomeScreen({ plan, onDone, onUpgradeAnnual, upgrading }) {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
       <View style={[styles.hero, { paddingBottom: 20 }]}>
-        <Text style={styles.heroEmoji}>{isPro ? '🏆' : '⛳'}</Text>
+        {isPro
+          ? <Text style={styles.heroEmoji}>🏆</Text>
+          : <Image source={require('../../assets/icon.png')} style={styles.heroLogo} />}
         <Text style={styles.heroTitle}>{isPro ? 'Welcome, Pro!' : 'Welcome!'}</Text>
         <Text style={styles.heroSub}>{isPro ? 'All features unlocked.' : "You're on the free plan."}</Text>
       </View>
@@ -619,6 +621,7 @@ const styles = StyleSheet.create({
 
   hero:     { alignItems: 'center', paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 24 : 70, paddingBottom: 32, paddingHorizontal: spacing.xl },
   heroEmoji:{ fontSize: 52, marginBottom: spacing.sm },
+  heroLogo: { width: 52, height: 52, borderRadius: 12, marginBottom: spacing.sm },
   heroTitle:{ fontSize: 36, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
   heroSub:  { fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs },
   heroImage:{ width: '100%' },

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import AccountMenu from './AccountMenu';
@@ -63,7 +63,10 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
           <Text style={styles.newRoundText}>New Round</Text>
         </TouchableOpacity>
         {pro ? (
-          <Text style={styles.text}>⛳ TeeWager Pro — all features unlocked</Text>
+          <View style={styles.proTextRow}>
+            <Image source={require('../../assets/icon.png')} style={styles.proTextIcon} />
+            <Text style={styles.text}>TeeWager Pro — all features unlocked</Text>
+          </View>
         ) : (
           <TouchableOpacity onPress={onUpgrade} activeOpacity={0.85} style={{ flex: 1, alignItems: 'center' }}>
             <Text style={styles.text}>TeeWager Free — tap to upgrade to Pro ✨</Text>
@@ -110,7 +113,9 @@ const styles = StyleSheet.create({
   banner:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: spacing.md, zIndex: 10, ...shadow.sm },
   freeBanner:  { backgroundColor: colors.gold },
   proBanner:   { backgroundColor: colors.green },
-  text:        { flex: 1, color: colors.white, fontWeight: '800', fontSize: 13, textAlign: 'center', letterSpacing: 0.2 },
+  text:        { color: colors.white, fontWeight: '800', fontSize: 13, textAlign: 'center', letterSpacing: 0.2 },
+  proTextRow:  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  proTextIcon: { width: 16, height: 16, borderRadius: 4 },
   menuBtn:      { width: 34, alignItems: 'center' },
   newRoundBtn:  { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.7)', backgroundColor: 'rgba(255,255,255,0.12)' },
   newRoundText: { fontSize: 12, fontWeight: '800', color: colors.white, letterSpacing: 0.3 },

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform, Image } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 import { colors, spacing, radius } from '../utils/theme';
 
@@ -48,7 +48,10 @@ export default function ShareCard({ visible, onClose, players, beanTotals, beanV
       <View style={styles.overlay}>
         <ViewShot ref={shotRef} options={{ format: 'png', quality: 1 }} style={styles.shotWrap}>
           <View style={styles.card}>
-            <Text style={styles.header}>⛳ TeeWager</Text>
+            <View style={styles.headerRow}>
+              <Image source={require('../../assets/icon.png')} style={styles.headerIcon} />
+              <Text style={styles.header}>TeeWager</Text>
+            </View>
             <Text style={styles.sub}>
               {course?.name ? `${course.name}${course.tee ? ' · ' + course.tee : ''}` : 'Round Results'}
             </Text>
@@ -117,6 +120,8 @@ const styles = StyleSheet.create({
   shotWrap: { backgroundColor: colors.white },
   card: { width: 320, backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg },
   header: { fontSize: 24, fontWeight: '900', color: colors.green, textAlign: 'center' },
+  headerRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  headerIcon: { width: 24, height: 24, borderRadius: 6 },
   sub:    { fontSize: 14, fontWeight: '700', color: colors.textDark, textAlign: 'center', marginTop: 2 },
   date:   { fontSize: 12, color: colors.textLight, textAlign: 'center', marginTop: 2 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },

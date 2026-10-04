@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  FlatList, Dimensions, Platform, StatusBar,
+  FlatList, Dimensions, Platform, StatusBar, Image,
 } from 'react-native';
 import { colors, spacing, radius } from '../utils/theme';
 
@@ -75,7 +75,9 @@ export default function OnboardingScreen({ onDone }) {
         }}
         renderItem={({ item }) => (
           <View style={styles.slide}>
-            <Text style={styles.emoji}>{item.emoji}</Text>
+            {item.emoji === '⛳'
+              ? <Image source={require('../../assets/icon.png')} style={styles.emojiLogo} />
+              : <Text style={styles.emoji}>{item.emoji}</Text>}
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.body}>{item.body}</Text>
           </View>
@@ -119,6 +121,7 @@ const styles = StyleSheet.create({
 
   slide:        { width, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, paddingTop: 80 },
   emoji:        { fontSize: 72, marginBottom: spacing.lg },
+  emojiLogo:    { width: 72, height: 72, borderRadius: 16, marginBottom: spacing.lg },
   title:        { fontSize: 36, fontWeight: '900', color: colors.white, textAlign: 'center', lineHeight: 42, marginBottom: spacing.md },
   body:         { fontSize: 16, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 24 },
 

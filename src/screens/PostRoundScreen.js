@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, Alert,
+  View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, Alert, Image,
 } from 'react-native';
 import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
@@ -118,7 +118,7 @@ function PaywallView({ onSkip, onPurchaseSuccess }) {
     <View style={styles.sheet}>
       <View style={styles.pill} />
 
-      <Text style={styles.emoji}>⛳</Text>
+      <Image source={require('../../assets/icon.png')} style={styles.emojiLogo} />
       <Text style={styles.title}>Keep the full experience.</Text>
       <Text style={styles.body}>
         Your free trial is up. Upgrade to keep all 13 beans, breakdown tab, share cards, and more.
@@ -193,6 +193,7 @@ const styles = StyleSheet.create({
   winnerOtherText:  { fontSize: 13, color: 'rgba(255,255,255,0.55)' },
 
   emoji:      { fontSize: 36, textAlign: 'center' },
+  emojiLogo:  { width: 36, height: 36, borderRadius: 8, alignSelf: 'center' },
   title:      { fontSize: 22, fontWeight: '900', color: colors.textDark, textAlign: 'center' },
   body:       { fontSize: 14, color: colors.textMid, textAlign: 'center', lineHeight: 21 },
 
