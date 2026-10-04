@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   proBanner:   { backgroundColor: colors.green },
   text:        { color: colors.white, fontWeight: '800', fontSize: 13, textAlign: 'center', letterSpacing: 0.2 },
   proTextRow:  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  proTextIcon: { width: 16, height: 16, borderRadius: 4 },
+  proTextIcon: { width: 38, height: 38, borderRadius: 9 },
   menuBtn:      { width: 34, alignItems: 'center' },
   newRoundBtn:  { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.7)', backgroundColor: 'rgba(255,255,255,0.12)' },
   newRoundText: { fontSize: 12, fontWeight: '800', color: colors.white, letterSpacing: 0.3 },

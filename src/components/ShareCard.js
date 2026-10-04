@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   card: { width: 320, backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg },
   header: { fontSize: 24, fontWeight: '900', color: colors.green, textAlign: 'center' },
   headerRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  headerIcon: { width: 24, height: 24, borderRadius: 6 },
+  headerIcon: { width: 38, height: 38, borderRadius: 9 },
   sub:    { fontSize: 14, fontWeight: '700', color: colors.textDark, textAlign: 'center', marginTop: 2 },
   date:   { fontSize: 12, color: colors.textLight, textAlign: 'center', marginTop: 2 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },

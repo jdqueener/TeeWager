@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   winnerOtherText:  { fontSize: 13, color: 'rgba(255,255,255,0.55)' },
 
   emoji:      { fontSize: 36, textAlign: 'center' },
-  emojiLogo:  { width: 36, height: 36, borderRadius: 8, alignSelf: 'center' },
+  emojiLogo:  { width: 50, height: 50, borderRadius: 11, alignSelf: 'center' },
   title:      { fontSize: 22, fontWeight: '900', color: colors.textDark, textAlign: 'center' },
   body:       { fontSize: 14, color: colors.textMid, textAlign: 'center', lineHeight: 21 },
 

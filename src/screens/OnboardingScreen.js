@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
 
   slide:        { width, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, paddingTop: 80 },
   emoji:        { fontSize: 72, marginBottom: spacing.lg },
-  emojiLogo:    { width: 72, height: 72, borderRadius: 16, marginBottom: spacing.lg },
+  emojiLogo:    { width: 92, height: 92, borderRadius: 20, marginBottom: spacing.lg },
   title:        { fontSize: 36, fontWeight: '900', color: colors.white, textAlign: 'center', lineHeight: 42, marginBottom: spacing.md },
   body:         { fontSize: 16, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 24 },
 
