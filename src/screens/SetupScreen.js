@@ -926,7 +926,7 @@ export default function SetupScreen() {
             <Text style={styles.label}>Scoring</Text>
             {[
               { id: 'group', label: 'Group',      desc: `All ${playerCount} players share one score. Long Drive, KP, and a few other beans are still tracked per player.` },
-              { id: 'teams', label: '2v2 Teams',  desc: 'Two teams of 2, each sharing one score. Beans are awarded to the winning team.' },
+              { id: 'teams', label: '2v2 Teams',  desc: 'Two teams of 2, each sharing one score. Long Drive, KP, and a few other beans are still earned individually.' },
             ].map(({ id, label, desc }) => (
               <TouchableOpacity
                 key={id}

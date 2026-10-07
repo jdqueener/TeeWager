@@ -585,7 +585,7 @@ export default function ScorecardScreen() {
           {gameMode !== 'nassau' && (() => {
             const isBeansScrambleTeams = beansTeams?.length === 2;
             const teamNet = isBeansScrambleTeams
-              ? netDollarsBeansTeams(beansTeams, players, scores, activeBeans, firstBonus, beanValue)
+              ? netDollarsBeansTeams(beansTeams, scores, activeBeans, firstBonus, beanValue)
               : null;
             const rows = isBeansScrambleTeams
               ? beansTeams.map((team, ti) => ({ pi: team[0], label: teamShortName(ti), net: teamNet[ti] }))
@@ -729,17 +729,12 @@ export default function ScorecardScreen() {
               </View>
             </View>
 
-            {/* Bean cards — in 2v2 team scramble, beans are awarded to the winning
-                TEAM: each "row" is a team, credited to that team's representative
-                player (beansTeams[i][0]); the other member's own bean count stays 0
-                and is folded back in at settlement (see SettleUpScreen). */}
+            {/* Bean cards — strokes may be shared in scramble modes, but bonus
+                beans (Long Drive, KP, etc.) are still earned by one specific
+                player, so every real player gets their own tappable row here
+                regardless of team/group scramble grouping. */}
             {(() => {
-              const beansIsTeams = beansTeams?.length === 2;
-              const beanRows = beansIsTeams
-                ? beansTeams.map((team, ti) => ({ label: teamShortName(ti), rep: team[0] }))
-                : beansTeams
-                ? beansTeams.map(team => ({ label: team.map(i => players[i]?.split(' ')[0]).join(' & '), rep: team[0] }))
-                : players.map((name, pi) => ({ label: name.split(' ')[0], rep: pi }));
+              const beanRows = players.map((name, pi) => ({ label: name.split(' ')[0], rep: pi }));
               const beanPlayerLabels = beanRows.map(r => r.label);
               const realIdx = pi => beanRows[pi].rep;
 

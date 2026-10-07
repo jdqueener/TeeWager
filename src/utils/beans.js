@@ -123,19 +123,27 @@ export function netDollarsForPlayer(playerIdx, players, scores, activeBeans, fir
   return netDollars;
 }
 
-// 2v2 beans scramble: beans only ever land on a team's representative, so the
-// per-player formula above (scaled by the real player count) overstates the
-// swing. Compute the bottom line as a virtual 2-team game and split evenly
-// per team, matching SettleUpScreen's settlement.
-export function netDollarsBeansTeams(beansTeams, players, scores, activeBeans, firstBonus, beanValue) {
-  const reps = beansTeams.map(team => team[0]);
-  const repNames = reps.map(pi => players[pi]);
-  const repScores = reps.map(pi => scores[pi]);
-  const repBeanTotals = [0, 1].map(i => totalBeansForPlayer(i, repScores, activeBeans, firstBonus));
-  const repPayments = computeSettleUp(repNames, repBeanTotals, beanValue, []);
-  const teamNet = [0, 0];
-  repPayments.forEach(p => { teamNet[p.from] -= p.amt; teamNet[p.to] += p.amt; });
-  return teamNet;
+// 2v2 beans scramble: each team pools its two real players' bean totals
+// (every bean is earned by whichever player actually earned it) and settles
+// as a 2-team zero-sum game, split evenly between teammates.
+export function netDollarsBeansTeams(beansTeams, scores, activeBeans, firstBonus, beanValue) {
+  const teamBeans = beansTeams.map(team =>
+    team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, activeBeans, firstBonus), 0)
+  );
+  const n = teamBeans.length;
+  const totalBeans = teamBeans.reduce((a, b) => a + b, 0);
+  return teamBeans.map(t => beanValue * (t * n - totalBeans));
+}
+
+// Sums for a team (or a lone player wrapped as a 1-member "team") — lets
+// screens that show per-player bean breakdowns (e.g. Breakdown) use one
+// code path for both individual and team-scramble games.
+export function totalBeansForTeam(team, scores, activeBeans, firstBonus) {
+  return team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, activeBeans, firstBonus), 0);
+}
+
+export function beansAtHoleForTeam(team, holeIdx, scores, activeBeans, firstBonus, playerCount) {
+  return team.reduce((s, pi) => s + beansAtHoleForPlayer(pi, holeIdx, scores, activeBeans, firstBonus, playerCount), 0);
 }
 
 // Press-aware settlement: handles all three press modes

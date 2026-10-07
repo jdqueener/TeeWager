@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { getEffectiveValue, beansAtHoleForPlayer, totalBeansForPlayer } from '../utils/beans';
+import { getEffectiveValue, totalBeansForTeam, beansAtHoleForTeam } from '../utils/beans';
 import { holeWinner, holeResultTeam } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
@@ -27,11 +27,11 @@ export default function BreakdownScreen() {
   // { pi, h } of the cell whose detail popup is open, or null
   const [detailCell, setDetailCell] = useState(null);
 
-  // Beans grid columns: one per real player, or one per team (keyed by that
-  // team's representative index — beans only ever land there in team mode).
+  // Beans grid columns: one per real player, or one per team in 2v2 scramble
+  // (each column's `team` sums its real members' individually-earned beans).
   const beansColumns = isBeansTeams
-    ? beansTeams.map((team, ti) => ({ pi: team[0], label: beansTeamNames[ti] }))
-    : players.map((p, i) => ({ pi: i, label: p.split(' ')[0] }));
+    ? beansTeams.map((team, ti) => ({ pi: team[0], team, label: beansTeamNames[ti] }))
+    : players.map((p, i) => ({ pi: i, team: [i], label: p.split(' ')[0] }));
 
   function beanLabel(bean, h, count, pi) {
     let label = bean.name;
@@ -48,24 +48,29 @@ export default function BreakdownScreen() {
     return label;
   }
 
-  // Every bean contributing to one player's total on one hole — own wins
-  // plus any incoming penalty beans from other players' mistakes that hole.
-  function cellItems(pi, h) {
+  // Every bean contributing to a column's total on one hole — own wins plus
+  // any incoming penalty beans from other players' mistakes that hole. A
+  // team column sums both real members, prefixed by name so it's clear who
+  // earned what within the team.
+  function cellItems(team, h) {
     const items = [];
-    for (const bean of activeBeans) {
-      if (bean.awardToOthers) {
-        for (let op = 0; op < players.length; op++) {
-          if (op === pi) continue;
-          const count = scores[op]?.[h]?.[bean.id] || 0;
+    for (const pi of team) {
+      const prefix = team.length > 1 ? `${players[pi].split(' ')[0]} — ` : '';
+      for (const bean of activeBeans) {
+        if (bean.awardToOthers) {
+          for (let op = 0; op < players.length; op++) {
+            if (op === pi) continue;
+            const count = scores[op]?.[h]?.[bean.id] || 0;
+            if (!count) continue;
+            const ev = Math.abs(getEffectiveValue(bean, op, h, firstBonus));
+            items.push({ label: `${prefix}From ${players[op].split(' ')[0]}'s ${bean.name}${count > 1 ? ` ×${count}` : ''}`, beans: count * ev });
+          }
+        } else {
+          const count = scores[pi]?.[h]?.[bean.id] || 0;
           if (!count) continue;
-          const ev = Math.abs(getEffectiveValue(bean, op, h, firstBonus));
-          items.push({ label: `From ${players[op].split(' ')[0]}'s ${bean.name}${count > 1 ? ` ×${count}` : ''}`, beans: count * ev });
+          const ev = getEffectiveValue(bean, pi, h, firstBonus);
+          items.push({ label: `${prefix}${beanLabel(bean, h, count, pi)}`, beans: count * ev });
         }
-      } else {
-        const count = scores[pi]?.[h]?.[bean.id] || 0;
-        if (!count) continue;
-        const ev = getEffectiveValue(bean, pi, h, firstBonus);
-        items.push({ label: beanLabel(bean, h, count, pi), beans: count * ev });
       }
     }
     return items;
@@ -159,8 +164,8 @@ export default function BreakdownScreen() {
             <Text style={styles.sectionLabel}>Beans by hole</Text>
             <View style={styles.nassauTableHeader}>
               <Text style={[styles.nassauCol, styles.nassauColHole]}>HOLE</Text>
-              {beansColumns.map(({ pi, label }) => {
-                const total = totalBeansForPlayer(pi, scores, activeBeans, firstBonus);
+              {beansColumns.map(({ pi, team, label }) => {
+                const total = totalBeansForTeam(team, scores, activeBeans, firstBonus);
                 return (
                   <View key={pi} style={styles.beanColHeaderWrap}>
                     <Text style={styles.beanColHeaderName} numberOfLines={1}>{label.toUpperCase()}</Text>
@@ -179,9 +184,9 @@ export default function BreakdownScreen() {
                     <Text style={styles.nassauHoleNum}>{holeOffset + h + 1}</Text>
                     <Text style={styles.nassauHolePar}>P{par}</Text>
                   </View>
-                  {beansColumns.map(({ pi }) => {
-                    const total = beansAtHoleForPlayer(pi, h, scores, activeBeans, firstBonus, players.length);
-                    const items = total !== 0 ? cellItems(pi, h) : [];
+                  {beansColumns.map(({ pi, team, label }) => {
+                    const total = beansAtHoleForTeam(team, h, scores, activeBeans, firstBonus, players.length);
+                    const items = total !== 0 ? cellItems(team, h) : [];
                     const cell = (
                       <View style={styles.beanCellInner}>
                         <Text style={total > 0 ? styles.beanCellVal : styles.beanCellValEmpty}>
@@ -191,7 +196,7 @@ export default function BreakdownScreen() {
                       </View>
                     );
                     return items.length > 0 ? (
-                      <TouchableOpacity key={pi} style={styles.nassauCol} onPress={() => setDetailCell({ pi, h })}>
+                      <TouchableOpacity key={pi} style={styles.nassauCol} onPress={() => setDetailCell({ team, h, label })}>
                         {cell}
                       </TouchableOpacity>
                     ) : (
@@ -210,9 +215,8 @@ export default function BreakdownScreen() {
           <TouchableWithoutFeedback>
             <View style={styles.modalCard}>
               {detailCell && (() => {
-                const { pi, h } = detailCell;
-                const label = beansColumns.find(c => c.pi === pi)?.label ?? players[pi];
-                const items = cellItems(pi, h);
+                const { team, h, label } = detailCell;
+                const items = cellItems(team, h);
                 return (
                   <>
                     <Text style={styles.modalTitle}>{label} — Hole {holeOffset + h + 1}</Text>

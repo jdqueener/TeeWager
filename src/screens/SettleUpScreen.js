@@ -83,18 +83,15 @@ export default function SettleUpScreen() {
       ? computeNassauSettleUpTeamFormat(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses, nassauTeamFormat)
       : computeNassauSettleUpStroke(players, strokes, nassauStake, holeCount);
   } else if (isBeansTeams) {
-    // Award-time, beans only ever land on a team's representative player (see
-    // ScorecardScreen's toggleTeam/togglePlayer wiring). Settle as a virtual 2-player
-    // game between the two representatives, then split each rep's net evenly with
-    // their real teammate — same "stake split in half" convention as Nassau teams.
-    const reps = beansTeams.map(team => team[0]);
-    const repNames = reps.map(pi => players[pi]);
-    const repScores = reps.map(pi => scores[pi]);
-    const repBeanTotals = [0, 1].map(i => totalBeansForPlayer(i, repScores, activeBeans, firstBonus));
-    const repPayments = computeSettleUp(repNames, repBeanTotals, beanValue, []);
+    // Each team pools its two real players' bean totals (every bean is
+    // credited to whoever actually earned it) and settles as a 2-team
+    // zero-sum game, then splits evenly between teammates — same "stake
+    // split in half" convention as Nassau teams.
+    const teamBeanTotals = beansTeams.map(team => team.reduce((s, pi) => s + beanTotals[pi], 0));
+    const teamPayments = computeSettleUp(teamNames, teamBeanTotals, beanValue, []);
     const net = new Array(players.length).fill(0);
     const teamNet = [0, 0];
-    repPayments.forEach(p => { teamNet[p.from] -= p.amt; teamNet[p.to] += p.amt; });
+    teamPayments.forEach(p => { teamNet[p.from] -= p.amt; teamNet[p.to] += p.amt; });
     beansTeams.forEach((team, ti) => team.forEach(pi => { net[pi] = teamNet[ti] / team.length; }));
     // Side wagers reference real players directly, so apply them on the real net —
     // same formula computeSettleUp uses internally — rather than the virtual rep pair.
@@ -322,29 +319,28 @@ export default function SettleUpScreen() {
             {showMath && (
               <View style={styles.mathCard}>
                 {isBeansTeams ? (() => {
-                  const reps = beansTeams.map(team => team[0]);
-                  const repBeans = reps.map(pi => beanTotals[pi]);
-                  const netRep0 = beanValue * (repBeans[0] - repBeans[1]);
+                  const teamBeanSums = beansTeams.map(team => team.reduce((s, pi) => s + beanTotals[pi], 0));
+                  const netTeam0 = beanValue * (teamBeanSums[0] - teamBeanSums[1]);
                   return (
                     <>
                       <Text style={styles.mathIntro}>
-                        Beans always land on one rep per team, so the two teams settle like a 1v1 bean game, then split evenly between teammates.
+                        Each team's beans are pooled together, so the two teams settle like a 1v1 bean game, then split evenly between teammates.
                       </Text>
                       <View style={styles.mathDivider} />
                       <View style={styles.mathRow}>
                         <Text style={styles.mathLabel}>{teamNames[0]} beans ({teamPlayerLabels[0]})</Text>
-                        <Text style={styles.mathValue}>{repBeans[0]}</Text>
+                        <Text style={styles.mathValue}>{teamBeanSums[0]}</Text>
                       </View>
                       <View style={styles.mathRow}>
                         <Text style={styles.mathLabel}>{teamNames[1]} beans ({teamPlayerLabels[1]})</Text>
-                        <Text style={styles.mathValue}>{repBeans[1]}</Text>
+                        <Text style={styles.mathValue}>{teamBeanSums[1]}</Text>
                       </View>
                       <View style={styles.mathDivider} />
                       <Text style={styles.mathFormula}>
-                        ${beanValue.toFixed(2)} × ({repBeans[0]} − {repBeans[1]}) = {netRep0 >= 0 ? '+' : ''}${netRep0.toFixed(2)} for {teamNames[0]}
+                        ${beanValue.toFixed(2)} × ({teamBeanSums[0]} − {teamBeanSums[1]}) = {netTeam0 >= 0 ? '+' : ''}${netTeam0.toFixed(2)} for {teamNames[0]}
                       </Text>
                       <Text style={styles.mathFormula}>
-                        Split evenly → {netRep0 >= 0 ? '+' : ''}${(netRep0 / 2).toFixed(2)} per {teamNames[0]} player, {-netRep0 >= 0 ? '+' : ''}${(-netRep0 / 2).toFixed(2)} per {teamNames[1]} player
+                        Split evenly → {netTeam0 >= 0 ? '+' : ''}${(netTeam0 / 2).toFixed(2)} per {teamNames[0]} player, {-netTeam0 >= 0 ? '+' : ''}${(-netTeam0 / 2).toFixed(2)} per {teamNames[1]} player
                       </Text>
                     </>
                   );
