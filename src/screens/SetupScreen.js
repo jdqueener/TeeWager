@@ -1379,7 +1379,6 @@ const styles = StyleSheet.create({
 
   trialBadgeWrap:    { alignSelf: 'center', backgroundColor: colors.goldPale, borderRadius: radius.pill, paddingVertical: 7, paddingHorizontal: spacing.md, marginTop: spacing.lg, borderWidth: 1, borderColor: 'rgba(184,134,11,0.25)' },
   trialBadge:        { textAlign: 'center', fontSize: 12.5, fontWeight: '700', color: '#8B6914', letterSpacing: 0.2 },
-  trialExpiredEmoji: { fontSize: 44, textAlign: 'center', marginBottom: spacing.sm },
   trialExpiredLogo:  { width: 60, height: 60, borderRadius: 14, alignSelf: 'center', marginBottom: spacing.sm },
   startBtn:  { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 21, alignItems: 'center', marginTop: spacing.lg, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)', ...shadow.green },
   startText: { color: colors.white, fontWeight: '900', fontSize: 19, letterSpacing: 0.5, textTransform: 'uppercase' },

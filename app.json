@@ -14,8 +14,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "io.teewager.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "TeeWager uses your camera to scan QR codes at partner courses.",
-        "NSPhotoLibraryUsageDescription": "TeeWager saves your round results to your photo library.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -26,10 +24,7 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "permissions": [
-        "com.google.android.gms.permission.AD_ID"
-      ]
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",

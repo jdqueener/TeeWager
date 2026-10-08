@@ -207,18 +207,17 @@ export default function ScorecardScreen() {
     const ldEligible = ldBean && isParAllowed(ldBean, par);
     const kpEligible = kpBean && isParAllowed(kpBean, par);
 
-    // In a 2v2 beans scramble, every "row" is a team sharing one score —
+    // In a 2v2 beans scramble, every "group" is a team sharing one score —
     // both teammates hold the identical stroke value, so comparing raw
     // per-player strokes makes a clear team win look like an internal tie
-    // between teammates. Compare by team representative instead.
-    const beansIsTeams = beansTeams?.length === 2;
-    const rowRealIdx = beansIsTeams ? beansTeams.map(team => team[0]) : players.map((_, pi) => pi);
-    const rowLabel   = idx => beansIsTeams
-      ? beansTeams[idx].map(i => players[i]?.split(' ')[0]).join(' & ')
-      : players[rowRealIdx[idx]].split(' ')[0];
+    // between teammates. Compare strokes by group, but bonus beans and
+    // Skins are awarded to whichever real player earned them, so "has
+    // anyone already won" must check every real player, not one rep.
+    const strokeGroups = beansTeams ?? players.map((_, pi) => [pi]);
+    const groupLabel = team => team.map(i => players[i]?.split(' ')[0]).join(' & ');
 
-    const ldWon      = rowRealIdx.some(pi => hasBean(pi, 'longDrive'));
-    const kpWon      = rowRealIdx.some(pi => hasBean(pi, 'kp'));
+    const ldWon      = players.some((_, pi) => hasBean(pi, 'longDrive'));
+    const kpWon      = players.some((_, pi) => hasBean(pi, 'kp'));
 
     const doCarryovers = () => {
       if (ldCarryoverEnabled && ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER', holeIdx: hole });
@@ -231,21 +230,21 @@ export default function ScorecardScreen() {
       if (advance) dispatch({ type: 'SET_HOLE', hole: hole + 1 });
     };
 
-    const holeStrokes = rowRealIdx.map(pi => getStroke(pi, hole));
-    const allEntered  = holeStrokes.every(s => s > 0);
-    const winnerRow   = rowRealIdx.findIndex(pi => hasBean(pi, 'lowBall'));
+    const groupStrokes = strokeGroups.map(team => getStroke(team[0], hole));
+    const allEntered   = groupStrokes.every(s => s > 0);
+    const winnerGroup  = strokeGroups.findIndex(team => team.some(pi => hasBean(pi, 'lowBall')));
 
     if (!allEntered) {
       // Can't determine a low-score leader without every stroke entered —
       // carry the skins pot forward rather than letting it silently drop,
       // unless a winner was already manually awarded on this hole.
-      if (winnerRow < 0 && skinsBean) dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
+      if (winnerGroup < 0 && skinsBean) dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
       next();
       return;
     }
 
-    const minS     = Math.min(...holeStrokes);
-    const hLeaders = holeStrokes.map(s => s === minS);
+    const minS     = Math.min(...groupStrokes);
+    const hLeaders = groupStrokes.map(s => s === minS);
     const outright = hLeaders.filter(Boolean).length === 1;
 
     const confirm = (title, msg) => {
@@ -260,9 +259,10 @@ export default function ScorecardScreen() {
       }
     };
 
-    if (winnerRow >= 0 && !hLeaders[winnerRow]) {
-      const leaderName = rowLabel(hLeaders.indexOf(true));
-      const winnerName = rowLabel(winnerRow);
+    if (winnerGroup >= 0 && !hLeaders[winnerGroup]) {
+      const leaderName = groupLabel(strokeGroups[hLeaders.indexOf(true)]);
+      const winnerPi   = strokeGroups[winnerGroup].find(pi => hasBean(pi, 'lowBall'));
+      const winnerName = players[winnerPi].split(' ')[0];
       confirm(
         'Skins Conflict',
         `${winnerName} is awarded Skins but ${leaderName} has the low score (${minS}). ${verb} anyway?`
@@ -270,10 +270,11 @@ export default function ScorecardScreen() {
       return;
     }
 
-    // No skins winner — auto-award outright winner or carry over tie
-    if (winnerRow < 0 && skinsBean) {
+    // No skins winner — auto-award outright winner (to the first real
+    // player in the winning group) or carry over tie
+    if (winnerGroup < 0 && skinsBean) {
       if (outright) {
-        dispatch({ type: 'SKINS_AWARD', playerIdx: rowRealIdx[hLeaders.indexOf(true)], holeIdx: hole, totalBeans: 1 + skinsCarryover });
+        dispatch({ type: 'SKINS_AWARD', playerIdx: strokeGroups[hLeaders.indexOf(true)][0], holeIdx: hole, totalBeans: 1 + skinsCarryover });
       } else {
         dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
       }
@@ -741,12 +742,22 @@ export default function ScorecardScreen() {
               return (<>
             {visibleBeans.map(bean => {
               if (bean.id === 'lowBall') {
-                // Auto-detect low scorer from strokes
+                // Auto-detect low scorer from strokes. In a 2v2 scramble, both
+                // teammates share one stroke, so two tied teammates must not
+                // register as an internal tie — compare by team, then expand
+                // back to a leader flag per real player (the award itself
+                // still goes to whichever specific player is tapped).
                 const holeStrokes = beanRows.map(r => getStroke(r.rep, hole));
-                const entered = holeStrokes.filter(s => s > 0);
+                const strokeGroups = beansTeams ?? beanRows.map(r => [r.rep]);
+                const groupStrokes = strokeGroups.map(team => holeStrokes[team[0]]);
+                const entered = groupStrokes.filter(s => s > 0);
                 const minS = entered.length > 0 ? Math.min(...entered) : null;
-                const leaders = minS != null ? beanRows.map((r, pi) => holeStrokes[pi] === minS && holeStrokes[pi] > 0) : beanRows.map(() => false);
-                const outright = leaders.filter(Boolean).length === 1;
+                const groupLeads = minS != null ? groupStrokes.map(s => s === minS && s > 0) : groupStrokes.map(() => false);
+                const outright = groupLeads.filter(Boolean).length === 1;
+                const leaders = beanRows.map(r => {
+                  const gi = strokeGroups.findIndex(team => team.includes(r.rep));
+                  return groupLeads[gi];
+                });
                 return (
                   <LowBallCard
                     key="lowBall"
