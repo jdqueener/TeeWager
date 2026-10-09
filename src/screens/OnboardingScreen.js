@@ -76,7 +76,11 @@ export default function OnboardingScreen({ onDone }) {
         renderItem={({ item }) => (
           <View style={styles.slide}>
             {item.emoji === '⛳'
-              ? <Image source={require('../../assets/icon.png')} style={styles.emojiLogo} />
+              ? (
+                  <View style={styles.emojiLogoWrap}>
+                    <Image source={require('../../assets/icon.png')} style={styles.emojiLogo} resizeMode="cover" />
+                  </View>
+                )
               : <Text style={styles.emoji}>{item.emoji}</Text>}
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.body}>{item.body}</Text>
@@ -121,7 +125,8 @@ const styles = StyleSheet.create({
 
   slide:        { width, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, paddingTop: 80 },
   emoji:        { fontSize: 72, marginBottom: spacing.lg },
-  emojiLogo:    { width: 92, height: 92, borderRadius: 20, marginBottom: spacing.lg },
+  emojiLogoWrap: { width: 92, height: 92, borderRadius: 20, overflow: 'hidden', marginBottom: spacing.lg },
+  emojiLogo:    { width: 92, height: 92 },
   title:        { fontSize: 36, fontWeight: '900', color: colors.white, textAlign: 'center', lineHeight: 42, marginBottom: spacing.md },
   body:         { fontSize: 16, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 24 },
 

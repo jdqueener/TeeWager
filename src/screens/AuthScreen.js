@@ -483,7 +483,11 @@ function WelcomeScreen({ plan, onDone, onUpgradeAnnual, upgrading }) {
       <View style={[styles.hero, { paddingBottom: 20 }]}>
         {isPro
           ? <Text style={styles.heroEmoji}>🏆</Text>
-          : <Image source={require('../../assets/icon.png')} style={styles.heroLogo} />}
+          : (
+            <View style={styles.heroLogoWrap}>
+              <Image source={require('../../assets/icon.png')} style={styles.heroLogo} resizeMode="cover" />
+            </View>
+          )}
         <Text style={styles.heroTitle}>{isPro ? 'Welcome, Pro!' : 'Welcome!'}</Text>
         <Text style={styles.heroSub}>{isPro ? 'All features unlocked.' : "You're on the free plan."}</Text>
       </View>
@@ -621,7 +625,8 @@ const styles = StyleSheet.create({
 
   hero:     { alignItems: 'center', paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 24 : 70, paddingBottom: 32, paddingHorizontal: spacing.xl },
   heroEmoji:{ fontSize: 52, marginBottom: spacing.sm },
-  heroLogo: { width: 68, height: 68, borderRadius: 15, marginBottom: spacing.sm },
+  heroLogoWrap: { width: 68, height: 68, borderRadius: 15, overflow: 'hidden', marginBottom: spacing.sm },
+  heroLogo: { width: 68, height: 68 },
   heroTitle:{ fontSize: 36, fontWeight: '900', color: colors.white, letterSpacing: -0.5 },
   heroSub:  { fontSize: 15, color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs },
   heroImage:{ width: '100%' },

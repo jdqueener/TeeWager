@@ -118,7 +118,9 @@ function PaywallView({ onSkip, onPurchaseSuccess }) {
     <View style={styles.sheet}>
       <View style={styles.pill} />
 
-      <Image source={require('../../assets/icon.png')} style={styles.emojiLogo} />
+      <View style={styles.emojiLogoWrap}>
+        <Image source={require('../../assets/icon.png')} style={styles.emojiLogo} resizeMode="cover" />
+      </View>
       <Text style={styles.title}>Keep the full experience.</Text>
       <Text style={styles.body}>
         Your free trial is up. Upgrade to keep all 13 beans, breakdown tab, share cards, and more.
@@ -192,7 +194,8 @@ const styles = StyleSheet.create({
   winnerOthers:     { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
   winnerOtherText:  { fontSize: 13, color: 'rgba(255,255,255,0.55)' },
 
-  emojiLogo:  { width: 50, height: 50, borderRadius: 11, alignSelf: 'center' },
+  emojiLogoWrap: { width: 50, height: 50, borderRadius: 11, overflow: 'hidden', alignSelf: 'center' },
+  emojiLogo:  { width: 50, height: 50 },
   title:      { fontSize: 22, fontWeight: '900', color: colors.textDark, textAlign: 'center' },
   body:       { fontSize: 14, color: colors.textMid, textAlign: 'center', lineHeight: 21 },
 

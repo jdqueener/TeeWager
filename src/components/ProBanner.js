@@ -64,7 +64,9 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
         </TouchableOpacity>
         {pro ? (
           <View style={styles.proTextRow}>
-            <Image source={require('../../assets/icon.png')} style={styles.proTextIcon} />
+            <View style={styles.proTextIconWrap}>
+              <Image source={require('../../assets/icon.png')} style={styles.proTextIcon} resizeMode="cover" />
+            </View>
             <Text style={styles.text}>TeeWager Pro — all features unlocked</Text>
           </View>
         ) : (
@@ -115,7 +117,8 @@ const styles = StyleSheet.create({
   proBanner:   { backgroundColor: colors.green },
   text:        { color: colors.white, fontWeight: '800', fontSize: 13, textAlign: 'center', letterSpacing: 0.2 },
   proTextRow:  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  proTextIcon: { width: 38, height: 38, borderRadius: 9 },
+  proTextIconWrap: { width: 38, height: 38, borderRadius: 9, overflow: 'hidden' },
+  proTextIcon: { width: 38, height: 38 },
   menuBtn:      { width: 34, alignItems: 'center' },
   newRoundBtn:  { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.7)', backgroundColor: 'rgba(255,255,255,0.12)' },
   newRoundText: { fontSize: 12, fontWeight: '800', color: colors.white, letterSpacing: 0.3 },

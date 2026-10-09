@@ -49,7 +49,9 @@ export default function ShareCard({ visible, onClose, players, beanTotals, beanV
         <ViewShot ref={shotRef} options={{ format: 'png', quality: 1 }} style={styles.shotWrap}>
           <View style={styles.card}>
             <View style={styles.headerRow}>
-              <Image source={require('../../assets/icon.png')} style={styles.headerIcon} />
+              <View style={styles.headerIconWrap}>
+                <Image source={require('../../assets/icon.png')} style={styles.headerIcon} resizeMode="cover" />
+              </View>
               <Text style={styles.header}>TeeWager</Text>
             </View>
             <Text style={styles.sub}>
@@ -121,7 +123,8 @@ const styles = StyleSheet.create({
   card: { width: 320, backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg },
   header: { fontSize: 24, fontWeight: '900', color: colors.green, textAlign: 'center' },
   headerRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  headerIcon: { width: 38, height: 38, borderRadius: 9 },
+  headerIconWrap: { width: 38, height: 38, borderRadius: 9, overflow: 'hidden' },
+  headerIcon: { width: 38, height: 38 },
   sub:    { fontSize: 14, fontWeight: '700', color: colors.textDark, textAlign: 'center', marginTop: 2 },
   date:   { fontSize: 12, color: colors.textLight, textAlign: 'center', marginTop: 2 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
