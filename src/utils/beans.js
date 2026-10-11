@@ -30,7 +30,7 @@ export function beanLabel(value, awardToOthers = false) {
 // that are auto-derived by comparing individual stroke counts — Skins, Birdie,
 // Eagle, Double Eagle — become a guaranteed wash since everyone always ties. Only
 // beans independent of the shared score stay meaningful.
-export const SCRAMBLE_GROUP_BEAN_IDS = ['longDrive', 'kp', 'flagLength', 'holeInOne', 'chipIn', 'fourPutt'];
+export const SCRAMBLE_GROUP_BEAN_IDS = ['longDrive', 'kp', 'flagLength', 'holeInOne', 'chipIn'];
 
 export function isParAllowed(bean, par) {
   if (!bean.pf) return true;
