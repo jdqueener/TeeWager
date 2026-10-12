@@ -32,6 +32,14 @@ export function beanLabel(value, awardToOthers = false) {
 // beans independent of the shared score stay meaningful.
 export const SCRAMBLE_GROUP_BEAN_IDS = ['longDrive', 'kp', 'flagLength', 'holeInOne', 'chipIn'];
 
+// Beans mode 2v2 team scramble: unlike group scramble, a team has an actual
+// opponent, so stroke-derived beans (Skins, Birdie, Eagle, Double Eagle,
+// Sandy Birdie/Par, 2-Tree Par, 3-/4-Putt) aren't excluded — they're awarded
+// to the whole team instead of one real player, since a shared team stroke
+// has no single "who" to credit. Beans independent of the shared score
+// (someone's specific drive, putt, or in-round challenge) stay individual.
+export const TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS = ['longDrive', 'kp', 'flagLength', 'holeInOne', 'chipIn', 'teeStick', 'bonusBean'];
+
 export function isParAllowed(bean, par) {
   if (!bean.pf) return true;
   return bean.pf.includes(par);

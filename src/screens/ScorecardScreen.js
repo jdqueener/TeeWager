@@ -4,7 +4,7 @@ import {
   Alert, Platform, Modal, TextInput,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansTeams } from '../utils/beans';
+import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansTeams, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
 import { canPressTeam, activeLegStatusTeam, teamBestBall } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
@@ -730,34 +730,35 @@ export default function ScorecardScreen() {
               </View>
             </View>
 
-            {/* Bean cards — strokes may be shared in scramble modes, but bonus
-                beans (Long Drive, KP, etc.) are still earned by one specific
-                player, so every real player gets their own tappable row here
-                regardless of team/group scramble grouping. */}
+            {/* Bean cards — strokes may be shared in scramble modes. Beans
+                independent of the shared score (someone's specific drive,
+                putt, etc.) are still earned by one real player. In a 2v2
+                team scramble, beans derived from the shared stroke (Skins,
+                Birdie, Eagle, Sandy Birdie/Par, 2-Tree Par, 3-/4-Putt) have
+                no single real player to credit, so those award to the team
+                instead — see TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS. */}
             {(() => {
-              const beanRows = players.map((name, pi) => ({ label: name.split(' ')[0], rep: pi }));
-              const beanPlayerLabels = beanRows.map(r => r.label);
-              const realIdx = pi => beanRows[pi].rep;
+              const individualRows = players.map((name, pi) => ({ label: name.split(' ')[0], rep: pi }));
+              const beansIsTeams = beansTeams?.length === 2;
+              const teamRows = beansIsTeams ? beansTeams.map((team, ti) => ({ label: teamShortName(ti), rep: team[0] })) : null;
+              const rowsForBean = bean => (beansIsTeams && !TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(bean.id)) ? teamRows : individualRows;
 
               return (<>
             {visibleBeans.map(bean => {
+              const beanRows = rowsForBean(bean);
+              const beanPlayerLabels = beanRows.map(r => r.label);
+              const realIdx = pi => beanRows[pi].rep;
+
               if (bean.id === 'lowBall') {
-                // Auto-detect low scorer from strokes. In a 2v2 scramble, both
-                // teammates share one stroke, so two tied teammates must not
-                // register as an internal tie — compare by team, then expand
-                // back to a leader flag per real player (the award itself
-                // still goes to whichever specific player is tapped).
+                // Auto-detect low scorer from strokes — beanRows is already
+                // grouped by team when Skins is team-awarded, so two tied
+                // teammates correctly register as one shared stroke, not an
+                // internal tie.
                 const holeStrokes = beanRows.map(r => getStroke(r.rep, hole));
-                const strokeGroups = beansTeams ?? beanRows.map(r => [r.rep]);
-                const groupStrokes = strokeGroups.map(team => holeStrokes[team[0]]);
-                const entered = groupStrokes.filter(s => s > 0);
+                const entered = holeStrokes.filter(s => s > 0);
                 const minS = entered.length > 0 ? Math.min(...entered) : null;
-                const groupLeads = minS != null ? groupStrokes.map(s => s === minS && s > 0) : groupStrokes.map(() => false);
-                const outright = groupLeads.filter(Boolean).length === 1;
-                const leaders = beanRows.map(r => {
-                  const gi = strokeGroups.findIndex(team => team.includes(r.rep));
-                  return groupLeads[gi];
-                });
+                const leaders = minS != null ? holeStrokes.map(s => s === minS && s > 0) : holeStrokes.map(() => false);
+                const outright = leaders.filter(Boolean).length === 1;
                 return (
                   <LowBallCard
                     key="lowBall"
@@ -803,7 +804,7 @@ export default function ScorecardScreen() {
                   <BeanCard
                     key={bean.id}
                     bean={bean}
-                    players={beanPlayerLabels}
+                    players={rowsForBean(bean).map(r => r.label)}
                     hasBean={() => false}
                     onToggle={() => {}}
                     pro={pro}
