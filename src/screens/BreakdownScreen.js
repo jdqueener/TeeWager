@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { getEffectiveValue, totalBeansForTeam, beansAtHoleForTeam, totalBeansForScrambleTeam, beansAtHoleForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
+import { getEffectiveValue, totalBeansForTeam, beansAtHoleForTeam, totalBeansForScrambleTeam, beansAtHoleForScrambleTeam, totalBeansForPlayer, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
 import { holeWinner, holeResultTeam } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
@@ -47,6 +47,16 @@ export default function BreakdownScreen() {
   }
   function columnItems(col, h) {
     return isBeansTeams ? teamCellItems(col.ti, h) : cellItems(col.team, h);
+  }
+  // 2v2 only — the round-total split shown under each team's header, so it's
+  // clear at a glance how much of a team's total came from real players'
+  // individual beans vs. beans awarded to the team as a whole.
+  function columnSplit(col) {
+    if (!isBeansTeams) return null;
+    const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+    const individual = col.team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, individualBeans, firstBonus), 0);
+    const team = teamAwardedBeansForScrambleTeam(col.ti, beansTeams, scores, activeBeans, firstBonus);
+    return { individual, team };
   }
 
   function beanLabel(bean, h, count, pi) {
@@ -218,12 +228,18 @@ export default function BreakdownScreen() {
               <Text style={[styles.nassauCol, styles.nassauColHole]}>HOLE</Text>
               {beansColumns.map((col) => {
                 const total = columnTotal(col);
+                const split = columnSplit(col);
                 return (
                   <View key={col.pi} style={styles.beanColHeaderWrap}>
                     <Text style={styles.beanColHeaderName} numberOfLines={1}>{col.label.toUpperCase()}</Text>
                     <Text style={total > 0 ? styles.beanColHeaderTotal : styles.beanColHeaderTotalEmpty}>
                       {total > 0 ? `+${total}` : total}
                     </Text>
+                    {split && (split.individual > 0 || split.team > 0) && (
+                      <Text style={styles.beanColHeaderSplit} numberOfLines={1}>
+                        {split.individual} indiv · {split.team} team
+                      </Text>
+                    )}
                   </View>
                 );
               })}
@@ -312,6 +328,7 @@ const styles = StyleSheet.create({
   beanColHeaderName:      { fontSize: 11, fontWeight: '800', color: colors.textMid, textAlign: 'center' },
   beanColHeaderTotal:     { fontSize: 13, fontWeight: '900', color: colors.green, marginTop: 2 },
   beanColHeaderTotalEmpty:{ fontSize: 13, fontWeight: '700', color: colors.textLight, marginTop: 2 },
+  beanColHeaderSplit:     { fontSize: 9, fontWeight: '600', color: colors.textLight, marginTop: 1 },
 
   modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   modalCard:        { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 360, ...shadow.md },
