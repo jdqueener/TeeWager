@@ -192,11 +192,30 @@ export function beansAtHoleForScrambleTeam(teamIdx, holeIdx, beansTeams, scores,
   return total;
 }
 
-export function netDollarsBeansTeams(beansTeams, scores, activeBeans, firstBonus, beanValue) {
-  const teamTotals = beansTeams.map((_, ti) => totalBeansForScrambleTeam(ti, beansTeams, scores, activeBeans, firstBonus));
-  const n = teamTotals.length;
-  const sum = teamTotals.reduce((a, b) => a + b, 0);
-  return teamTotals.map(t => beanValue * (t * n - sum));
+// 2v2 beans scramble, full per-real-player settlement: individually-earned
+// beans (TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS) settle as a zero-sum game across
+// ALL real players, exactly like any non-team game — earning a Long Drive
+// means every other real player owes you, teammate included, not just the
+// opposing team. Team-awarded beans settle team-vs-team and that result is
+// split evenly between the two teammates. The two settlements are
+// independent games that simply add together per real player.
+export function netDollarsBeansScramble(beansTeams, scores, activeBeans, firstBonus, beanValue) {
+  const n = scores.length;
+  const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+  const individualTotals = scores.map((_, pi) => totalBeansForPlayer(pi, scores, individualBeans, firstBonus));
+  const individualSum = individualTotals.reduce((a, b) => a + b, 0);
+  const individualNet = individualTotals.map(t => beanValue * (t * n - individualSum));
+
+  const teamAwardedTotals = beansTeams.map((_, ti) => teamAwardedBeansForScrambleTeam(ti, beansTeams, scores, activeBeans, firstBonus));
+  const teamSum = teamAwardedTotals.reduce((a, b) => a + b, 0);
+  const nTeams = beansTeams.length;
+  const teamNet = teamAwardedTotals.map(t => beanValue * (t * nTeams - teamSum));
+
+  const net = new Array(n).fill(0);
+  beansTeams.forEach((team, ti) => {
+    team.forEach(pi => { net[pi] = individualNet[pi] + teamNet[ti] / team.length; });
+  });
+  return net;
 }
 
 // Sums for a team (or a lone player wrapped as a 1-member "team") — lets

@@ -4,7 +4,7 @@ import {
   Alert, Platform, Modal, TextInput,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansTeams, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
+import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansScramble, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
 import { canPressTeam, activeLegStatusTeam, teamBestBall } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
@@ -585,11 +585,14 @@ export default function ScorecardScreen() {
               those screens show. */}
           {gameMode !== 'nassau' && (() => {
             const isBeansScrambleTeams = beansTeams?.length === 2;
-            const teamNet = isBeansScrambleTeams
-              ? netDollarsBeansTeams(beansTeams, scores, activeBeans, firstBonus, beanValue)
+            // Individually-earned beans (Long Drive, KP, etc.) can differ
+            // between teammates, so each real player gets their own dollar
+            // figure here — not one shared team number — even in 2v2.
+            const scrambleNet = isBeansScrambleTeams
+              ? netDollarsBeansScramble(beansTeams, scores, activeBeans, firstBonus, beanValue)
               : null;
             const rows = isBeansScrambleTeams
-              ? beansTeams.map((team, ti) => ({ pi: team[0], label: teamShortName(ti), net: teamNet[ti] }))
+              ? players.map((name, pi) => ({ pi, label: name.split(' ')[0], net: scrambleNet[pi] }))
               : players.map((name, pi) => ({
                   pi, label: name.split(' ')[0],
                   net: netDollarsForPlayer(pi, players, scores, activeBeans, firstBonus, beanValue, pressMode, presses, tenthPressed, tenthPressValue, holePresses, holeCount),

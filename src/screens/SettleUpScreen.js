@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { totalBeansForPlayer, computeSettleUp, minimumCashFlow, totalBeansForScrambleTeam, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
+import { totalBeansForPlayer, computeSettleUp, minimumCashFlow, netDollarsBeansScramble, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
 import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, legMatchStatusPairStroke, legMatchStatusTeam } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { incrementRoundsCompleted } from '../utils/pro';
@@ -83,19 +83,13 @@ export default function SettleUpScreen() {
       ? computeNassauSettleUpTeamFormat(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses, nassauTeamFormat)
       : computeNassauSettleUpStroke(players, strokes, nassauStake, holeCount);
   } else if (isBeansTeams) {
-    // Individually-earned beans are pooled per team; team-awarded beans
-    // (Skins, Birdie, 3-/4-Putt, etc.) settle team-vs-team directly — see
-    // totalBeansForScrambleTeam. The result settles as a 2-team zero-sum
-    // game, then splits evenly between teammates — same "stake split in
-    // half" convention as Nassau teams.
-    const teamBeanTotals = beansTeams.map((_, ti) => totalBeansForScrambleTeam(ti, beansTeams, scores, activeBeans, firstBonus));
-    const teamPayments = computeSettleUp(teamNames, teamBeanTotals, beanValue, []);
-    const net = new Array(players.length).fill(0);
-    const teamNet = [0, 0];
-    teamPayments.forEach(p => { teamNet[p.from] -= p.amt; teamNet[p.to] += p.amt; });
-    beansTeams.forEach((team, ti) => team.forEach(pi => { net[pi] = teamNet[ti] / team.length; }));
-    // Side wagers reference real players directly, so apply them on the real net —
-    // same formula computeSettleUp uses internally — rather than the virtual rep pair.
+    // Two independent zero-sum games, added together per real player:
+    // individually-earned beans (Long Drive, KP, etc.) settle across all
+    // real players exactly like any non-team game — a teammate owes you
+    // too, not just the opponents — while team-awarded beans (Skins,
+    // Birdie, 3-/4-Putt, etc.) settle team-vs-team and split evenly
+    // between teammates. See netDollarsBeansScramble.
+    const net = netDollarsBeansScramble(beansTeams, scores, activeBeans, firstBonus, beanValue);
     wagers.forEach(w => {
       if (w.winnerId >= 0) {
         players.forEach((_, pi) => {
@@ -359,48 +353,49 @@ export default function SettleUpScreen() {
               <View style={styles.mathCard}>
                 {isBeansTeams ? (() => {
                   const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
-                  const individualSums = beansTeams.map(team => team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, individualBeans, firstBonus), 0));
+                  const individualTotals = players.map((_, pi) => totalBeansForPlayer(pi, scores, individualBeans, firstBonus));
+                  const n = players.length;
+                  const individualSum = individualTotals.reduce((a, b) => a + b, 0);
+                  const individualNet = individualTotals.map(t => beanValue * (t * n - individualSum));
                   const teamAwardedSums = beansTeams.map((_, ti) => teamAwardedBeansForScrambleTeam(ti, beansTeams, scores, activeBeans, firstBonus));
-                  const teamBeanSums = beansTeams.map((_, ti) => individualSums[ti] + teamAwardedSums[ti]);
-                  const netTeam0 = beanValue * (teamBeanSums[0] - teamBeanSums[1]);
+                  const teamSum = teamAwardedSums.reduce((a, b) => a + b, 0);
+                  const teamNet = teamAwardedSums.map(t => beanValue * (t * 2 - teamSum));
+                  const netTeam0 = teamNet[0];
+                  const combinedNet = players.map((_, pi) => individualNet[pi] + teamNet[teamOfPlayer(pi)] / 2);
                   return (
                     <>
                       <Text style={styles.mathIntro}>
-                        Each team's individually-earned beans plus its team-awarded beans (Skins, Birdie, 3-/4-Putt, etc.) are pooled together, so the two teams settle like a 1v1 bean game, then split evenly between teammates.
+                        Two separate games add together: individually-earned beans (Long Drive, KP, etc.) settle across all 4 real players like any normal game — a teammate owes you too. Team-awarded beans (Skins, Birdie, 3-/4-Putt, etc.) settle team-vs-team, split evenly between teammates.
                       </Text>
                       <View style={styles.mathDivider} />
-                      <View style={styles.mathRow}>
-                        <Text style={styles.mathLabel}>{teamNames[0]} individual beans ({teamPlayerLabels[0]})</Text>
-                        <Text style={styles.mathValue}>{individualSums[0]}</Text>
-                      </View>
+                      <Text style={styles.mathIntro}>Individual beans (vs. all 4 players):</Text>
+                      {players.map((name, pi) => (
+                        <View key={pi} style={styles.mathRow}>
+                          <Text style={styles.mathLabel}>{name} — {individualTotals[pi]} bean{individualTotals[pi] === 1 ? '' : 's'}</Text>
+                          <Text style={styles.mathValue}>{individualNet[pi] >= 0 ? '+' : ''}${individualNet[pi].toFixed(2)}</Text>
+                        </View>
+                      ))}
+                      <View style={styles.mathDivider} />
+                      <Text style={styles.mathIntro}>Team beans ({teamNames[0]} vs {teamNames[1]}):</Text>
                       <View style={styles.mathRow}>
                         <Text style={styles.mathLabel}>{teamNames[0]} team beans</Text>
                         <Text style={styles.mathValue}>{teamAwardedSums[0]}</Text>
                       </View>
                       <View style={styles.mathRow}>
-                        <Text style={styles.mathLabel}>{teamNames[1]} individual beans ({teamPlayerLabels[1]})</Text>
-                        <Text style={styles.mathValue}>{individualSums[1]}</Text>
-                      </View>
-                      <View style={styles.mathRow}>
                         <Text style={styles.mathLabel}>{teamNames[1]} team beans</Text>
                         <Text style={styles.mathValue}>{teamAwardedSums[1]}</Text>
                       </View>
-                      <View style={styles.mathDivider} />
-                      <View style={styles.mathRow}>
-                        <Text style={styles.mathLabel}>{teamNames[0]} total</Text>
-                        <Text style={styles.mathValue}>{teamBeanSums[0]}</Text>
-                      </View>
-                      <View style={styles.mathRow}>
-                        <Text style={styles.mathLabel}>{teamNames[1]} total</Text>
-                        <Text style={styles.mathValue}>{teamBeanSums[1]}</Text>
-                      </View>
-                      <View style={styles.mathDivider} />
                       <Text style={styles.mathFormula}>
-                        ${beanValue.toFixed(2)} × ({teamBeanSums[0]} − {teamBeanSums[1]}) = {netTeam0 >= 0 ? '+' : ''}${netTeam0.toFixed(2)} for {teamNames[0]}
+                        ${beanValue.toFixed(2)} × ({teamAwardedSums[0]} − {teamAwardedSums[1]}) = {netTeam0 >= 0 ? '+' : ''}${netTeam0.toFixed(2)} for {teamNames[0]}, split → {netTeam0 >= 0 ? '+' : ''}${(netTeam0 / 2).toFixed(2)} per {teamNames[0]} player, {-netTeam0 >= 0 ? '+' : ''}${(-netTeam0 / 2).toFixed(2)} per {teamNames[1]} player
                       </Text>
-                      <Text style={styles.mathFormula}>
-                        Split evenly → {netTeam0 >= 0 ? '+' : ''}${(netTeam0 / 2).toFixed(2)} per {teamNames[0]} player, {-netTeam0 >= 0 ? '+' : ''}${(-netTeam0 / 2).toFixed(2)} per {teamNames[1]} player
-                      </Text>
+                      <View style={styles.mathDivider} />
+                      <Text style={styles.mathIntro}>Combined net per player:</Text>
+                      {players.map((name, pi) => (
+                        <View key={pi} style={styles.mathRow}>
+                          <Text style={styles.mathLabel}>{name}</Text>
+                          <Text style={styles.mathValue}>{combinedNet[pi] >= 0 ? '+' : ''}${combinedNet[pi].toFixed(2)}</Text>
+                        </View>
+                      ))}
                     </>
                   );
                 })() : (
