@@ -1179,10 +1179,17 @@ export default function SetupScreen() {
             </Text>
             <TouchableOpacity
               style={styles.promptSave}
-              onPress={() => { setTrialExpiredVisible(false); Linking.openURL('https://www.teewager.io/upgrade'); }}
+              onPress={() => {
+                setTrialExpiredVisible(false);
+                // App Store guideline 3.1.1 — never link out to purchase a
+                // subscription from inside the iOS/Android app; only the web
+                // build may send users to Stripe. Native always uses IAP.
+                if (Platform.OS === 'web') Linking.openURL('https://www.teewager.io/upgrade');
+                else setPaywallVisible(true);
+              }}
               activeOpacity={0.85}
             >
-              <Text style={styles.promptSaveText}>Upgrade at teewager.io →</Text>
+              <Text style={styles.promptSaveText}>{Platform.OS === 'web' ? 'Upgrade at teewager.io →' : 'Upgrade to Pro →'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.promptSkip} onPress={() => setTrialExpiredVisible(false)}>
               <Text style={styles.promptSkipText}>Maybe later</Text>

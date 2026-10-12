@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Image,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
-  StatusBar, Linking, SafeAreaView,
+  StatusBar, Linking, SafeAreaView, Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
@@ -230,9 +230,14 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
   const isSignUp = mode === 'signup';
 
   // Gates every account-creation path (email, Google, Apple) — sign-in is unaffected.
+  // Uses a native Alert (not just the inline error text) so the Apple/Google
+  // buttons — which sit below the checkbox, out of view if someone taps them
+  // right away — can't silently fail with an easy-to-miss message.
   function checkAgeGate() {
     if (isSignUp && !ageConfirmed) {
-      setBusy_error('Please confirm you are 18 years of age or older to continue.');
+      const msg = 'Please check the box confirming you are 18 years of age or older before continuing.';
+      setBusy_error(msg);
+      Alert.alert('Confirm your age', msg);
       return false;
     }
     return true;
