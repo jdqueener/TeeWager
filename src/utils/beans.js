@@ -131,21 +131,78 @@ export function netDollarsForPlayer(playerIdx, players, scores, activeBeans, fir
   return netDollars;
 }
 
-// 2v2 beans scramble: each team pools its two real players' bean totals
-// (every bean is earned by whichever player actually earned it) and settles
-// as a 2-team zero-sum game, split evenly between teammates.
+// 2v2 beans scramble: beans in TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS are earned by
+// whichever real player actually earned them, same as any other game. Every
+// other bean is awarded to a team as a whole — its count lives on that team's
+// first player (the "rep") — and settles team-vs-team: an awardToOthers bean
+// (3-/4-Putt) pays the *other team*, once, not each real opponent, so a
+// 3-putt always costs the putting team exactly one stake no matter team size,
+// and never shows up as a charge against the putter's own teammate. Just the
+// team-awarded portion (excludes individually-earned beans) — lets a screen
+// show "individual beans" and "team beans" as two distinct figures instead
+// of one opaque total.
+export function teamAwardedBeansForScrambleTeam(teamIdx, beansTeams, scores, activeBeans, firstBonus) {
+  const teamAwardedBeans = activeBeans.filter(b => !TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+  const rep = beansTeams[teamIdx][0];
+  let total = 0;
+  for (let h = 0; h < 18; h++) {
+    for (const bean of teamAwardedBeans) {
+      if (bean.awardToOthers) {
+        beansTeams.forEach((otherTeam, ot) => {
+          if (ot === teamIdx) return;
+          const count = scores[otherTeam[0]]?.[h]?.[bean.id] || 0;
+          if (!count) return;
+          total += count * Math.abs(getEffectiveValue(bean, otherTeam[0], h, firstBonus));
+        });
+      } else {
+        const count = scores[rep]?.[h]?.[bean.id] || 0;
+        if (count) total += count * getEffectiveValue(bean, rep, h, firstBonus);
+      }
+    }
+  }
+  return total;
+}
+
+export function totalBeansForScrambleTeam(teamIdx, beansTeams, scores, activeBeans, firstBonus) {
+  const team = beansTeams[teamIdx];
+  const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+  const individualTotal = team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, individualBeans, firstBonus), 0);
+  return individualTotal + teamAwardedBeansForScrambleTeam(teamIdx, beansTeams, scores, activeBeans, firstBonus);
+}
+
+export function beansAtHoleForScrambleTeam(teamIdx, holeIdx, beansTeams, scores, activeBeans, firstBonus) {
+  const team = beansTeams[teamIdx];
+  const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+  const teamAwardedBeans = activeBeans.filter(b => !TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+  let total = team.reduce((s, pi) => s + beansAtHoleForPlayer(pi, holeIdx, scores, individualBeans, firstBonus, scores.length), 0);
+  const rep = team[0];
+  for (const bean of teamAwardedBeans) {
+    if (bean.awardToOthers) {
+      beansTeams.forEach((otherTeam, ot) => {
+        if (ot === teamIdx) return;
+        const count = scores[otherTeam[0]]?.[holeIdx]?.[bean.id] || 0;
+        if (!count) return;
+        total += count * Math.abs(getEffectiveValue(bean, otherTeam[0], holeIdx, firstBonus));
+      });
+    } else {
+      const count = scores[rep]?.[holeIdx]?.[bean.id] || 0;
+      if (count) total += count * getEffectiveValue(bean, rep, holeIdx, firstBonus);
+    }
+  }
+  return total;
+}
+
 export function netDollarsBeansTeams(beansTeams, scores, activeBeans, firstBonus, beanValue) {
-  const teamBeans = beansTeams.map(team =>
-    team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, activeBeans, firstBonus), 0)
-  );
-  const n = teamBeans.length;
-  const totalBeans = teamBeans.reduce((a, b) => a + b, 0);
-  return teamBeans.map(t => beanValue * (t * n - totalBeans));
+  const teamTotals = beansTeams.map((_, ti) => totalBeansForScrambleTeam(ti, beansTeams, scores, activeBeans, firstBonus));
+  const n = teamTotals.length;
+  const sum = teamTotals.reduce((a, b) => a + b, 0);
+  return teamTotals.map(t => beanValue * (t * n - sum));
 }
 
 // Sums for a team (or a lone player wrapped as a 1-member "team") — lets
 // screens that show per-player bean breakdowns (e.g. Breakdown) use one
-// code path for both individual and team-scramble games.
+// code path for both individual games and beans Group Scramble (one shared
+// team of everyone, no opposing side, so no awardToOthers ambiguity).
 export function totalBeansForTeam(team, scores, activeBeans, firstBonus) {
   return team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, activeBeans, firstBonus), 0);
 }

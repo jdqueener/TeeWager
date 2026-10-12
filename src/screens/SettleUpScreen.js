@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { totalBeansForPlayer, computeSettleUp, minimumCashFlow } from '../utils/beans';
+import { totalBeansForPlayer, computeSettleUp, minimumCashFlow, totalBeansForScrambleTeam, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
 import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, legMatchStatusPairStroke, legMatchStatusTeam } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { incrementRoundsCompleted } from '../utils/pro';
@@ -83,11 +83,12 @@ export default function SettleUpScreen() {
       ? computeNassauSettleUpTeamFormat(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses, nassauTeamFormat)
       : computeNassauSettleUpStroke(players, strokes, nassauStake, holeCount);
   } else if (isBeansTeams) {
-    // Each team pools its two real players' bean totals (every bean is
-    // credited to whoever actually earned it) and settles as a 2-team
-    // zero-sum game, then splits evenly between teammates — same "stake
-    // split in half" convention as Nassau teams.
-    const teamBeanTotals = beansTeams.map(team => team.reduce((s, pi) => s + beanTotals[pi], 0));
+    // Individually-earned beans are pooled per team; team-awarded beans
+    // (Skins, Birdie, 3-/4-Putt, etc.) settle team-vs-team directly — see
+    // totalBeansForScrambleTeam. The result settles as a 2-team zero-sum
+    // game, then splits evenly between teammates — same "stake split in
+    // half" convention as Nassau teams.
+    const teamBeanTotals = beansTeams.map((_, ti) => totalBeansForScrambleTeam(ti, beansTeams, scores, activeBeans, firstBonus));
     const teamPayments = computeSettleUp(teamNames, teamBeanTotals, beanValue, []);
     const net = new Array(players.length).fill(0);
     const teamNet = [0, 0];
@@ -272,14 +273,52 @@ export default function SettleUpScreen() {
                 {teamNames[0]} ({teamPlayerLabels[0]}) vs {teamNames[1]} ({teamPlayerLabels[1]})
               </Text>
             )}
-            {players.map((name, i) => {
+            {isBeansTeams ? (() => {
+              const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+              return beansTeams.map((team, ti) => (
+                <React.Fragment key={ti}>
+                  {team.map(pi => {
+                    const beans = totalBeansForPlayer(pi, scores, individualBeans, firstBonus);
+                    const spot  = spots[pi] || 0;
+                    return (
+                      <View key={pi} style={styles.row}>
+                        <View>
+                          <Text style={styles.name}>{players[pi]}</Text>
+                          <Text style={styles.paymentTeam}>{teamNames[ti]} · individual</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[styles.val, beans < 0 && styles.neg]}>
+                            {beans >= 0 ? `+${beans}` : beans} beans{spot > 0 ? ` +${spot} spot` : ''}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                  <View style={styles.row}>
+                    <View>
+                      <Text style={styles.name}>{teamNames[ti]} team beans</Text>
+                      <Text style={styles.paymentTeam}>Skins, Birdie, 3-/4-Putt, etc.</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      {(() => {
+                        const beans = teamAwardedBeansForScrambleTeam(ti, beansTeams, scores, activeBeans, firstBonus);
+                        return (
+                          <Text style={[styles.val, beans < 0 && styles.neg]}>
+                            {beans >= 0 ? `+${beans}` : beans} beans
+                          </Text>
+                        );
+                      })()}
+                    </View>
+                  </View>
+                </React.Fragment>
+              ));
+            })() : players.map((name, i) => {
               const beans = beanTotals[i];
               const spot  = spots[i] || 0;
               return (
                 <View key={i} style={styles.row}>
                   <View>
                     <Text style={styles.name}>{name}</Text>
-                    {isBeansTeams && <Text style={styles.paymentTeam}>{teamNames[teamOfPlayer(i)]}</Text>}
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={[styles.val, beans < 0 && styles.neg]}>
@@ -319,20 +358,40 @@ export default function SettleUpScreen() {
             {showMath && (
               <View style={styles.mathCard}>
                 {isBeansTeams ? (() => {
-                  const teamBeanSums = beansTeams.map(team => team.reduce((s, pi) => s + beanTotals[pi], 0));
+                  const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+                  const individualSums = beansTeams.map(team => team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, individualBeans, firstBonus), 0));
+                  const teamAwardedSums = beansTeams.map((_, ti) => teamAwardedBeansForScrambleTeam(ti, beansTeams, scores, activeBeans, firstBonus));
+                  const teamBeanSums = beansTeams.map((_, ti) => individualSums[ti] + teamAwardedSums[ti]);
                   const netTeam0 = beanValue * (teamBeanSums[0] - teamBeanSums[1]);
                   return (
                     <>
                       <Text style={styles.mathIntro}>
-                        Each team's beans are pooled together, so the two teams settle like a 1v1 bean game, then split evenly between teammates.
+                        Each team's individually-earned beans plus its team-awarded beans (Skins, Birdie, 3-/4-Putt, etc.) are pooled together, so the two teams settle like a 1v1 bean game, then split evenly between teammates.
                       </Text>
                       <View style={styles.mathDivider} />
                       <View style={styles.mathRow}>
-                        <Text style={styles.mathLabel}>{teamNames[0]} beans ({teamPlayerLabels[0]})</Text>
+                        <Text style={styles.mathLabel}>{teamNames[0]} individual beans ({teamPlayerLabels[0]})</Text>
+                        <Text style={styles.mathValue}>{individualSums[0]}</Text>
+                      </View>
+                      <View style={styles.mathRow}>
+                        <Text style={styles.mathLabel}>{teamNames[0]} team beans</Text>
+                        <Text style={styles.mathValue}>{teamAwardedSums[0]}</Text>
+                      </View>
+                      <View style={styles.mathRow}>
+                        <Text style={styles.mathLabel}>{teamNames[1]} individual beans ({teamPlayerLabels[1]})</Text>
+                        <Text style={styles.mathValue}>{individualSums[1]}</Text>
+                      </View>
+                      <View style={styles.mathRow}>
+                        <Text style={styles.mathLabel}>{teamNames[1]} team beans</Text>
+                        <Text style={styles.mathValue}>{teamAwardedSums[1]}</Text>
+                      </View>
+                      <View style={styles.mathDivider} />
+                      <View style={styles.mathRow}>
+                        <Text style={styles.mathLabel}>{teamNames[0]} total</Text>
                         <Text style={styles.mathValue}>{teamBeanSums[0]}</Text>
                       </View>
                       <View style={styles.mathRow}>
-                        <Text style={styles.mathLabel}>{teamNames[1]} beans ({teamPlayerLabels[1]})</Text>
+                        <Text style={styles.mathLabel}>{teamNames[1]} total</Text>
                         <Text style={styles.mathValue}>{teamBeanSums[1]}</Text>
                       </View>
                       <View style={styles.mathDivider} />
