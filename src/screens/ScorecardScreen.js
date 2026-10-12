@@ -4,7 +4,7 @@ import {
   Alert, Platform, Modal, TextInput,
 } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansScramble, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
+import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansScramble, beansAtHoleForPlayer, teamAwardedBeansAtHoleForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
 import { canPressTeam, activeLegStatusTeam, teamBestBall } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
@@ -377,12 +377,19 @@ export default function ScorecardScreen() {
   // shared entry and match-play's better-of-two-players collapse to the same
   // "lowest entered score" computation, so one function covers both).
   const isGridTeams = gameMode === 'nassau' && !!nassauTeams;
+  // 2v2 beans scramble: both teammates always hold the identical shared
+  // stroke (see SET_TEAM_STROKE), so two rows showing the same score as
+  // four is pure duplication — collapse to one row per team here too.
+  const isBeansGridTeams = gameMode !== 'nassau' && beansTeams?.length === 2;
   const gridRows = isGridTeams
     ? nassauTeams.map((team, ti) => ({ label: teamShortName(ti), pi: ti }))
+    : isBeansGridTeams
+    ? beansTeams.map((team, ti) => ({ label: teamShortName(ti), pi: ti }))
     : players.map((name, pi) => ({ label: name, pi }));
 
   function gridGetStroke(rowIdx, hi) {
     if (isGridTeams) return teamBestBall(strokes, nassauTeams[rowIdx], hi) ?? 0;
+    if (isBeansGridTeams) return getStroke(beansTeams[rowIdx][0], hi);
     return getStroke(rowIdx, hi);
   }
   function sumStrokes(pi, holeArr) {
@@ -392,6 +399,12 @@ export default function ScorecardScreen() {
     return holeArr.reduce((s, hi) => s + getHolePar(hi), 0);
   }
   function getHoleBeans(pi, hi) {
+    if (isBeansGridTeams) {
+      const team = beansTeams[pi];
+      const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+      const individual = team.reduce((s, rp) => s + beansAtHoleForPlayer(rp, hi, scores, individualBeans, firstBonus, players.length), 0);
+      return individual + teamAwardedBeansAtHoleForScrambleTeam(pi, hi, beansTeams, scores, activeBeans, firstBonus);
+    }
     let t = 0;
     activeBeans.forEach(b => {
       if (b.awardToOthers) {
@@ -855,13 +868,21 @@ export default function ScorecardScreen() {
               const totP  = sumPar(playedHoles);
               const diff  = tot > 0 ? tot - totP : null;
               const earned = holes.reduce((s, hi) => s + getHoleBeans(pi, hi), 0);
-              const beans  = earned + (state.spots?.[pi] || 0);
+              // `spots` (bean handicap) is indexed by real player — a team
+              // row's `pi` is a team index here, so sum both members' spots.
+              const spotTotal = isBeansGridTeams
+                ? beansTeams[pi].reduce((s, rp) => s + (state.spots?.[rp] || 0), 0)
+                : (state.spots?.[pi] || 0);
+              const beans  = earned + spotTotal;
               return (
                 <View key={pi} style={styles.totalRow}>
                   <View style={styles.totalNameWrap}>
                     <Text style={styles.totalName2} numberOfLines={1}>{rowLabel}</Text>
                     {isGridTeams && (
                       <Text style={styles.totalNameSub} numberOfLines={1}>{teamPlayerNames(players, nassauTeams[pi])}</Text>
+                    )}
+                    {isBeansGridTeams && (
+                      <Text style={styles.totalNameSub} numberOfLines={1}>{teamPlayerNames(players, beansTeams[pi])}</Text>
                     )}
                   </View>
                   {back.length > 0 && (
