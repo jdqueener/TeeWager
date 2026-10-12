@@ -163,19 +163,10 @@ export function teamAwardedBeansForScrambleTeam(teamIdx, beansTeams, scores, act
   return total;
 }
 
-export function totalBeansForScrambleTeam(teamIdx, beansTeams, scores, activeBeans, firstBonus) {
-  const team = beansTeams[teamIdx];
-  const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
-  const individualTotal = team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, individualBeans, firstBonus), 0);
-  return individualTotal + teamAwardedBeansForScrambleTeam(teamIdx, beansTeams, scores, activeBeans, firstBonus);
-}
-
-export function beansAtHoleForScrambleTeam(teamIdx, holeIdx, beansTeams, scores, activeBeans, firstBonus) {
-  const team = beansTeams[teamIdx];
-  const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+export function teamAwardedBeansAtHoleForScrambleTeam(teamIdx, holeIdx, beansTeams, scores, activeBeans, firstBonus) {
   const teamAwardedBeans = activeBeans.filter(b => !TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
-  let total = team.reduce((s, pi) => s + beansAtHoleForPlayer(pi, holeIdx, scores, individualBeans, firstBonus, scores.length), 0);
-  const rep = team[0];
+  const rep = beansTeams[teamIdx][0];
+  let total = 0;
   for (const bean of teamAwardedBeans) {
     if (bean.awardToOthers) {
       beansTeams.forEach((otherTeam, ot) => {

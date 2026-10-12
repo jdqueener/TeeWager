@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { getEffectiveValue, totalBeansForTeam, beansAtHoleForTeam, totalBeansForScrambleTeam, beansAtHoleForScrambleTeam, totalBeansForPlayer, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
+import { getEffectiveValue, totalBeansForTeam, beansAtHoleForTeam, totalBeansForPlayer, beansAtHoleForPlayer, teamAwardedBeansForScrambleTeam, teamAwardedBeansAtHoleForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
 import { holeWinner, holeResultTeam } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
@@ -26,37 +26,37 @@ export default function BreakdownScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false);
   // { pi, h } of the cell whose detail popup is open, or null
   const [detailCell, setDetailCell] = useState(null);
+  // 2v2 beans scramble only: a "Team B +1" column mixing one real player's
+  // individual win with the team's own beans reads as if the team earned
+  // it together, which it didn't — so individual and team-awarded beans
+  // get entirely separate views here instead of one blended total.
+  const [beansView, setBeansView] = useState('individual'); // 'individual' | 'team'
 
-  // Beans grid columns: one per real player, or one per team in 2v2 scramble.
-  // `ti` (team index) is only meaningful for 2v2 columns — it's what lets a
-  // team-awarded penalty bean (3-/4-Putt) credit the *other team* once,
-  // instead of crediting a teammate for their own partner's mistake.
+  const individualBeanDefs = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
+
+  // Beans grid columns: one per real player (individual view, or non-team
+  // games), or one per team (2v2 team view).
   const beansColumns = isBeansTeams
-    ? beansTeams.map((team, ti) => ({ pi: team[0], ti, team, label: beansTeamNames[ti] }))
+    ? (beansView === 'team'
+        ? beansTeams.map((team, ti) => ({ pi: team[0], ti, team, label: beansTeamNames[ti] }))
+        : players.map((p, i) => ({ pi: i, ti: null, team: [i], label: p.split(' ')[0] })))
     : players.map((p, i) => ({ pi: i, ti: null, team: [i], label: p.split(' ')[0] }));
 
   function columnTotal(col) {
-    return isBeansTeams
-      ? totalBeansForScrambleTeam(col.ti, beansTeams, scores, activeBeans, firstBonus)
-      : totalBeansForTeam(col.team, scores, activeBeans, firstBonus);
+    if (!isBeansTeams) return totalBeansForTeam(col.team, scores, activeBeans, firstBonus);
+    return beansView === 'team'
+      ? teamAwardedBeansForScrambleTeam(col.ti, beansTeams, scores, activeBeans, firstBonus)
+      : totalBeansForPlayer(col.pi, scores, individualBeanDefs, firstBonus);
   }
   function columnAtHole(col, h) {
-    return isBeansTeams
-      ? beansAtHoleForScrambleTeam(col.ti, h, beansTeams, scores, activeBeans, firstBonus)
-      : beansAtHoleForTeam(col.team, h, scores, activeBeans, firstBonus, players.length);
+    if (!isBeansTeams) return beansAtHoleForTeam(col.team, h, scores, activeBeans, firstBonus, players.length);
+    return beansView === 'team'
+      ? teamAwardedBeansAtHoleForScrambleTeam(col.ti, h, beansTeams, scores, activeBeans, firstBonus)
+      : beansAtHoleForPlayer(col.pi, h, scores, individualBeanDefs, firstBonus, players.length);
   }
   function columnItems(col, h) {
-    return isBeansTeams ? teamCellItems(col.ti, h) : cellItems(col.team, h);
-  }
-  // 2v2 only — the round-total split shown under each team's header, so it's
-  // clear at a glance how much of a team's total came from real players'
-  // individual beans vs. beans awarded to the team as a whole.
-  function columnSplit(col) {
-    if (!isBeansTeams) return null;
-    const individualBeans = activeBeans.filter(b => TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(b.id));
-    const individual = col.team.reduce((s, pi) => s + totalBeansForPlayer(pi, scores, individualBeans, firstBonus), 0);
-    const team = teamAwardedBeansForScrambleTeam(col.ti, beansTeams, scores, activeBeans, firstBonus);
-    return { individual, team };
+    if (!isBeansTeams) return cellItems(col.team, h);
+    return beansView === 'team' ? teamOnlyCellItems(col.ti, h) : individualOnlyCellItems(col.pi, h);
   }
 
   function beanLabel(bean, h, count, pi) {
@@ -102,25 +102,33 @@ export default function BreakdownScreen() {
     return items;
   }
 
-  // 2v2 beans scramble version of cellItems: individually-awarded beans
-  // (see TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS) still show which real player on
-  // the team earned them. Every other bean is a team award — stored on the
-  // team's first player — so it shows as one flat team-level entry, never
-  // attributed to a specific teammate; a penalty bean (3-/4-Putt) only shows
-  // up in the *other* team's column, as "From {Team}'s 3-Putt".
-  function teamCellItems(teamIdx, h) {
+  // 2v2 beans scramble, "Individual" view: only beans a real player earns
+  // on their own (see TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS) — never any
+  // team-awarded bean, even though both can live on the same real player's
+  // record when that player happens to be their team's rep.
+  function individualOnlyCellItems(pi, h) {
     const items = [];
-    const team = beansTeams[teamIdx];
-    const rep = team[0];
     for (const bean of activeBeans) {
-      if (TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(bean.id)) {
-        for (const pi of team) {
-          const count = scores[pi]?.[h]?.[bean.id] || 0;
-          if (!count) continue;
-          const ev = getEffectiveValue(bean, pi, h, firstBonus);
-          items.push({ label: `${players[pi].split(' ')[0]} — ${beanLabel(bean, h, count, pi)}`, beans: count * ev });
-        }
-      } else if (bean.awardToOthers) {
+      if (!TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(bean.id)) continue;
+      const count = scores[pi]?.[h]?.[bean.id] || 0;
+      if (!count) continue;
+      const ev = getEffectiveValue(bean, pi, h, firstBonus);
+      items.push({ label: beanLabel(bean, h, count, pi), beans: count * ev });
+    }
+    return items;
+  }
+
+  // 2v2 beans scramble, "Team" view: only beans awarded to the team as a
+  // whole — stored on the team's first player, shown as one flat entry (no
+  // real player ever gets personal credit for a team win); a penalty bean
+  // (3-/4-Putt) only shows up in the *other* team's column, as "From
+  // {Team}'s 3-Putt".
+  function teamOnlyCellItems(teamIdx, h) {
+    const items = [];
+    const rep = beansTeams[teamIdx][0];
+    for (const bean of activeBeans) {
+      if (TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS.includes(bean.id)) continue;
+      if (bean.awardToOthers) {
         beansTeams.forEach((otherTeam, ot) => {
           if (ot === teamIdx) return;
           const count = scores[otherTeam[0]]?.[h]?.[bean.id] || 0;
@@ -224,22 +232,36 @@ export default function BreakdownScreen() {
              raw bean counts. */
           <>
             <Text style={styles.sectionLabel}>Beans by hole</Text>
+            {isBeansTeams && (
+              <View style={styles.beansViewToggle}>
+                <TouchableOpacity
+                  style={[styles.beansViewBtn, beansView === 'individual' && styles.beansViewBtnActive]}
+                  onPress={() => setBeansView('individual')}
+                >
+                  <Text style={[styles.beansViewBtnText, beansView === 'individual' && styles.beansViewBtnTextActive]}>
+                    Individual
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.beansViewBtn, beansView === 'team' && styles.beansViewBtnActive]}
+                  onPress={() => setBeansView('team')}
+                >
+                  <Text style={[styles.beansViewBtnText, beansView === 'team' && styles.beansViewBtnTextActive]}>
+                    Team
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={styles.nassauTableHeader}>
               <Text style={[styles.nassauCol, styles.nassauColHole]}>HOLE</Text>
               {beansColumns.map((col) => {
                 const total = columnTotal(col);
-                const split = columnSplit(col);
                 return (
                   <View key={col.pi} style={styles.beanColHeaderWrap}>
                     <Text style={styles.beanColHeaderName} numberOfLines={1}>{col.label.toUpperCase()}</Text>
                     <Text style={total > 0 ? styles.beanColHeaderTotal : styles.beanColHeaderTotalEmpty}>
                       {total > 0 ? `+${total}` : total}
                     </Text>
-                    {split && (split.individual > 0 || split.team > 0) && (
-                      <Text style={styles.beanColHeaderSplit} numberOfLines={1}>
-                        {split.individual} indiv · {split.team} team
-                      </Text>
-                    )}
                   </View>
                 );
               })}
@@ -328,7 +350,16 @@ const styles = StyleSheet.create({
   beanColHeaderName:      { fontSize: 11, fontWeight: '800', color: colors.textMid, textAlign: 'center' },
   beanColHeaderTotal:     { fontSize: 13, fontWeight: '900', color: colors.green, marginTop: 2 },
   beanColHeaderTotalEmpty:{ fontSize: 13, fontWeight: '700', color: colors.textLight, marginTop: 2 },
-  beanColHeaderSplit:     { fontSize: 9, fontWeight: '600', color: colors.textLight, marginTop: 1 },
+
+  // 2v2 beans scramble: Individual/Team view toggle — keeps a real player's
+  // personal win and a true team-level win from ever sharing one column, so
+  // "Team B +1" always means the team actually earned it, never that one
+  // player on the team happened to win something on their own.
+  beansViewToggle:      { flexDirection: 'row', backgroundColor: colors.greenPale, borderRadius: radius.pill, padding: 3, marginBottom: spacing.md, alignSelf: 'flex-start' },
+  beansViewBtn:          { paddingVertical: 6, paddingHorizontal: 16, borderRadius: radius.pill },
+  beansViewBtnActive:    { backgroundColor: colors.green, ...shadow.sm },
+  beansViewBtnText:      { fontSize: 13, fontWeight: '700', color: colors.textMid },
+  beansViewBtnTextActive:{ color: colors.white },
 
   modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   modalCard:        { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 360, ...shadow.md },
