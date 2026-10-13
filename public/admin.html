@@ -32,7 +32,9 @@
 
   /* Stats row */
   .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
-  .stat-card { background: #fff; border-radius: 12px; padding: 20px; border: 1px solid #E0E0D8; }
+  .stat-card { background: #fff; border-radius: 12px; padding: 20px; border: 1px solid #E0E0D8; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+  .stat-card:hover { border-color: #1A4A2E; }
+  .stat-card.active { border-color: #1A4A2E; border-width: 2px; padding: 19px; box-shadow: 0 0 0 1px #1A4A2E; }
   .stat-label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
   .stat-value { font-size: 28px; font-weight: 900; color: #1A4A2E; }
   .stat-sub   { font-size: 12px; color: #aaa; margin-top: 2px; }
@@ -194,32 +196,32 @@
   <div class="container">
     <!-- Stats -->
     <div class="stats-row">
-      <div class="stat-card">
+      <div class="stat-card" id="card-all" onclick="filterByStatCard('all')">
         <div class="stat-label">Total in Pipeline</div>
         <div class="stat-value" id="stat-partners">—</div>
         <div class="stat-sub">all prospects tracked</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" id="card-prospect" onclick="filterByStatCard('prospect')">
         <div class="stat-label">Prospect</div>
         <div class="stat-value" id="stat-prospect" style="color:#1D4ED8;">—</div>
         <div class="stat-sub">not yet outreached</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" id="card-targeted" onclick="filterByStatCard('targeted')">
         <div class="stat-label">Targeted</div>
         <div class="stat-value" id="stat-targeted" style="color:#C2410C;">—</div>
         <div class="stat-sub">print packet sent</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" id="card-contacted" onclick="filterByStatCard('contacted')">
         <div class="stat-label">Contacted</div>
         <div class="stat-value" id="stat-contacted" style="color:#6D28D9;">—</div>
         <div class="stat-sub">email sent</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" id="card-converted" onclick="filterByStatCard('converted')">
         <div class="stat-label">Converted</div>
         <div class="stat-value" id="stat-active" style="color:#166534;">—</div>
         <div class="stat-sub">now active partners</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" id="card-declined" onclick="filterByStatCard('declined')">
         <div class="stat-label">Declined / No Reply</div>
         <div class="stat-value" id="stat-declined" style="color:#9CA3AF;">—</div>
         <div class="stat-sub">closed or unresponsive</div>
@@ -228,13 +230,13 @@
 
     <div class="controls">
       <input class="search-input" id="search" placeholder="Search course, city, name…" oninput="renderTable()" />
-      <select class="filter-select" id="status-filter" onchange="renderTable()">
+      <select class="filter-select" id="status-filter" onchange="clearQuickFilter(); renderTable()">
         <option value="">All statuses</option>
         <option value="pending">Pending</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
       </select>
-      <select class="filter-select" id="outreach-stage-filter" onchange="renderTable()">
+      <select class="filter-select" id="outreach-stage-filter" onchange="clearQuickFilter(); renderTable()">
         <option value="">All outreach</option>
         <option value="Prospect">Prospect</option>
         <option value="Targeted">Targeted</option>
@@ -762,6 +764,7 @@ let currentDrawerPartner = null;
 let sortKey = 'created_at';
 let sortDir = -1;
 let period  = 'all';
+let quickFilter = null; // 'all' | 'prospect' | 'targeted' | 'contacted' | 'converted' | 'declined' | null
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 // The admin password is checked server-side by the admin-api Edge Function,
@@ -854,14 +857,47 @@ function profilesForCode(code) {
   });
 }
 
+// Shared with filterByStatCard so the stat counts and the click-filter
+// never disagree about what each card actually means.
+const CONTACTED_STAGES = ['Contacted via Email', 'Contacted via Phone'];
+const DECLINED_STAGES  = ['Declined', 'No Response', 'Follow Up Email 1', 'Follow Up Email 2'];
+
 function updateStats() {
   const byStage = s => allPartners.filter(p => p.outreach_stage === s).length;
+  const byStages = arr => allPartners.filter(p => arr.includes(p.outreach_stage)).length;
   document.getElementById('stat-partners').textContent  = allPartners.length;
   document.getElementById('stat-prospect').textContent  = byStage('Prospect');
   document.getElementById('stat-targeted').textContent  = byStage('Targeted');
-  document.getElementById('stat-contacted').textContent = byStage('Contacted');
+  document.getElementById('stat-contacted').textContent = byStages(CONTACTED_STAGES);
   document.getElementById('stat-active').textContent    = allPartners.filter(p => p.status === 'active').length;
-  document.getElementById('stat-declined').textContent  = byStage('Declined') + byStage('No Response') + byStage('Follow Up Email 1') + byStage('Follow Up Email 2');
+  document.getElementById('stat-declined').textContent  = byStages(DECLINED_STAGES);
+}
+
+// Clicking a stat card filters the table to just that bucket; clicking the
+// same card again (or "Total in Pipeline") clears it. Overrides the status/
+// outreach-stage dropdowns while active, since combining them would be
+// ambiguous — e.g. "Declined" spans four different outreach_stage values
+// those single-select dropdowns can't represent at once.
+function filterByStatCard(key) {
+  quickFilter = (quickFilter === key || key === 'all') ? null : key;
+  document.getElementById('status-filter').value = '';
+  document.getElementById('outreach-stage-filter').value = '';
+  document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+  if (quickFilter) {
+    const card = document.getElementById(`card-${quickFilter}`);
+    if (card) card.classList.add('active');
+  } else {
+    document.getElementById('card-all').classList.add('active');
+  }
+  renderTable();
+}
+
+// Manually changing the status/outreach-stage dropdowns while a stat-card
+// filter is active would otherwise silently combine into a contradictory,
+// always-empty filter — drop the card selection instead.
+function clearQuickFilter() {
+  quickFilter = null;
+  document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
 }
 
 function populateStateFilter() {
@@ -913,6 +949,12 @@ function renderTable() {
   if (contactF === 'email')   rows = rows.filter(r => r.email);
   if (contactF === 'address') rows = rows.filter(r => r.mailing_address);
   if (contactF === 'both')    rows = rows.filter(r => r.email && r.mailing_address);
+
+  if (quickFilter === 'prospect')       rows = rows.filter(r => r.outreach_stage === 'Prospect');
+  else if (quickFilter === 'targeted')  rows = rows.filter(r => r.outreach_stage === 'Targeted');
+  else if (quickFilter === 'contacted') rows = rows.filter(r => CONTACTED_STAGES.includes(r.outreach_stage));
+  else if (quickFilter === 'converted') rows = rows.filter(r => r.status === 'active');
+  else if (quickFilter === 'declined')  rows = rows.filter(r => DECLINED_STAGES.includes(r.outreach_stage));
 
   rows.sort((a, b) => {
     let av = a[sortKey] ?? '', bv = b[sortKey] ?? '';
