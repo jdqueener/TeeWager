@@ -268,6 +268,7 @@
       <span id="bulk-action-count" style="font-weight:700;font-size:14px;"></span>
       <button onclick="bulkEmail()" style="padding:7px 16px;background:#fff;color:#1A4A2E;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;">✉ Send Email</button>
       <button onclick="openPrintModal()" style="padding:7px 16px;background:#fff;color:#1A4A2E;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Print Packet</button>
+      <button onclick="bulkDelete()" style="padding:7px 16px;background:#FEF2F2;color:#DC2626;border:1.5px solid #FCA5A5;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;">🗑 Delete</button>
       <button onclick="clearBulkSelection()" style="padding:7px 14px;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.5);border-radius:7px;font-size:13px;cursor:pointer;">Clear</button>
     </div>
 
@@ -1628,6 +1629,31 @@ function getSelectedPartners() {
   return Array.from(document.querySelectorAll('.row-chk:checked'))
     .map(cb => allPartners.find(p => p.id === cb.value))
     .filter(Boolean);
+}
+
+async function bulkDelete() {
+  const selected = getSelectedPartners();
+  if (!selected.length) return;
+  const names = selected.map(p => p.course_name).join(', ');
+  if (!confirm(`Delete ${selected.length} partner${selected.length > 1 ? 's' : ''} (${names})? This cannot be undone.`)) return;
+
+  const failedIds = [];
+  for (const p of selected) {
+    try {
+      await adminApi('delete', { id: p.id });
+    } catch (e) {
+      failedIds.push(p.id);
+    }
+  }
+  const deletedIds = selected.map(p => p.id).filter(id => !failedIds.includes(id));
+  allPartners = allPartners.filter(p => !deletedIds.includes(p.id));
+  clearBulkSelection();
+  renderTable();
+  updateStats();
+  if (failedIds.length) {
+    const failedNames = selected.filter(p => failedIds.includes(p.id)).map(p => p.course_name);
+    alert(`Failed to delete: ${failedNames.join(', ')}`);
+  }
 }
 
 function bulkEmail() {
