@@ -53,16 +53,48 @@ serve(async (req) => {
 
   const payload = { ...fields, email: String(fields.email).toLowerCase(), portal_password: hashedPassword };
 
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_SERVICE_KEY,
-      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-      'Prefer': 'return=minimal',
-    },
-    body: JSON.stringify(payload),
-  });
+  // If this submission carries a referral_code (from the ?ref= link the CRM
+  // generates when a partner lead is added), it should complete that existing
+  // CRM row, not create a duplicate one — the CRM's own drawer already treats
+  // portal_password being set as "partner self-registered" on that same row.
+  let existingId: string | null = null;
+  if (fields.referral_code) {
+    const lookupRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/partners?referral_code=eq.${encodeURIComponent(fields.referral_code)}&select=id`,
+      {
+        headers: {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        },
+      }
+    ).catch(() => null);
+    if (lookupRes?.ok) {
+      const rows = await lookupRes.json();
+      if (Array.isArray(rows) && rows[0]) existingId = rows[0].id;
+    }
+  }
+
+  const res = existingId
+    ? await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${existingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({ ...payload, status: 'registered' }),
+      })
+    : await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify(payload),
+      });
 
   if (!res.ok) {
     const err = await res.text();
