@@ -11,10 +11,20 @@ export async function fetchProfile(userId) {
   return data ?? { is_pro: false, rounds_completed: 0 };
 }
 
-export async function ensureProfile(userId) {
+// `ignoreDuplicates` makes this an INSERT ... ON CONFLICT DO NOTHING — it only
+// ever writes on the very first call for a given user (profile creation), and
+// is a no-op for every later call (sign-in, token refresh, etc.), so passing
+// `referredBy` here is the one place a partner QR code can be safely attached:
+// exactly once, at account creation, regardless of signup method (email,
+// Apple, Google — see AuthContext.js, none of which can reliably carry custom
+// metadata through every provider's auth flow the way this can).
+export async function ensureProfile(userId, referredBy = null) {
   await supabase
     .from('profiles')
-    .upsert({ id: userId, is_pro: false, rounds_completed: 0 }, { onConflict: 'id', ignoreDuplicates: true });
+    .upsert(
+      { id: userId, is_pro: false, rounds_completed: 0, ...(referredBy ? { referred_by: referredBy } : {}) },
+      { onConflict: 'id', ignoreDuplicates: true }
+    );
 }
 
 export async function incrementRoundsCompleted(userId) {

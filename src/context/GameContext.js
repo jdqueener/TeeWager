@@ -3,6 +3,7 @@ import { BEAN_DEFS, DEFAULT_PARS } from '../utils/beans';
 import { saveGame, loadGame, clearGame, loadCustomDefs } from '../utils/storage';
 import { fetchProfile, ensureProfile, isTrialExpired, trialRoundsLeft } from '../utils/pro';
 import { supabase } from '../utils/supabase';
+import { getReferral, clearReferral } from '../utils/referral';
 
 const GameContext = createContext(null);
 
@@ -284,10 +285,15 @@ export function GameProvider({ children }) {
 
   async function refreshProfile(userId) {
     if (!userId) return;
-    await ensureProfile(userId);
+    const ref = getReferral();
+    await ensureProfile(userId, ref);
     const p = await fetchProfile(userId);
     setProfile(p);
     setPro(!!p.is_pro);
+    // Consumed (or determined not to apply, e.g. an existing account) —
+    // don't let a stale partner code from a prior QR scan linger and
+    // attach itself to some unrelated later sign-up on this device.
+    if (ref) clearReferral();
   }
 
   useEffect(() => {

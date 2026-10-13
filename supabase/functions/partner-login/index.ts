@@ -84,9 +84,32 @@ serve(async (req) => {
     });
   }
 
+  // referral_count/conversion_count on the partners row are static — nothing
+  // keeps them in sync with actual signups. Live-compute both here (the same
+  // way the admin CRM already does via profilesForCode) so a partner logging
+  // in sees current numbers instead of a stale monthly snapshot.
+  let referral_count = partner.referral_count ?? 0;
+  let conversion_count = partner.conversion_count ?? 0;
+  if (partner.referral_code) {
+    const profilesRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?select=is_pro&referred_by=eq.${encodeURIComponent(partner.referral_code)}`,
+      {
+        headers: {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        },
+      }
+    ).catch(() => null);
+    if (profilesRes?.ok) {
+      const referredProfiles = await profilesRes.json();
+      referral_count = referredProfiles.length;
+      conversion_count = referredProfiles.filter((p: { is_pro: boolean }) => p.is_pro).length;
+    }
+  }
+
   // Strip the password before returning to the client
   const { portal_password: _pw, ...safePartner } = partner;
-  return new Response(JSON.stringify(safePartner), {
+  return new Response(JSON.stringify({ ...safePartner, referral_count, conversion_count }), {
     status: 200,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
