@@ -3,7 +3,6 @@ import bcrypt from 'npm:bcryptjs@2.4.3';
 
 const SUPABASE_URL         = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const PARTNER_ACCESS_CODE  = Deno.env.get('PARTNER_ACCESS_CODE') ?? '';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -24,16 +23,7 @@ serve(async (req) => {
     });
   }
 
-  const { access_code, portal_password, ...fields } = body;
-
-  // The access code check that used to live in client JS (and be shown as the
-  // input's placeholder) now happens here, server-side, against a secret that
-  // is never shipped to the browser.
-  if (!PARTNER_ACCESS_CODE || typeof access_code !== 'string' || access_code.trim().toLowerCase() !== PARTNER_ACCESS_CODE.toLowerCase()) {
-    return new Response(JSON.stringify({ error: 'invalid access code' }), {
-      status: 403, headers: { ...CORS, 'Content-Type': 'application/json' },
-    });
-  }
+  const { portal_password, ...fields } = body;
 
   for (const f of REQUIRED_FIELDS) {
     if (!fields[f]) {
@@ -93,7 +83,10 @@ serve(async (req) => {
           'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
           'Prefer': 'return=minimal',
         },
-        body: JSON.stringify(payload),
+        // No matching CRM lead — either they had no code, checked "I don't
+        // have a code", or typed one that doesn't match anything on file.
+        // Flag it so the CRM surfaces it for a human to find/create and link.
+        body: JSON.stringify({ ...payload, status: 'needs_review' }),
       });
 
   if (!res.ok) {

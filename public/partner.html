@@ -269,19 +269,19 @@
 
   <form id="partner-form">
 
-    <!-- Hidden referral code field — auto-populated from ?ref= URL param -->
-    <input type="hidden" id="referral-code" name="referral_code" value="" />
-
     <!-- 0. PARTNER CODE -->
     <div class="form-section">
-      <div class="form-section-title">Partner access code</div>
-      <div class="form-section-sub">Enter the code included in your TeeWager mailer to get started.</div>
+      <div class="form-section-title">Your partner code</div>
+      <div class="form-section-sub">If you received a QR code, mailer, or signup link from TeeWager, enter the code here so we can connect your account. Don't have one? No problem — just check the box below and we'll link everything on our end.</div>
       <div class="field-grid">
         <div class="field">
-          <label for="partner-code">Access code <span>*</span></label>
-          <input type="text" id="partner-code" name="partner_code" required placeholder="Enter the code from your mailer" autocomplete="off" />
-          <div id="partner-code-error" style="display:none;color:var(--red);font-size:13px;margin-top:4px;">Invalid access code. Check your mailer and try again.</div>
+          <label for="partner-code">Partner code</label>
+          <input type="text" id="partner-code" name="referral_code" placeholder="e.g. PINESGOLF-OR-4K2" autocomplete="off" />
         </div>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="no-code-checkbox" style="width:18px;height:18px;margin-top:2px;flex-shrink:0;accent-color:var(--green);border:none;background:none;padding:0;" />
+          <span style="font-size:13px;color:var(--slate-mid);">I don't have a code</span>
+        </label>
       </div>
     </div>
 
@@ -643,16 +643,22 @@
 </footer>
 
 <script>
-// Capture ?ref= partner code from URL
+// Pre-fill the partner code from ?ref= URL param, if the partner arrived via
+// their personalized CRM link rather than typing the code in by hand.
 (function() {
   const ref = new URLSearchParams(window.location.search).get('ref');
   if (ref) {
-    document.getElementById('referral-code').value = ref;
-    document.getElementById('ref-display').textContent = ref;
-    const banner = document.getElementById('ref-banner');
-    banner.style.display = 'flex';
+    document.getElementById('partner-code').value = ref;
   }
 })();
+
+// "I don't have a code" clears and disables the code field so it can't be
+// submitted half-filled or stale.
+document.getElementById('no-code-checkbox').addEventListener('change', function() {
+  const input = document.getElementById('partner-code');
+  input.disabled = this.checked;
+  if (this.checked) input.value = '';
+});
 
 function showPayout(type) {
   document.getElementById('ach-fields').style.display = type === 'ach' ? 'grid' : 'none';
@@ -673,12 +679,6 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Form submission — inserts directly into Supabase partners table
 document.getElementById('partner-form').addEventListener('submit', async function(e) {
   e.preventDefault();
-
-  // The access code itself is now checked server-side (see partner-signup
-  // Edge Function) — it's a real secret and never lives in client JS.
-  const codeInput = document.getElementById('partner-code');
-  const codeError = document.getElementById('partner-code-error');
-  codeError.style.display = 'none';
 
   // Validate passwords
   const pw  = document.getElementById('portal-password').value;
@@ -731,7 +731,6 @@ document.getElementById('partner-form').addEventListener('submit', async functio
     placement_notes:      get('placement_notes') || null,
     referral_code:        get('referral_code') || null,
     portal_password:      pw,
-    access_code:          codeInput.value.trim(),
   };
 
   try {
@@ -749,13 +748,6 @@ document.getElementById('partner-form').addEventListener('submit', async functio
       document.getElementById('success-msg').style.display = 'block';
     } else {
       const err = await res.json().catch(() => ({}));
-      if (res.status === 403 && err.error === 'invalid access code') {
-        codeError.style.display = 'block';
-        codeInput.focus();
-        btn.disabled = false;
-        btn.textContent = 'Submit partner application →';
-        return;
-      }
       console.error('Partner signup error', err);
       btn.disabled = false;
       btn.textContent = 'Submit partner application →';

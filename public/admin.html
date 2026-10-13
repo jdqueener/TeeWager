@@ -69,9 +69,11 @@
   .course-code { font-size: 12px; color: #888; margin-top: 1px; font-family: monospace; }
 
   .badge { display: inline-block; padding: 3px 10px; border-radius: 50px; font-size: 11px; font-weight: 700; }
-  .badge-active    { background: #DCFCE7; color: #166534; }
-  .badge-pending   { background: #FEF9C3; color: #854D0E; }
-  .badge-inactive  { background: #F3F4F6; color: #6B7280; }
+  .badge-active       { background: #DCFCE7; color: #166534; }
+  .badge-pending      { background: #FEF9C3; color: #854D0E; }
+  .badge-inactive     { background: #F3F4F6; color: #6B7280; }
+  .badge-registered   { background: #E0F2FE; color: #0369A1; }
+  .badge-needs_review { background: #FEE2E2; color: #DC2626; }
   .badge-prospect  { background: #EFF6FF; color: #1D4ED8; }
   .badge-targeted  { background: #FFF7ED; color: #C2410C; }
   .badge-contacted { background: #F5F3FF; color: #6D28D9; }
@@ -233,6 +235,8 @@
       <select class="filter-select" id="status-filter" onchange="clearQuickFilter(); renderTable()">
         <option value="">All statuses</option>
         <option value="pending">Pending</option>
+        <option value="needs_review">Needs Review</option>
+        <option value="registered">Registered</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
       </select>
@@ -382,6 +386,8 @@
         <select id="add-status">
           <option value="">— None —</option>
           <option value="pending">Pending</option>
+          <option value="needs_review">Needs Review</option>
+          <option value="registered">Registered</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
@@ -589,6 +595,8 @@
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <select class="status-select" id="drawer-status">
         <option value="pending">Pending</option>
+        <option value="needs_review">Needs Review</option>
+        <option value="registered">Registered</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
       </select>
