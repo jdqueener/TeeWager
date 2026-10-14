@@ -73,7 +73,12 @@ serve(async (req) => {
           'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
           'Prefer': 'return=minimal',
         },
-        body: JSON.stringify({ ...payload, status: 'registered' }),
+        // Self-registration against a known CRM lead completes the whole
+        // pipeline in one step — same effect as admin's manual "Convert to
+        // Active Partner" button (admin.html's convertToPartner()), so a
+        // partner doesn't sit at "registered" waiting on a human to promote
+        // them before they show up on the live Partner Dashboard.
+        body: JSON.stringify({ ...payload, status: 'active', outreach_stage: null, outreach_last_date: null }),
       })
     : await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
         method: 'POST',

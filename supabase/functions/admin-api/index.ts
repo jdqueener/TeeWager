@@ -76,17 +76,30 @@ serve(async (req) => {
     // both used to hit /rest/v1/partners and /rest/v1/profiles directly with
     // the anon key, gated only by a client-side password check.
     case 'list': {
-      const [partnersRes, profilesRes] = await Promise.all([
+      // subscribersRes is a separate, unfiltered (not just referred-by-a-
+      // partner) query so /dashboard can show real app-wide Pro subscriber
+      // totals — only plan/is_pro are selected (no PII) since this is
+      // purely for aggregate counts, not per-user display.
+      const [partnersRes, profilesRes, subscribersRes] = await Promise.all([
         svc('partners?select=*&order=created_at.desc'),
-        svc('profiles?select=id,display_name,email,referred_by,created_at&referred_by=not.is.null'),
+        svc('profiles?select=id,display_name,email,referred_by,is_pro,plan,created_at&referred_by=not.is.null'),
+        svc('profiles?select=plan&is_pro=eq.true'),
       ]);
-      if (!partnersRes.ok || !profilesRes.ok) {
+      if (!partnersRes.ok || !profilesRes.ok || !subscribersRes.ok) {
         const partnersErr = partnersRes.ok ? null : await partnersRes.text();
         const profilesErr = profilesRes.ok ? null : await profilesRes.text();
-        console.error('list lookup failed', { partnersStatus: partnersRes.status, partnersErr, profilesStatus: profilesRes.status, profilesErr });
+        const subscribersErr = subscribersRes.ok ? null : await subscribersRes.text();
+        console.error('list lookup failed', { partnersStatus: partnersRes.status, partnersErr, profilesStatus: profilesRes.status, profilesErr, subscribersStatus: subscribersRes.status, subscribersErr });
         return json({ error: 'lookup failed', partnersStatus: partnersRes.status, partnersErr, profilesStatus: profilesRes.status, profilesErr }, 502);
       }
-      return json({ partners: await partnersRes.json(), profiles: await profilesRes.json() });
+      const subscribers = await subscribersRes.json();
+      const subscriberTotals = {
+        monthly:  subscribers.filter((p: { plan: string }) => p.plan === 'monthly').length,
+        annual:   subscribers.filter((p: { plan: string }) => p.plan === 'annual').length,
+        lifetime: subscribers.filter((p: { plan: string }) => p.plan === 'lifetime').length,
+        total:    subscribers.length,
+      };
+      return json({ partners: await partnersRes.json(), profiles: await profilesRes.json(), subscriberTotals });
     }
 
     // Generic partial update, used for status, notes, outreach fields, contact
