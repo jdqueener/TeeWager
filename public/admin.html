@@ -310,6 +310,10 @@
         <label>Course name *</label>
         <input type="text" id="add-course-name" placeholder="Course name" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
+      <div class="modal-field" style="grid-column:1/-1">
+        <label>Physical address</label>
+        <input type="text" id="add-physical-address" placeholder="Street address of the course" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
       <div class="modal-field">
         <label>City *</label>
         <input type="text" id="add-city" placeholder="City" onkeydown="if(event.key==='Enter')event.preventDefault()" />
@@ -332,6 +336,10 @@
           <option>VT</option><option>VA</option><option>WA</option><option>WV</option>
           <option>WI</option><option>WY</option>
         </select>
+      </div>
+      <div class="modal-field" style="grid-column:1/-1">
+        <label>Mailing address (if different)</label>
+        <input type="text" id="add-address" placeholder="Only if print packets/checks go somewhere else" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div style="grid-column:1/-1;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:-4px;">Contact 1</div>
       <div class="modal-field">
@@ -376,14 +384,6 @@
       <div class="modal-field">
         <label>Contact phone</label>
         <input type="tel" id="add-phone2" placeholder="Phone" onkeydown="if(event.key==='Enter')event.preventDefault()" />
-      </div>
-      <div class="modal-field" style="grid-column:1/-1">
-        <label>Physical address</label>
-        <input type="text" id="add-physical-address" placeholder="Street address of the course" onkeydown="if(event.key==='Enter')event.preventDefault()" />
-      </div>
-      <div class="modal-field" style="grid-column:1/-1">
-        <label>Mailing address (if different)</label>
-        <input type="text" id="add-address" placeholder="Only if print packets/checks go somewhere else" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div class="modal-field">
         <label>Status</label>
@@ -699,6 +699,10 @@
         <label>Course name</label>
         <input type="text" id="edit-course-name" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
+      <div class="modal-field">
+        <label>Physical address</label>
+        <input type="text" id="edit-physical-address" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="modal-field">
           <label>City</label>
@@ -708,10 +712,6 @@
           <label>State</label>
           <input type="text" id="edit-state" maxlength="2" onkeydown="if(event.key==='Enter')event.preventDefault()" />
         </div>
-      </div>
-      <div class="modal-field">
-        <label>Physical address</label>
-        <input type="text" id="edit-physical-address" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div class="modal-field">
         <label>Mailing address (if different)</label>

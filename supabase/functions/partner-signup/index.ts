@@ -10,7 +10,7 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const REQUIRED_FIELDS = ['course_name', 'city', 'state', 'mailing_address', 'course_type', 'first_name', 'last_name', 'email', 'payout_method'];
+const REQUIRED_FIELDS = ['course_name', 'physical_address', 'city', 'state', 'course_type', 'first_name', 'last_name', 'email', 'payout_method'];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });

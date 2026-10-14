@@ -294,6 +294,10 @@
           <label for="course-name">Course name <span>*</span></label>
           <input type="text" id="course-name" name="course_name" required />
         </div>
+        <div class="field">
+          <label for="physical-address">Physical address <span>*</span></label>
+          <input type="text" id="physical-address" name="physical_address" required />
+        </div>
         <div class="field-grid field-grid-2">
           <div class="field">
             <label for="city">City <span>*</span></label>
@@ -320,8 +324,8 @@
           </div>
         </div>
         <div class="field">
-          <label for="address">Mailing address for promotional materials <span>*</span></label>
-          <input type="text" id="address" name="mailing_address" required />
+          <label for="address">Mailing address (if different)</label>
+          <input type="text" id="address" name="mailing_address" />
         </div>
         <div class="field-grid field-grid-2">
           <div class="field">
@@ -705,11 +709,17 @@ document.getElementById('partner-form').addEventListener('submit', async functio
   const f = this;
   const get = name => (f.elements[name] ? f.elements[name].value.trim() : '');
 
+  const physicalAddress = get('physical_address');
+
   const payload = {
     course_name:          get('course_name'),
+    physical_address:     physicalAddress,
     city:                 get('city'),
     state:                get('state'),
-    mailing_address:      get('mailing_address'),
+    // Defaults to the physical address when left blank, so mailing-address
+    // features elsewhere (print packets, CSV export) keep working for the
+    // common case where they're the same — same pattern as the CRM.
+    mailing_address:      get('mailing_address') || physicalAddress,
     course_type:          get('course_type'),
     monthly_rounds:       parseInt(get('monthly_rounds')) || null,
     first_name:           get('first_name'),
