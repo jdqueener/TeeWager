@@ -755,7 +755,9 @@ document.getElementById('partner-form').addEventListener('submit', async functio
 
     if (res.ok) {
       f.style.display = 'none';
-      document.getElementById('success-msg').style.display = 'block';
+      const successEl = document.getElementById('success-msg');
+      successEl.style.display = 'block';
+      successEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
       const err = await res.json().catch(() => ({}));
       console.error('Partner signup error', err);
