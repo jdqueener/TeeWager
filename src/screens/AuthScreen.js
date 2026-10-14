@@ -562,10 +562,17 @@ export default function AuthScreen({ onSkip, initialMode }) {
     }
   }, []);
 
-  function selectPlan(productId, stripeUrl) {
+  async function selectPlan(productId, stripeUrl) {
     if (Platform.OS === 'web') {
+      // client_reference_id lets the Stripe webhook (stripe-webhook edge
+      // function) know which Supabase user to grant Pro to once payment
+      // completes — without it there's no way to link the payment back here.
+      const { data: { session } } = await supabase.auth.getSession();
+      const url = session?.user
+        ? `${stripeUrl}?client_reference_id=${session.user.id}`
+        : stripeUrl;
       setPlan('pro');
-      Linking.openURL(stripeUrl);
+      Linking.openURL(url);
       setStep('welcome');
       return;
     }

@@ -110,7 +110,16 @@ function PaywallView({ onSkip, onPurchaseSuccess }) {
   const [loading, setLoading] = useState(null);
 
   async function handlePurchase(productId, stripeUrl) {
-    if (Platform.OS === 'web') { window.location.href = stripeUrl; return; }
+    if (Platform.OS === 'web') {
+      // client_reference_id lets the Stripe webhook (stripe-webhook edge
+      // function) know which Supabase user to grant Pro to once payment
+      // completes — without it there's no way to link the payment back here.
+      const { data: { session } } = await supabase.auth.getSession();
+      window.location.href = session?.user
+        ? `${stripeUrl}?client_reference_id=${session.user.id}`
+        : stripeUrl;
+      return;
+    }
     await nativePurchase(productId, setLoading, onPurchaseSuccess);
   }
 
