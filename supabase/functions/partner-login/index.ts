@@ -84,15 +84,20 @@ serve(async (req) => {
     });
   }
 
-  // referral_count/conversion_count on the partners row are static — nothing
-  // keeps them in sync with actual signups. Live-compute both here (the same
-  // way the admin CRM already does via profilesForCode) so a partner logging
-  // in sees current numbers instead of a stale monthly snapshot.
+  // referral_count/conversion_count/total_earned/*_subscribers on the
+  // partners row are static — nothing keeps them in sync with actual
+  // signups or purchases. Live-compute all of it here (the same way the
+  // admin CRM already does via profilesForCode) so a partner logging in
+  // sees current numbers instead of a stale snapshot.
   let referral_count = partner.referral_count ?? 0;
   let conversion_count = partner.conversion_count ?? 0;
+  let monthly_subscribers = partner.monthly_subscribers ?? 0;
+  let annual_subscribers = partner.annual_subscribers ?? 0;
+  let lifetime_subscribers = partner.lifetime_subscribers ?? 0;
+  let total_earned = partner.total_earned ?? 0;
   if (partner.referral_code) {
     const profilesRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?select=is_pro&referred_by=eq.${encodeURIComponent(partner.referral_code)}`,
+      `${SUPABASE_URL}/rest/v1/profiles?select=is_pro,plan&referred_by=eq.${encodeURIComponent(partner.referral_code)}`,
       {
         headers: {
           'apikey': SUPABASE_SERVICE_KEY,
@@ -103,13 +108,26 @@ serve(async (req) => {
     if (profilesRes?.ok) {
       const referredProfiles = await profilesRes.json();
       referral_count = referredProfiles.length;
-      conversion_count = referredProfiles.filter((p: { is_pro: boolean }) => p.is_pro).length;
+      const pros = referredProfiles.filter((p: { is_pro: boolean }) => p.is_pro);
+      conversion_count = pros.length;
+      monthly_subscribers  = pros.filter((p: { plan: string }) => p.plan === 'monthly').length;
+      annual_subscribers   = pros.filter((p: { plan: string }) => p.plan === 'annual').length;
+      lifetime_subscribers = pros.filter((p: { plan: string }) => p.plan === 'lifetime').length;
+      // A live snapshot of current active subscribers' contribution, not a
+      // real paid-vs-owed ledger — there's no invoice/payment history
+      // tracked anywhere yet to compute true all-time earnings.
+      total_earned = monthly_subscribers * 0.64 + annual_subscribers * 6.36 + lifetime_subscribers * 10.20;
     }
   }
 
   // Strip the password before returning to the client
   const { portal_password: _pw, ...safePartner } = partner;
-  return new Response(JSON.stringify({ ...safePartner, referral_count, conversion_count }), {
+  return new Response(JSON.stringify({
+    ...safePartner,
+    referral_count, conversion_count,
+    monthly_subscribers, annual_subscribers, lifetime_subscribers,
+    total_earned,
+  }), {
     status: 200,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });

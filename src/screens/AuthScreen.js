@@ -23,6 +23,15 @@ const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';
 const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
 const PRODUCT_LIFETIME = 'io.teewager.app.pro.lifetime';
 
+// Maps a RevenueCat product id to the plan value stored on profiles.plan —
+// used by the partner portal's live subscription breakdown.
+function planForProduct(productId) {
+  if (productId === PRODUCT_MONTHLY)  return 'monthly';
+  if (productId === PRODUCT_ANNUAL)   return 'annual';
+  if (productId === PRODUCT_LIFETIME) return 'lifetime';
+  return null;
+}
+
 async function nativePurchase(productId, onDone) {
   try {
     const Purchases = (await import('react-native-purchases')).default;
@@ -33,7 +42,7 @@ async function nativePurchase(productId, onDone) {
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     if (customerInfo.entitlements.active['pro']) {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) await grantPro(session.user.id);
+      if (session?.user) await grantPro(session.user.id, planForProduct(productId));
       await storePro(true);
       onDone(true);
     }

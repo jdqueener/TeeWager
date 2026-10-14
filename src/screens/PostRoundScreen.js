@@ -15,6 +15,15 @@ const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';
 const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
 const PRODUCT_LIFETIME = 'io.teewager.app.pro.lifetime';
 
+// Maps a RevenueCat product id to the plan value stored on profiles.plan —
+// used by the partner portal's live subscription breakdown.
+function planForProduct(productId) {
+  if (productId === PRODUCT_MONTHLY)  return 'monthly';
+  if (productId === PRODUCT_ANNUAL)   return 'annual';
+  if (productId === PRODUCT_LIFETIME) return 'lifetime';
+  return null;
+}
+
 const PRO_FEATURES = [
   'Full scorecard with real yardages — ditch the paper',
   'All 13 games unlocked — birdie, sandy, HIO & more',
@@ -35,7 +44,7 @@ async function nativePurchase(productId, setLoading, onSuccess) {
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     if (customerInfo.entitlements.active['pro']) {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) await grantPro(session.user.id);
+      if (session?.user) await grantPro(session.user.id, planForProduct(productId));
       await storePro(true);
       onSuccess();
     }
