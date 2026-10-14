@@ -378,8 +378,12 @@
         <input type="tel" id="add-phone2" placeholder="Phone" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div class="modal-field" style="grid-column:1/-1">
-        <label>Mailing address (for print packets)</label>
-        <input type="text" id="add-address" placeholder="Mailing address" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+        <label>Physical address</label>
+        <input type="text" id="add-physical-address" placeholder="Street address of the course" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div class="modal-field" style="grid-column:1/-1">
+        <label>Mailing address (if different)</label>
+        <input type="text" id="add-address" placeholder="Only if print packets/checks go somewhere else" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div class="modal-field">
         <label>Status</label>
@@ -704,6 +708,14 @@
           <label>State</label>
           <input type="text" id="edit-state" maxlength="2" onkeydown="if(event.key==='Enter')event.preventDefault()" />
         </div>
+      </div>
+      <div class="modal-field">
+        <label>Physical address</label>
+        <input type="text" id="edit-physical-address" onkeydown="if(event.key==='Enter')event.preventDefault()" />
+      </div>
+      <div class="modal-field">
+        <label>Mailing address (if different)</label>
+        <input type="text" id="edit-mailing-address" onkeydown="if(event.key==='Enter')event.preventDefault()" />
       </div>
       <div style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Contact 1</div>
       <div class="modal-field">
@@ -1042,6 +1054,7 @@ function openDrawer(id) {
   document.getElementById('drawer-course-info').innerHTML = rows([
     ['Course type',    p.course_type],
     ['Monthly rounds', p.monthly_rounds],
+    ['Physical address', p.physical_address],
     ['Mailing address',p.mailing_address],
     ['Ref code',       `<span class="ref-code">${esc(p.referral_code||'—')}</span>`],
     ['Partner URL',    p.referral_code ? `<a href="/partner?ref=${esc(p.referral_code)}" target="_blank">teewager.io/partner?ref=${esc(p.referral_code)}</a>` : '—'],
@@ -1089,6 +1102,8 @@ function openDrawer(id) {
   document.getElementById('edit-course-name').value  = p.course_name || '';
   document.getElementById('edit-city').value         = p.city || '';
   document.getElementById('edit-state').value        = p.state || '';
+  document.getElementById('edit-physical-address').value = p.physical_address || '';
+  document.getElementById('edit-mailing-address').value  = p.mailing_address  || '';
   document.getElementById('edit-contact-type').value  = p.title || '';
   document.getElementById('edit-contact-name').value  = [p.first_name, p.last_name].filter(Boolean).join(' ');
   document.getElementById('edit-contact-email').value = p.email || '';
@@ -1168,6 +1183,10 @@ async function saveEdit() {
     course_name:          document.getElementById('edit-course-name').value.trim() || null,
     city:                 document.getElementById('edit-city').value.trim() || null,
     state:                document.getElementById('edit-state').value.trim().toUpperCase() || null,
+    physical_address:     document.getElementById('edit-physical-address').value.trim() || null,
+    // Defaults to the physical address when left blank, same as Add Partner.
+    mailing_address:      document.getElementById('edit-mailing-address').value.trim()
+                             || document.getElementById('edit-physical-address').value.trim() || null,
     title:                document.getElementById('edit-contact-type').value || null,
     first_name:           nameParts[0] || null,
     last_name:            nameParts.slice(1).join(' ') || null,
@@ -1270,7 +1289,7 @@ function exportCSV() {
       salutation(p),
       p.title, p.first_name, p.last_name, p.email, p.phone,
       p.contact2_type, p.contact2_first_name, p.contact2_last_name, p.contact2_email, p.contact2_phone,
-      p.mailing_address,
+      p.physical_address, p.mailing_address,
       p.status, p.outreach_stage, count, (count * PAYOUT_PER_SIGNUP).toFixed(2),
       p.payout_method, p.bank_name, p.account_holder_name,
       p.routing_number, p.account_number, p.account_type,
@@ -1278,7 +1297,7 @@ function exportCSV() {
       formatDate(p.created_at),
     ].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',');
   });
-  const header = 'Course,City,State,Ref Code,Salutation,Contact 1 Type,Contact 1 First,Contact 1 Last,Contact 1 Email,Contact 1 Phone,Contact 2 Type,Contact 2 First,Contact 2 Last,Contact 2 Email,Contact 2 Phone,Mailing Address,Status,Outreach Stage,Signups,Payout,Payout Method,Bank,Account Holder,Routing,Account #,Account Type,Check Payable To,Check Address,Registered';
+  const header = 'Course,City,State,Ref Code,Salutation,Contact 1 Type,Contact 1 First,Contact 1 Last,Contact 1 Email,Contact 1 Phone,Contact 2 Type,Contact 2 First,Contact 2 Last,Contact 2 Email,Contact 2 Phone,Physical Address,Mailing Address,Status,Outreach Stage,Signups,Payout,Payout Method,Bank,Account Holder,Routing,Account #,Account Type,Check Payable To,Check Address,Registered';
   const csv = [header, ...rows].join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
@@ -1300,6 +1319,7 @@ function openAddModal() {
   document.getElementById('add-email2').value = '';
   document.getElementById('add-phone2').value = '';
   document.getElementById('add-outreach-notes').value = '';
+  document.getElementById('add-physical-address').value = '';
   document.getElementById('add-address').value = '';
   document.getElementById('add-status').value = '';
   document.getElementById('add-outreach-stage').value = 'Prospect';
@@ -1352,8 +1372,9 @@ async function submitAddPartner() {
   const [firstName, ...rest] = contact.split(' ');
   const lastName = rest.join(' ');
 
-  const phone   = document.getElementById('add-phone').value.trim();
-  const address = document.getElementById('add-address').value.trim();
+  const phone           = document.getElementById('add-phone').value.trim();
+  const physicalAddress = document.getElementById('add-physical-address').value.trim();
+  const address         = document.getElementById('add-address').value.trim();
   const status        = document.getElementById('add-status').value || null;
   const outreachStage = document.getElementById('add-outreach-stage').value || null;
 
@@ -1376,7 +1397,11 @@ async function submitAddPartner() {
     contact2_last_name:   c2rest.join(' ') || null,
     contact2_email:       document.getElementById('add-email2').value.trim() || null,
     contact2_phone:       document.getElementById('add-phone2').value.trim() || null,
-    mailing_address: address   || null,
+    physical_address: physicalAddress || null,
+    // Defaults to the physical address when left blank, so the mailing
+    // address keeps working everywhere it's already used (print packets,
+    // badges, CSV export) even when the admin didn't type a separate one.
+    mailing_address: address || physicalAddress || null,
     outreach_stage:  outreachStage,
     outreach_last_date: null,
     outreach_notes:  document.getElementById('add-outreach-notes').value.trim() || null,
