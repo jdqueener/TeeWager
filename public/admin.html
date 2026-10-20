@@ -582,6 +582,7 @@
 
     <div class="modal-actions">
       <button type="button" class="modal-cancel" onclick="closeQRSheetModal()">Cancel</button>
+      <button type="button" class="modal-submit" onclick="printQRStickers()" style="background:#fff;color:#1A4A2E;border:1.5px solid #1A4A2E;">🏷️ Print QR stickers</button>
       <button type="button" class="modal-submit" onclick="printQRSheet()">🖨 Open print sheet</button>
     </div>
   </div>
@@ -1605,6 +1606,47 @@ function printQRSheet() {
 </style></head><body>
 <h2>⛳ TeeWager — Partner QR Codes</h2>
 <p>Generated ${new Date().toLocaleDateString()} · ${partners.length} course${partners.length!==1?'s':''} · Verify each QR matches its course before printing</p>
+<button onclick="window.print()" style="margin-bottom:20px;padding:10px 24px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨 Print</button>
+<div class="grid">${cards}</div>
+</body></html>`);
+  win.document.close();
+}
+
+// Sized for the 6×9 counter placard's QR box (~2.5–2.75in square) — bulk
+// print the placard without a baked-in QR, then cut and apply one of these
+// per course instead of running a custom print job per partner. The course
+// name/code sits BELOW the dashed cut line so it's trimmed away with the
+// scrap, not stuck to the course wall.
+function printQRStickers() {
+  const selected = [...document.querySelectorAll('.qrsheet-check:checked')].map(c => c.value);
+  const partners = allPartners.filter(p => selected.includes(p.id));
+  if (!partners.length) { alert('Select at least one partner.'); return; }
+
+  const cards = partners.map(p => {
+    const qrUrl = `https://www.teewager.io/app?ref=${p.referral_code}`;
+    const imgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&color=1A4A2E&data=${encodeURIComponent(qrUrl)}`;
+    return `
+      <div style="break-inside:avoid;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:2.5in;height:2.5in;border:1.5px dashed #999;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#fff;">
+          <img src="${imgSrc}" style="width:2.2in;height:2.2in;" />
+        </div>
+        <div style="font-size:11px;font-weight:700;color:#1A4A2E;margin-top:6px;">${esc(p.course_name)}</div>
+        <div style="font-size:10px;color:#999;font-family:monospace;">${esc(p.referral_code||'')}</div>
+      </div>`;
+  }).join('');
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html><head><title>TeeWager QR Stickers</title>
+<style>
+  body { font-family: -apple-system, sans-serif; padding: 24px; }
+  h2 { color: #1A4A2E; margin-bottom: 6px; }
+  p { color: #888; font-size: 13px; margin-bottom: 20px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 0.4in; }
+  @media print { button { display: none; } }
+</style></head><body>
+<h2>⛳ TeeWager — QR Stickers</h2>
+<p>Generated ${new Date().toLocaleDateString()} · ${partners.length} course${partners.length!==1?'s':''} · Each sticker is 2.5"×2.5" to fit the counter placard's QR box — cut along the dashed line, verify the course name on the scrap before sticking.</p>
 <button onclick="window.print()" style="margin-bottom:20px;padding:10px 24px;background:#1A4A2E;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🖨 Print</button>
 <div class="grid">${cards}</div>
 </body></html>`);
