@@ -336,6 +336,40 @@ export function relevantPairPresses(legPresses, a, b) {
   return legPresses.filter(p => !p.players || (p.players.includes(a) && p.players.includes(b)));
 }
 
+// Net $ for one pair within a single leg — their base bet plus every press
+// they've personally declared in that leg, summed together. Positive = a is
+// currently ahead (collecting from b); negative = b is ahead; 0 = all push.
+// Used to collapse a pair's Base + Press rows into one at-a-glance figure.
+export function pairLegNet(strokes, a, b, range, nassauStake, legPresses = []) {
+  let net = 0;
+  const { wins } = legStandings(strokes, [a, b], range);
+  const diff = wins[a] - wins[b];
+  if (diff > 0) net += nassauStake; else if (diff < 0) net -= nassauStake;
+  for (const press of relevantPairPresses(legPresses, a, b)) {
+    const pressRange = range.filter(h => h >= press.startHole);
+    if (!pressRange.length) continue;
+    const { wins: pw } = legStandings(strokes, [a, b], pressRange);
+    const pdiff = pw[a] - pw[b];
+    if (pdiff > 0) net += nassauStake; else if (pdiff < 0) net -= nassauStake;
+  }
+  return net;
+}
+
+// Same idea for a 2v2 team leg — the team bet plus every press on it, summed.
+// Positive = team A ahead, negative = team B ahead.
+export function teamLegNet(strokes, teamA, teamB, range, nassauStake, legPresses = []) {
+  let net = 0;
+  const { winsA, winsB } = legStandingsTeam(strokes, teamA, teamB, range);
+  if (winsA > winsB) net += nassauStake; else if (winsB > winsA) net -= nassauStake;
+  for (const press of legPresses) {
+    const pressRange = range.filter(h => h >= press.startHole);
+    if (!pressRange.length) continue;
+    const { winsA: pa, winsB: pb } = legStandingsTeam(strokes, teamA, teamB, pressRange);
+    if (pa > pb) net += nassauStake; else if (pb > pa) net -= nassauStake;
+  }
+  return net;
+}
+
 // Press eligibility for a specific pair in round-robin individual Nassau (3-5 players).
 // Each pair runs its own independent 2-down/press check, same rule as canPressLeg.
 export function canPressPair(strokes, a, b, legRange, legPresses, currentHole) {
