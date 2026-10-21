@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansScramble, beansAtHoleForPlayer, teamAwardedBeansAtHoleForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
-import { canPressTeam, activeLegStatusTeam, teamBestBall, canPressLeg, activeLegStatus, canPressPair, legStandings, legMatchStatus, legMatchStatusTeam, relevantPairPresses, pairLegNet, teamLegNet } from '../utils/nassau';
+import { canPressTeam, activeLegStatusTeam, teamBestBall, canPressLeg, activeLegStatus, canPressPair, legStandings } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
@@ -44,9 +44,6 @@ export default function ScorecardScreen() {
   const [customPressAmt, setCustomPressAmt] = useState('');
   const [chosenPressAmt, setChosenPressAmt] = useState(null);
   const [roundFinished, setRoundFinished] = useState(false);
-  const [matchupsOpen, setMatchupsOpen] = useState(false);
-  const [matchupsPlayerTab, setMatchupsPlayerTab] = useState(0);
-  const [expandedBetGroups, setExpandedBetGroups] = useState(new Set());
 
   const hole = currentHole;
   const par  = getHolePar(hole);
@@ -611,136 +608,11 @@ export default function ScorecardScreen() {
                     );
                   })}
                 </View>
-                {/* Active Bets ledger: every press adds a new, independent bet
-                    running from its own start hole to the end of the leg — it
-                    doesn't replace the base bet or any earlier press, they're
-                    all still live at once. Each pair collapses to one net-$
-                    row by default (tap to see the Base/Press breakdown), and
-                    round-robin (3-5 players) adds player tabs so you're only
-                    looking at your own matchups instead of every pair at once. */}
-                {(isTeams || isIndividualMatch) && (() => {
-                  const isRoundRobin = !isTeams && playerIdxs.length > 2;
-                  // One "pair" per bet group: the single team pairing for
-                  // 2v2, or every player pair for individual (round-robin
-                  // naturally collapses to one pair when there are only 2).
-                  const pairs = isTeams
-                    ? [{ key: 'teams', label: `${teamNames[0]} vs ${teamNames[1]}`, a: null, b: null,
-                         status: (range) => legMatchStatusTeam(strokes, teamA, teamB, range, teamNames),
-                         net: (range, legPresses) => teamLegNet(strokes, teamA, teamB, range, nassauStake, legPresses),
-                         nameFor: (amt) => amt > 0 ? teamNames[0] : teamNames[1] }]
-                    : (() => {
-                        const list = [];
-                        for (let i = 0; i < playerIdxs.length; i++) {
-                          for (let j = i + 1; j < playerIdxs.length; j++) {
-                            const a = playerIdxs[i], b = playerIdxs[j];
-                            list.push({
-                              key: `${a}-${b}`, a, b,
-                              label: `${players[a].split(' ')[0]} vs ${players[b].split(' ')[0]}`,
-                              status: (range) => legMatchStatus(strokes, [a, b], range, players),
-                              net: (range, legPresses) => pairLegNet(strokes, a, b, range, nassauStake, legPresses),
-                              nameFor: (amt) => amt > 0 ? players[a].split(' ')[0] : players[b].split(' ')[0],
-                            });
-                          }
-                        }
-                        return list;
-                      })();
-                  const startedLegs = legs.filter(leg => leg.range.some(h => playerIdxs.every(pi => (strokes[pi]?.[h] ?? 0) > 0)));
-                  let totalBets = 0;
-                  const legGroups = startedLegs.map(leg => {
-                    const legPresses = nassauPresses[leg.label] || [];
-                    const groups = pairs.map(pair => {
-                      const relevantPresses = isTeams ? legPresses : relevantPairPresses(legPresses, pair.a, pair.b);
-                      const rows = [
-                        { label: 'Base', range: leg.range },
-                        ...relevantPresses.map(p => ({
-                          label: `Press · since Hole ${holeOffset + p.startHole + 1}`,
-                          range: leg.range.filter(h => h >= p.startHole),
-                        })),
-                      ].map(row => ({ ...row, status: pair.status(row.range) }));
-                      totalBets += rows.length;
-                      const net = pair.net(leg.range, legPresses);
-                      return { ...pair, rows, net };
-                    });
-                    return { leg, groups };
-                  });
-                  const visiblePlayerIdx = isRoundRobin
-                    ? (playerIdxs.includes(matchupsPlayerTab) ? matchupsPlayerTab : playerIdxs[0])
-                    : null;
-                  return (
-                    <View style={styles.nassauMatchupsWrap}>
-                      <TouchableOpacity style={styles.nassauMatchupsToggle} onPress={() => setMatchupsOpen(v => !v)} activeOpacity={0.75}>
-                        <Text style={styles.nassauMatchupsToggleText}>
-                          {matchupsOpen ? '▾ Hide active bets' : `▸ Show active bets (${totalBets})`}
-                        </Text>
-                      </TouchableOpacity>
-                      {matchupsOpen && (
-                        <>
-                          {isRoundRobin && (
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.nassauPlayerTabs} contentContainerStyle={{ gap: 6 }}>
-                              {playerIdxs.map(pi => (
-                                <TouchableOpacity
-                                  key={pi}
-                                  onPress={() => setMatchupsPlayerTab(pi)}
-                                  style={[styles.nassauPlayerTab, visiblePlayerIdx === pi && styles.nassauPlayerTabActive]}
-                                  activeOpacity={0.75}
-                                >
-                                  <Text style={[styles.nassauPlayerTabText, visiblePlayerIdx === pi && styles.nassauPlayerTabTextActive]}>
-                                    {players[pi].split(' ')[0]}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </ScrollView>
-                          )}
-                          {legGroups.map(({ leg, groups }) => {
-                            const visibleGroups = isRoundRobin
-                              ? groups.filter(g => g.a === visiblePlayerIdx || g.b === visiblePlayerIdx)
-                              : groups;
-                            return (
-                              <View key={leg.label} style={styles.nassauMatchupsLeg}>
-                                <Text style={styles.nassauMatchupsLegTitle}>{leg.title} · ${nassauStake.toFixed(2)} each</Text>
-                                {visibleGroups.map(group => {
-                                  const rowKey = `${leg.label}-${group.key}`;
-                                  const expanded = expandedBetGroups.has(rowKey);
-                                  const opponentLabel = isRoundRobin
-                                    ? `vs ${players[group.a === visiblePlayerIdx ? group.b : group.a].split(' ')[0]}`
-                                    : group.label;
-                                  const canExpand = group.rows.length > 1;
-                                  return (
-                                    <View key={group.key} style={styles.nassauBetGroup}>
-                                      <TouchableOpacity
-                                        style={styles.nassauMatchupRow}
-                                        activeOpacity={canExpand ? 0.6 : 1}
-                                        disabled={!canExpand}
-                                        onPress={() => setExpandedBetGroups(prev => {
-                                          const next = new Set(prev);
-                                          next.has(rowKey) ? next.delete(rowKey) : next.add(rowKey);
-                                          return next;
-                                        })}
-                                      >
-                                        <Text style={styles.nassauMatchupNames} numberOfLines={1}>
-                                          {opponentLabel}{canExpand ? (expanded ? '  ▾' : '  ▸') : ''}
-                                        </Text>
-                                        <Text style={styles.nassauMatchupStatus} numberOfLines={1}>
-                                          {group.net === 0 ? 'Push' : `${group.nameFor(group.net)} +$${Math.abs(group.net).toFixed(2)}`}
-                                        </Text>
-                                      </TouchableOpacity>
-                                      {expanded && group.rows.map((row, idx) => (
-                                        <View key={idx} style={styles.nassauMatchupSubRow}>
-                                          <Text style={styles.nassauMatchupSubLabel} numberOfLines={1}>{row.label}</Text>
-                                          <Text style={styles.nassauMatchupSubStatus} numberOfLines={1}>{row.status}</Text>
-                                        </View>
-                                      ))}
-                                    </View>
-                                  );
-                                })}
-                              </View>
-                            );
-                          })}
-                        </>
-                      )}
-                    </View>
-                  );
-                })()}
+                {/* The full bet-by-bet ledger (tabs, presses, per-pair detail)
+                    lives on the Breakdown tab now — it was crowding out the
+                    stroke-entry controls below whenever expanded here.
+                    Scorecard keeps only what's needed live: the leg status
+                    line above, and the press button below. */}
                 {pressableItems.length > 0 && (
                   <View style={styles.nassauPressBar}>
                     <Text style={styles.nassauPressBarLabel}>🤝 Press available:</Text>
@@ -1602,23 +1474,6 @@ const styles = StyleSheet.create({
   nassauPlayerName:   { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
   nassauRelPar:       { fontSize: 14, fontWeight: '700', color: colors.textMid, minWidth: 28, textAlign: 'right', marginLeft: spacing.sm },
   nassauStakeNote:    { fontSize: 12, color: colors.textLight, textAlign: 'center', marginTop: spacing.md },
-  nassauMatchupsWrap:      { backgroundColor: colors.green, paddingHorizontal: spacing.md, paddingBottom: spacing.xs },
-  nassauMatchupsToggle:    { paddingVertical: 4 },
-  nassauMatchupsToggleText:{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.75)' },
-  nassauMatchupsLeg:       { marginTop: 4, marginBottom: 2 },
-  nassauMatchupsLegTitle:  { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-  nassauPlayerTabs:        { marginBottom: 4 },
-  nassauPlayerTab:         { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.12)' },
-  nassauPlayerTabActive:   { backgroundColor: colors.gold },
-  nassauPlayerTabText:     { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.75)' },
-  nassauPlayerTabTextActive:{ color: colors.white },
-  nassauBetGroup:          { marginBottom: 2 },
-  nassauMatchupRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
-  nassauMatchupNames:      { flex: 1, fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.9)', marginRight: spacing.sm },
-  nassauMatchupStatus:     { fontSize: 13, fontWeight: '800', color: colors.white, textAlign: 'right' },
-  nassauMatchupSubRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: 'rgba(255,255,255,0.2)', marginLeft: 2 },
-  nassauMatchupSubLabel:   { flex: 1, fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.65)', marginRight: spacing.sm },
-  nassauMatchupSubStatus:  { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)', textAlign: 'right' },
   nassauPressBar:     { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.xs, backgroundColor: colors.green, paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
   nassauPressBarLabel:{ fontSize: 12, color: 'rgba(255,255,255,0.65)', fontWeight: '600' },
   nassauPressBtn:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4 },

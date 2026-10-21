@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { getEffectiveValue, totalBeansForTeam, beansAtHoleForTeam, totalBeansForPlayer, beansAtHoleForPlayer, teamAwardedBeansForScrambleTeam, teamAwardedBeansAtHoleForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
-import { holeWinner, holeResultTeam } from '../utils/nassau';
+import { holeWinner, holeResultTeam, legMatchStatus, legMatchStatusTeam, relevantPairPresses, pairLegNet, teamLegNet } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
@@ -12,10 +12,15 @@ export default function BreakdownScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const { players, scores, firstBonus, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0,
     gameMode = 'beans', nassauStake = 5.00, strokes = [], nassauTeams = null, nassauTeamFormat = 'match-play',
-    nassauScoring = 'match', beansTeams = null } = state;
+    nassauScoring = 'match', nassauPresses = { front: [], back: [], total: [] }, beansTeams = null } = state;
   const isNassau = gameMode === 'nassau';
   const isTeams = isNassau && !!nassauTeams;
+  const isIndividualMatch = isNassau && !isTeams && nassauScoring === 'match';
+  const playerIdxs = players.map((_, i) => i);
   const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
+  const [matchupsOpen, setMatchupsOpen] = useState(false);
+  const [matchupsPlayerTab, setMatchupsPlayerTab] = useState(0);
+  const [expandedBetGroups, setExpandedBetGroups] = useState(new Set());
   // Short "Team A"/"Team B" labels are the primary name used everywhere
   // (tabs, results, payments); full player names are shown once, as a
   // subtitle, so a longer roster never truncates a tight label or chip.
@@ -167,6 +172,145 @@ export default function BreakdownScreen() {
                 </Text>
               )}
             </View>
+            {/* Active Bets ledger: every press adds a new, independent bet
+                running from its own start hole to the end of the leg — it
+                doesn't replace the base bet or any earlier press, they're
+                all still live at once. Lives here (not Scorecard) so it has
+                room to breathe without crowding out live score entry. Each
+                pair collapses to one net-$ row by default (tap to see the
+                Base/Press breakdown); round-robin (3-5 players) adds player
+                tabs so you're only looking at your own matchups at a time. */}
+            {(isTeams || isIndividualMatch) && (() => {
+              const frontRange = Array.from({ length: Math.min(9, holeCount) }, (_, i) => i);
+              const backRange  = holeCount >= 18 ? Array.from({ length: 9 }, (_, i) => i + 9) : [];
+              const legs = [
+                { label: 'front', range: frontRange, title: 'Front 9' },
+                ...(holeCount >= 18 ? [{ label: 'back', range: backRange, title: 'Back 9' }] : []),
+                { label: 'total', range: Array.from({ length: holeCount }, (_, i) => i), title: 'Total' },
+              ];
+              const isRoundRobin = !isTeams && playerIdxs.length > 2;
+              // One "pair" per bet group: the single team pairing for 2v2,
+              // or every player pair for individual (round-robin naturally
+              // collapses to one pair when there are only 2).
+              const pairs = isTeams
+                ? [{ key: 'teams', label: `${teamNames[0]} vs ${teamNames[1]}`, a: null, b: null,
+                     status: (range) => legMatchStatusTeam(strokes, teamA, teamB, range, teamNames),
+                     net: (range, legPresses) => teamLegNet(strokes, teamA, teamB, range, nassauStake, legPresses),
+                     nameFor: (amt) => amt > 0 ? teamNames[0] : teamNames[1] }]
+                : (() => {
+                    const list = [];
+                    for (let i = 0; i < playerIdxs.length; i++) {
+                      for (let j = i + 1; j < playerIdxs.length; j++) {
+                        const a = playerIdxs[i], b = playerIdxs[j];
+                        list.push({
+                          key: `${a}-${b}`, a, b,
+                          label: `${players[a].split(' ')[0]} vs ${players[b].split(' ')[0]}`,
+                          status: (range) => legMatchStatus(strokes, [a, b], range, players),
+                          net: (range, legPresses) => pairLegNet(strokes, a, b, range, nassauStake, legPresses),
+                          nameFor: (amt) => amt > 0 ? players[a].split(' ')[0] : players[b].split(' ')[0],
+                        });
+                      }
+                    }
+                    return list;
+                  })();
+              const startedLegs = legs.filter(leg => leg.range.some(h => playerIdxs.every(pi => (strokes[pi]?.[h] ?? 0) > 0)));
+              let totalBets = 0;
+              const legGroups = startedLegs.map(leg => {
+                const legPresses = nassauPresses[leg.label] || [];
+                const groups = pairs.map(pair => {
+                  const relevantPresses = isTeams ? legPresses : relevantPairPresses(legPresses, pair.a, pair.b);
+                  const rows = [
+                    { label: 'Base', range: leg.range },
+                    ...relevantPresses.map(p => ({
+                      label: `Press · since Hole ${holeOffset + p.startHole + 1}`,
+                      range: leg.range.filter(h => h >= p.startHole),
+                    })),
+                  ].map(row => ({ ...row, status: pair.status(row.range) }));
+                  totalBets += rows.length;
+                  const net = pair.net(leg.range, legPresses);
+                  return { ...pair, rows, net };
+                });
+                return { leg, groups };
+              });
+              const visiblePlayerIdx = isRoundRobin
+                ? (playerIdxs.includes(matchupsPlayerTab) ? matchupsPlayerTab : playerIdxs[0])
+                : null;
+              if (totalBets === 0) return null;
+              return (
+                <View style={styles.nassauMatchupsWrap}>
+                  <TouchableOpacity style={styles.nassauMatchupsToggle} onPress={() => setMatchupsOpen(v => !v)} activeOpacity={0.75}>
+                    <Text style={styles.nassauMatchupsToggleText}>
+                      {matchupsOpen ? '▾ Hide active bets' : `▸ Show active bets (${totalBets})`}
+                    </Text>
+                  </TouchableOpacity>
+                  {matchupsOpen && (
+                    <>
+                      {isRoundRobin && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.nassauPlayerTabs} contentContainerStyle={{ gap: 6 }}>
+                          {playerIdxs.map(pi => (
+                            <TouchableOpacity
+                              key={pi}
+                              onPress={() => setMatchupsPlayerTab(pi)}
+                              style={[styles.nassauPlayerTab, visiblePlayerIdx === pi && styles.nassauPlayerTabActive]}
+                              activeOpacity={0.75}
+                            >
+                              <Text style={[styles.nassauPlayerTabText, visiblePlayerIdx === pi && styles.nassauPlayerTabTextActive]}>
+                                {players[pi].split(' ')[0]}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      )}
+                      {legGroups.map(({ leg, groups }) => {
+                        const visibleGroups = isRoundRobin
+                          ? groups.filter(g => g.a === visiblePlayerIdx || g.b === visiblePlayerIdx)
+                          : groups;
+                        return (
+                          <View key={leg.label} style={styles.nassauMatchupsLeg}>
+                            <Text style={styles.nassauMatchupsLegTitle}>{leg.title} · ${nassauStake.toFixed(2)} each</Text>
+                            {visibleGroups.map(group => {
+                              const rowKey = `${leg.label}-${group.key}`;
+                              const expanded = expandedBetGroups.has(rowKey);
+                              const opponentLabel = isRoundRobin
+                                ? `vs ${players[group.a === visiblePlayerIdx ? group.b : group.a].split(' ')[0]}`
+                                : group.label;
+                              const canExpand = group.rows.length > 1;
+                              return (
+                                <View key={group.key} style={styles.nassauBetGroup}>
+                                  <TouchableOpacity
+                                    style={styles.nassauMatchupRow}
+                                    activeOpacity={canExpand ? 0.6 : 1}
+                                    disabled={!canExpand}
+                                    onPress={() => setExpandedBetGroups(prev => {
+                                      const next = new Set(prev);
+                                      next.has(rowKey) ? next.delete(rowKey) : next.add(rowKey);
+                                      return next;
+                                    })}
+                                  >
+                                    <Text style={styles.nassauMatchupNames} numberOfLines={1}>
+                                      {opponentLabel}{canExpand ? (expanded ? '  ▾' : '  ▸') : ''}
+                                    </Text>
+                                    <Text style={styles.nassauMatchupStatus} numberOfLines={1}>
+                                      {group.net === 0 ? 'Push' : `${group.nameFor(group.net)} +$${Math.abs(group.net).toFixed(2)}`}
+                                    </Text>
+                                  </TouchableOpacity>
+                                  {expanded && group.rows.map((row, idx) => (
+                                    <View key={idx} style={styles.nassauMatchupSubRow}>
+                                      <Text style={styles.nassauMatchupSubLabel} numberOfLines={1}>{row.label}</Text>
+                                      <Text style={styles.nassauMatchupSubStatus} numberOfLines={1}>{row.status}</Text>
+                                    </View>
+                                  ))}
+                                </View>
+                              );
+                            })}
+                          </View>
+                        );
+                      })}
+                    </>
+                  )}
+                </View>
+              );
+            })()}
             <View style={styles.nassauTableHeader}>
               <Text style={[styles.nassauCol, styles.nassauColHole]}>HOLE</Text>
               {isTeams
@@ -389,4 +533,23 @@ const styles = StyleSheet.create({
   nassauResultWin:    { color: colors.green, fontWeight: '900' },
   nassauResultHalve:  { color: colors.gold, fontWeight: '700' },
   nassauResultLoss:   { color: colors.red, fontWeight: '700' },
+
+  // Active bets ledger
+  nassauMatchupsWrap:      { backgroundColor: colors.green, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginBottom: spacing.md },
+  nassauMatchupsToggle:    { paddingVertical: 4 },
+  nassauMatchupsToggleText:{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.8)' },
+  nassauMatchupsLeg:       { marginTop: 6, marginBottom: 2 },
+  nassauMatchupsLegTitle:  { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  nassauPlayerTabs:        { marginTop: 4, marginBottom: 2 },
+  nassauPlayerTab:         { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.12)' },
+  nassauPlayerTabActive:   { backgroundColor: colors.gold },
+  nassauPlayerTabText:     { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.75)' },
+  nassauPlayerTabTextActive:{ color: colors.white },
+  nassauBetGroup:          { marginBottom: 2 },
+  nassauMatchupRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
+  nassauMatchupNames:      { flex: 1, fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.9)', marginRight: spacing.sm },
+  nassauMatchupStatus:     { fontSize: 13, fontWeight: '800', color: colors.white, textAlign: 'right' },
+  nassauMatchupSubRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: 'rgba(255,255,255,0.2)', marginLeft: 2 },
+  nassauMatchupSubLabel:   { flex: 1, fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.65)', marginRight: spacing.sm },
+  nassauMatchupSubStatus:  { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)', textAlign: 'right' },
 });
