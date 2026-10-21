@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { netNassauStroke, netNassauTeamFormat } from '../utils/nassau';
+import { netNassauStroke, netNassauTeamFormat, netNassauMatchPlay } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius } from '../utils/theme';
 import Avatar from '../components/Avatar';
@@ -17,7 +17,8 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 export default function LeaderboardScreen() {
   const { state, dispatch, pro, setPro } = useGame();
   const { players, nassauStake = 5.00, strokes = [], holeCount = 18,
-    nassauPresses = { front: [], back: [], total: [] }, nassauTeams = null, nassauTeamFormat = 'match-play' } = state;
+    nassauPresses = { front: [], back: [], total: [] }, nassauTeams = null, nassauTeamFormat = 'match-play',
+    nassauScoring = 'match' } = state;
   const isTeams = !!nassauTeams;
 
   const frontRange = Array.from({ length: Math.min(9, holeCount) }, (_, i) => i);
@@ -36,8 +37,10 @@ export default function LeaderboardScreen() {
     nassauPot = rankedNassau.reduce((s, p) => s + Math.max(p.net, 0), 0);
     firstNassauNet = rankedNassau[0]?.net ?? 0;
   } else {
-    // Stroke-Play: same pairwise, per-leg net every other screen uses.
-    const nassauNet = netNassauStroke(players, strokes, nassauStake, holeCount);
+    // Individual — Match Play or Stroke-Play: same pairwise, per-leg net every other screen uses.
+    const nassauNet = nassauScoring === 'match'
+      ? netNassauMatchPlay(players, strokes, nassauStake, holeCount, nassauPresses)
+      : netNassauStroke(players, strokes, nassauStake, holeCount);
     rankedNassau = players
       .map((name, i) => ({ name, i, net: nassauNet[i] }))
       .sort((a, b) => b.net - a.net);

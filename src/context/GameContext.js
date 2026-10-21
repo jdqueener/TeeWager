@@ -29,6 +29,7 @@ const INITIAL_SETUP = {
   nassauStake: 5.00, // dollar amount per Nassau leg (front/back/total)
   nassauTeams: null, // null = individual; [[0,1],[2,3]] = 2v2 teams
   nassauTeamFormat: 'match-play', // 'match-play' | 'scramble' (legacy rounds may still hold 'best-ball'/'combined')
+  nassauScoring: 'match', // individual Nassau only: 'match' (hole-by-hole, presses) | 'stroke' (total strokes per leg, no presses)
   beansTeams: null, // null = individual; [[0,1,2,3]] = group scramble; [[0,1],[2,3]] = 2v2 team scramble
   players: [],
   beanValue: 1.00,
@@ -67,7 +68,7 @@ function reducer(state, action) {
       return action.payload;
 
     case 'START_ROUND': {
-      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null, spots = [], ldCarryoverEnabled = true, kpCarryoverEnabled = true, gameMode = 'beans', nassauStake = 5.00, nassauTeams = null, nassauTeamFormat = 'match-play', beansTeams = null } = action.payload;
+      const { players, beanValue, enabledBeans, customBeans, wagers, course, holeCount = 18, holeOffset = 0, pressMode = null, spots = [], ldCarryoverEnabled = true, kpCarryoverEnabled = true, gameMode = 'beans', nassauStake = 5.00, nassauTeams = null, nassauTeamFormat = 'match-play', nassauScoring = 'match', beansTeams = null } = action.payload;
       return {
         ...state,
         phase: 'round',
@@ -75,6 +76,7 @@ function reducer(state, action) {
         nassauStake,
         nassauTeams,
         nassauTeamFormat,
+        nassauScoring,
         beansTeams,
         players,
         beanValue,

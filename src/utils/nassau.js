@@ -427,12 +427,13 @@ function settleLegRange(net, strokes, playerIdxs, range, stake) {
   }
 }
 
-// Computes net dollar transfers for a Nassau round, including any presses.
-// nassauPresses: { front: [{startHole}], back: [...], total: [...] }
+// Computes net dollar amounts per player for individual round-robin match
+// play, including any presses.
+// nassauPresses: { front: [{startHole, players?}], back: [...], total: [...] }
 //
 // Each press creates an additional bet covering startHole → end of leg,
 // settled at the same nassauStake as the original leg.
-export function computeNassauSettleUp(players, strokes, nassauStake, holeCount = 18, nassauPresses = {}) {
+export function netNassauMatchPlay(players, strokes, nassauStake, holeCount = 18, nassauPresses = {}) {
   const n = players.length;
   const playerIdxs = players.map((_, i) => i);
 
@@ -457,7 +458,11 @@ export function computeNassauSettleUp(players, strokes, nassauStake, holeCount =
     }
   }
 
-  return minimumCashFlowNassau(players, net);
+  return net;
+}
+
+export function computeNassauSettleUp(players, strokes, nassauStake, holeCount = 18, nassauPresses = {}) {
+  return minimumCashFlowNassau(players, netNassauMatchPlay(players, strokes, nassauStake, holeCount, nassauPresses));
 }
 
 // Minimum cash flow — same algorithm as beans.js but self-contained here

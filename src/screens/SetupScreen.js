@@ -44,10 +44,11 @@ const INFO_CONTENT = {
   },
   nassau: {
     title: '⛳ Nassau',
-    desc: 'A classic match-play bet — three separate wagers: front 9, back 9, and the full 18, each won hole-by-hole.',
+    desc: 'A classic golf bet — three separate wagers: front 9, back 9, and the full 18.',
     formats: [
-      { label: '👤 Stroke-Play', desc: 'Every player competes on their own — lowest score wins each hole. Works for 2-5 players, with presses available between any pair.' },
-      { label: '👥 2v2 Teams', desc: 'Split into two teams of 2. Best Ball or Scramble — team vs. team, hole-by-hole.' },
+      { label: '👤 Individual — Match Play', desc: 'Every player competes against every other player, hole-by-hole. Works for 2-5 players, with presses available between any pair once they\'re 2 down.' },
+      { label: '👤 Individual — Stroke Play', desc: 'Every player competes on their own — lowest total strokes wins each leg. Works for 2-5 players. No presses.' },
+      { label: '👥 2v2 Teams', desc: 'Split into two teams of 2. Best Ball or Scramble — team vs. team, hole-by-hole, with presses.' },
     ],
   },
 };
@@ -127,6 +128,7 @@ export default function SetupScreen() {
   const [gameMode, setGameMode] = useState('beans'); // 'beans' | 'nassau'
   const [nassauStake, setNassauStake] = useState('5.00');
   const [nassauFormat, setNassauFormat] = useState('individual'); // 'individual' | 'teams'
+  const [nassauScoring, setNassauScoring] = useState('match'); // individual only: 'match' | 'stroke'
   const [teamSubFormat, setTeamSubFormat] = useState('match-play'); // 'match-play' | 'scramble'
   const [teamAssign, setTeamAssign] = useState([0, 0, 1, 1]); // team index per player slot
   const [beansFormat, setBeansFormat] = useState('individual'); // 'individual' | 'scramble'
@@ -509,6 +511,7 @@ export default function SetupScreen() {
             ]
           : null,
         nassauTeamFormat: nassauFormat === 'teams' ? teamSubFormat : 'match-play',
+        nassauScoring: nassauFormat === 'individual' ? nassauScoring : 'match',
         beansTeams: (gameMode === 'beans' && beansFormat === 'scramble')
           ? (beansScrambleMode === 'teams'
               ? [
@@ -835,7 +838,7 @@ export default function SetupScreen() {
             <Text style={styles.label}>Format</Text>
             <View style={styles.gameModeRow}>
               {[
-                { id: 'individual', label: '👤 Stroke-Play' },
+                { id: 'individual', label: '👤 Individual' },
                 { id: 'teams',      label: '👥 2v2 Teams' },
               ].map(({ id, label }) => (
                 <TouchableOpacity
@@ -850,6 +853,31 @@ export default function SetupScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            {nassauFormat === 'individual' && (
+              <>
+                <Text style={styles.label}>Scoring</Text>
+                {[
+                  { id: 'match',  label: 'Match Play',  desc: 'Win the most holes head-to-head. Presses available between any pair once they\'re 2 down.' },
+                  { id: 'stroke', label: 'Stroke Play', desc: 'Lowest total strokes wins each leg (front / back / total). No presses.' },
+                ].map(({ id, label, desc }) => (
+                  <TouchableOpacity
+                    key={id}
+                    style={[styles.formatOptionRow, nassauScoring === id && styles.formatOptionRowActive]}
+                    onPress={() => setNassauScoring(id)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.formatRadio, nassauScoring === id && styles.formatRadioActive]}>
+                      {nassauScoring === id && <View style={styles.formatRadioDot} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.formatOptionLabel, nassauScoring === id && { color: colors.green }]}>{label}</Text>
+                      <Text style={styles.formatOptionDesc}>{desc}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
 
             {nassauFormat === 'teams' && playerCount === 4 && (
               <TeamAssignmentPicker names={names} teamAssign={teamAssign} setTeamAssign={setTeamAssign} />

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { totalBeansForPlayer, computeSettleUp, minimumCashFlow, netDollarsBeansScramble, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
-import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, legMatchStatusPairStroke, legMatchStatusTeam } from '../utils/nassau';
+import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, computeNassauSettleUp, legMatchStatusPairStroke, legMatchStatusTeam, legMatchStatus, legStandings } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
@@ -17,7 +17,7 @@ export default function SettleUpScreen() {
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18,
     spots = [], gameMode = 'beans', nassauStake = 5.00, strokes = [],
     nassauPresses = { front: [], back: [], total: [] },
-    nassauTeams = null, nassauTeamFormat = 'match-play', beansTeams = null } = state;
+    nassauTeams = null, nassauTeamFormat = 'match-play', nassauScoring = 'match', beansTeams = null } = state;
   const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
   const countedRef = useRef(false);
@@ -59,6 +59,7 @@ export default function SettleUpScreen() {
 
   const isNassau = gameMode === 'nassau';
   const isTeams = isNassau && !!nassauTeams;
+  const isIndividualMatch = isNassau && !isTeams && nassauScoring === 'match';
   const isBeansTeams = !isNassau && beansTeams?.length === 2;
   // Short "Team A"/"Team B" labels are the primary name used everywhere
   // (payment sub-labels, leg cards); full player names are shown once, as a
@@ -81,6 +82,8 @@ export default function SettleUpScreen() {
   if (isNassau) {
     payments = nassauTeams
       ? computeNassauSettleUpTeamFormat(players, nassauTeams, strokes, nassauStake, holeCount, nassauPresses, nassauTeamFormat)
+      : isIndividualMatch
+      ? computeNassauSettleUp(players, strokes, nassauStake, holeCount, nassauPresses)
       : computeNassauSettleUpStroke(players, strokes, nassauStake, holeCount);
   } else if (isBeansTeams) {
     // Two independent zero-sum games, added together per real player:
@@ -228,6 +231,37 @@ export default function SettleUpScreen() {
                   <View key={label} style={styles.nassauLegCard}>
                     <Text style={styles.nassauLegLabel}>{label}</Text>
                     <Text style={styles.nassauLegStatus}>{status}</Text>
+                  </View>
+                );
+              }
+              if (isIndividualMatch) {
+                if (players.length === 2) {
+                  const status = legMatchStatus(strokes, [0, 1], range, players);
+                  return (
+                    <View key={label} style={styles.nassauLegCard}>
+                      <Text style={styles.nassauLegLabel}>{label}</Text>
+                      <Text style={styles.nassauLegStatus}>{status}</Text>
+                    </View>
+                  );
+                }
+                // Round-robin (3-5 players): no single match status fits every
+                // pair, so show each player's net holes won minus lost.
+                const { wins, losses, holesPlayed } = legStandings(strokes, playerIdxs, range);
+                const net = playerIdxs.map(pi => ({ pi, n: wins[pi] - losses[pi] }));
+                return (
+                  <View key={label} style={styles.nassauLegCard}>
+                    <Text style={styles.nassauLegLabel}>{label}</Text>
+                    {holesPlayed === 0 ? (
+                      <Text style={styles.nassauLegStatus}>Not started</Text>
+                    ) : (
+                      <View style={styles.nassauLegPlayers}>
+                        {[...net].sort((a, b) => b.n - a.n).map(t => (
+                          <Text key={t.pi} style={styles.nassauLegPlayer}>
+                            {players[t.pi].split(' ')[0]}: {t.n >= 0 ? `+${t.n}` : t.n}
+                          </Text>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 );
               }

@@ -12,7 +12,7 @@ export default function BreakdownScreen() {
   const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
   const { players, scores, firstBonus, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0,
     gameMode = 'beans', nassauStake = 5.00, strokes = [], nassauTeams = null, nassauTeamFormat = 'match-play',
-    beansTeams = null } = state;
+    nassauScoring = 'match', beansTeams = null } = state;
   const isNassau = gameMode === 'nassau';
   const isTeams = isNassau && !!nassauTeams;
   const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
@@ -159,7 +159,7 @@ export default function BreakdownScreen() {
             <View style={styles.nassauHeader}>
               <Text style={styles.nassauHeaderName}>Nassau Results</Text>
               <Text style={styles.nassauHeaderSub}>
-                ${nassauStake.toFixed(2)}/leg{isTeams ? ` · 2v2 ${nassauTeamFormat.replace('-', ' ')}` : ''} · hole-by-hole results
+                ${nassauStake.toFixed(2)}/leg{isTeams ? ` · 2v2 ${nassauTeamFormat.replace('-', ' ')}` : ` · ${nassauScoring === 'match' ? 'Match Play' : 'Stroke Play'}`} · hole-by-hole results
               </Text>
               {isTeams && (
                 <Text style={styles.nassauHeaderSub} numberOfLines={2}>

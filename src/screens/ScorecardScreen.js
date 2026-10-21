@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansScramble, beansAtHoleForPlayer, teamAwardedBeansAtHoleForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
-import { canPressTeam, activeLegStatusTeam, teamBestBall } from '../utils/nassau';
+import { canPressTeam, activeLegStatusTeam, teamBestBall, canPressLeg, activeLegStatus, canPressPair, legStandings } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
@@ -26,7 +26,7 @@ export default function ScorecardScreen() {
     ldCarryoverEnabled = true, kpCarryoverEnabled = true,
     gameMode = 'beans', nassauStake = 5.00,
     nassauPresses = { front: [], back: [], total: [] },
-    nassauTeams = null, nassauTeamFormat = 'match-play',
+    nassauTeams = null, nassauTeamFormat = 'match-play', nassauScoring = 'match',
     beansTeams = null,
   } = state;
 
@@ -497,6 +497,7 @@ export default function ScorecardScreen() {
           {gameMode === 'nassau' && (() => {
             const playerIdxs = players.map((_, i) => i);
             const isTeams = !!nassauTeams;
+            const isIndividualMatch = !isTeams && nassauScoring === 'match';
             const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
             // Short "Team A"/"Team B" labels drive the status bar, press
             // buttons, and anywhere else space is tight; full player names
@@ -517,6 +518,20 @@ export default function ScorecardScreen() {
                 const legPresses = nassauPresses[leg.label] || [];
                 return activeLegStatusTeam(strokes, teamA, teamB, leg.range, legPresses, teamNames);
               }
+              if (isIndividualMatch) {
+                const legPresses = nassauPresses[leg.label] || [];
+                if (playerIdxs.length === 2) {
+                  return activeLegStatus(strokes, playerIdxs, leg.range, legPresses, players);
+                }
+                // Round-robin (3-5 players): no single "up/down" line fits every
+                // pair, so show each player's net holes won minus lost — the same
+                // figure that drives settlement — sorted high to low.
+                const { wins, losses, holesPlayed } = legStandings(strokes, playerIdxs, leg.range);
+                if (holesPlayed === 0) return 'Not started';
+                const net = playerIdxs.map(pi => ({ pi, n: wins[pi] - losses[pi] }));
+                const sorted = [...net].sort((a, b) => b.n - a.n);
+                return sorted.map(t => `${players[t.pi].split(' ')[0]} ${t.n >= 0 ? '+' : ''}${t.n}`).join(' · ');
+              }
               // Stroke-Play: show each player's running total strokes for this leg —
               // there's no "up/down" match-play status, just who's ahead on strokes.
               const totals = playerIdxs.map(pi => {
@@ -527,8 +542,8 @@ export default function ScorecardScreen() {
               const sorted = [...totals].sort((a, b) => a.sum - b.sum);
               return sorted.map(t => `${players[t.pi].split(' ')[0]} ${t.sum}`).join(' · ');
             }
-            // Pressable items: teams only — Stroke-Play has no press (a stroke total
-            // has no natural "2 down" trigger to press off of).
+            // Pressable items: teams and individual Match Play only —
+            // Stroke-Play has no press (a stroke total has no natural "2 down" trigger).
             const pressableItems = [];
             if (isTeams) {
               for (const leg of legs) {
@@ -536,6 +551,26 @@ export default function ScorecardScreen() {
                 const legPresses = nassauPresses[leg.label] || [];
                 if (canPressTeam(strokes, teamA, teamB, leg.range, legPresses, hole)) {
                   pressableItems.push({ leg: leg.label, label: `Press ${leg.title}`, dispatchPlayers: null });
+                }
+              }
+            } else if (isIndividualMatch) {
+              for (const leg of legs) {
+                if (!leg.range.includes(hole)) continue;
+                const legPresses = nassauPresses[leg.label] || [];
+                if (playerIdxs.length === 2) {
+                  if (canPressLeg(strokes, playerIdxs, leg.range, legPresses, hole)) {
+                    pressableItems.push({ leg: leg.label, label: `Press ${leg.title}`, dispatchPlayers: null });
+                  }
+                } else {
+                  for (let i = 0; i < playerIdxs.length; i++) {
+                    for (let j = i + 1; j < playerIdxs.length; j++) {
+                      const a = playerIdxs[i], b = playerIdxs[j];
+                      if (canPressPair(strokes, a, b, leg.range, legPresses, hole)) {
+                        const names = `${players[a].split(' ')[0]} vs ${players[b].split(' ')[0]}`;
+                        pressableItems.push({ leg: leg.label, label: `Press ${leg.title} (${names})`, dispatchPlayers: [a, b] });
+                      }
+                    }
+                  }
                 }
               }
             }
