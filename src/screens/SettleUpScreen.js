@@ -292,6 +292,59 @@ export default function SettleUpScreen() {
                 </View>
               );
             })}
+            {isIndividualMatch && players.length > 2 && (() => {
+              // Round-robin: every pair runs its own independent bet across
+              // all 3 legs (plus any presses they personally declared), so
+              // the leg cards above — which only show each player's overall
+              // net holes — can't explain why two players with the same
+              // overall record end up with different final dollar amounts.
+              // This head-to-head total is where that actually comes from.
+              const legDefs = [
+                { key: 'front', range: frontRange },
+                ...(holeCount >= 18 ? [{ key: 'back', range: backRange }] : []),
+                { key: 'total', range: totalRange },
+              ];
+              const pairs = [];
+              for (let i = 0; i < playerIdxs.length; i++) {
+                for (let j = i + 1; j < playerIdxs.length; j++) pairs.push([playerIdxs[i], playerIdxs[j]]);
+              }
+              function pairNet(a, b) {
+                let net = 0;
+                for (const { key, range } of legDefs) {
+                  const legPresses = nassauPresses[key] || [];
+                  const { wins } = legStandings(strokes, [a, b], range);
+                  const diff = wins[a] - wins[b];
+                  if (diff > 0) net += nassauStake; else if (diff < 0) net -= nassauStake;
+                  for (const press of legPresses) {
+                    if (press.players && !(press.players.includes(a) && press.players.includes(b))) continue;
+                    const pressRange = range.filter(h => h >= press.startHole);
+                    if (!pressRange.length) continue;
+                    const { wins: pw } = legStandings(strokes, [a, b], pressRange);
+                    const pdiff = pw[a] - pw[b];
+                    if (pdiff > 0) net += nassauStake; else if (pdiff < 0) net -= nassauStake;
+                  }
+                }
+                return net;
+              }
+              return (
+                <>
+                  <Text style={styles.sectionLabel}>Head-to-head (all legs + presses)</Text>
+                  {pairs.map(([a, b]) => {
+                    const net = pairNet(a, b);
+                    const nameA = players[a].split(' ')[0];
+                    const nameB = players[b].split(' ')[0];
+                    return (
+                      <View key={`${a}-${b}`} style={styles.nassauLegCard}>
+                        <Text style={styles.nassauLegLabel}>{nameA} vs {nameB}</Text>
+                        <Text style={styles.nassauLegStatus}>
+                          {net === 0 ? 'Push' : net > 0 ? `${nameA} +$${net.toFixed(2)}` : `${nameB} +$${Math.abs(net).toFixed(2)}`}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </>
+              );
+            })()}
           </>
         ) : (
           <>

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { isParAllowed, getEffectiveValue, beanLabel, getEffectiveBeanValue, netDollarsForPlayer, netDollarsBeansScramble, beansAtHoleForPlayer, teamAwardedBeansAtHoleForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
-import { canPressTeam, activeLegStatusTeam, teamBestBall, canPressLeg, activeLegStatus, canPressPair, legStandings } from '../utils/nassau';
+import { canPressTeam, activeLegStatusTeam, teamBestBall, canPressLeg, activeLegStatus, canPressPair, activeStatusPair, legStandings } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
@@ -44,6 +44,7 @@ export default function ScorecardScreen() {
   const [customPressAmt, setCustomPressAmt] = useState('');
   const [chosenPressAmt, setChosenPressAmt] = useState(null);
   const [roundFinished, setRoundFinished] = useState(false);
+  const [matchupsOpen, setMatchupsOpen] = useState(false);
 
   const hole = currentHole;
   const par  = getHolePar(hole);
@@ -593,11 +594,50 @@ export default function ScorecardScreen() {
                         <Text style={styles.nassauLegTitle}>
                           {leg.title}{legPresses.length > 0 ? ` · P${legPresses.length}` : ''}
                         </Text>
-                        <Text style={styles.nassauLegStatus} numberOfLines={1}>{statusLine(leg)}</Text>
+                        <Text style={styles.nassauLegStatus} numberOfLines={2}>{statusLine(leg)}</Text>
                       </View>
                     );
                   })}
                 </View>
+                {/* Round-robin (3-5 players): the leg boxes above show each
+                    player's overall net holes for that leg, but can't show
+                    every pair's actual head-to-head match (who's "up" in
+                    their specific bet) without crowding the bar — so that
+                    detail lives here, one row per pair, collapsed by default. */}
+                {isIndividualMatch && playerIdxs.length > 2 && (() => {
+                  const pairs = [];
+                  for (let i = 0; i < playerIdxs.length; i++) {
+                    for (let j = i + 1; j < playerIdxs.length; j++) pairs.push([playerIdxs[i], playerIdxs[j]]);
+                  }
+                  const startedLegs = legs.filter(leg => leg.range.some(h => playerIdxs.every(pi => (strokes[pi]?.[h] ?? 0) > 0)));
+                  return (
+                    <View style={styles.nassauMatchupsWrap}>
+                      <TouchableOpacity style={styles.nassauMatchupsToggle} onPress={() => setMatchupsOpen(v => !v)} activeOpacity={0.75}>
+                        <Text style={styles.nassauMatchupsToggleText}>
+                          {matchupsOpen ? '▾ Hide matchups' : `▸ Show matchups (${pairs.length})`}
+                        </Text>
+                      </TouchableOpacity>
+                      {matchupsOpen && startedLegs.map(leg => {
+                        const legPresses = nassauPresses[leg.label] || [];
+                        return (
+                          <View key={leg.label} style={styles.nassauMatchupsLeg}>
+                            <Text style={styles.nassauMatchupsLegTitle}>{leg.title}</Text>
+                            {pairs.map(([a, b]) => (
+                              <View key={`${a}-${b}`} style={styles.nassauMatchupRow}>
+                                <Text style={styles.nassauMatchupNames} numberOfLines={1}>
+                                  {players[a].split(' ')[0]} vs {players[b].split(' ')[0]}
+                                </Text>
+                                <Text style={styles.nassauMatchupStatus} numberOfLines={1}>
+                                  {activeStatusPair(strokes, a, b, leg.range, legPresses, players)}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  );
+                })()}
                 {pressableItems.length > 0 && (
                   <View style={styles.nassauPressBar}>
                     <Text style={styles.nassauPressBarLabel}>🤝 Press available:</Text>
@@ -1459,6 +1499,14 @@ const styles = StyleSheet.create({
   nassauPlayerName:   { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
   nassauRelPar:       { fontSize: 14, fontWeight: '700', color: colors.textMid, minWidth: 28, textAlign: 'right', marginLeft: spacing.sm },
   nassauStakeNote:    { fontSize: 12, color: colors.textLight, textAlign: 'center', marginTop: spacing.md },
+  nassauMatchupsWrap:      { backgroundColor: colors.green, paddingHorizontal: spacing.md, paddingBottom: spacing.xs },
+  nassauMatchupsToggle:    { paddingVertical: 4 },
+  nassauMatchupsToggleText:{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.75)' },
+  nassauMatchupsLeg:       { marginTop: 4, marginBottom: 2 },
+  nassauMatchupsLegTitle:  { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  nassauMatchupRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
+  nassauMatchupNames:      { flex: 1, fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)', marginRight: spacing.sm },
+  nassauMatchupStatus:     { fontSize: 12, fontWeight: '800', color: colors.white, textAlign: 'right' },
   nassauPressBar:     { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.xs, backgroundColor: colors.green, paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
   nassauPressBarLabel:{ fontSize: 12, color: 'rgba(255,255,255,0.65)', fontWeight: '600' },
   nassauPressBtn:     { backgroundColor: colors.gold, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4 },
