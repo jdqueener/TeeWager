@@ -524,14 +524,17 @@ export default function ScorecardScreen() {
                 if (playerIdxs.length === 2) {
                   return activeLegStatus(strokes, playerIdxs, leg.range, legPresses, players);
                 }
-                // Round-robin (3-5 players): no single "up/down" line fits every
-                // pair, so show each player's net holes won minus lost — the same
-                // figure that drives settlement — sorted high to low.
+                // Round-robin (3-5 players): this narrow column can't fit every
+                // player's line without wrapping badly, so show only the
+                // leader(s) — full per-pair detail lives in "Show matchups" below.
                 const { wins, losses, holesPlayed } = legStandings(strokes, playerIdxs, leg.range);
                 if (holesPlayed === 0) return 'Not started';
                 const net = playerIdxs.map(pi => ({ pi, n: wins[pi] - losses[pi] }));
-                const sorted = [...net].sort((a, b) => b.n - a.n);
-                return sorted.map(t => `${players[t.pi].split(' ')[0]} ${t.n >= 0 ? '+' : ''}${t.n}`).join(' · ');
+                const maxN = Math.max(...net.map(t => t.n));
+                const leaders = net.filter(t => t.n === maxN);
+                if (leaders.length === net.length) return 'All Square';
+                const names = leaders.map(t => players[t.pi].split(' ')[0]).join(' & ');
+                return `${names} +${maxN}`;
               }
               // Stroke-Play: show each player's running total strokes for this leg —
               // there's no "up/down" match-play status, just who's ahead on strokes.
@@ -541,6 +544,13 @@ export default function ScorecardScreen() {
               });
               if (totals.every(t => t.entered === 0)) return 'Not started';
               const sorted = [...totals].sort((a, b) => a.sum - b.sum);
+              if (playerIdxs.length > 2) {
+                // Same narrow-column problem as match play — leader(s) only.
+                const minSum = sorted[0].sum;
+                const leaders = sorted.filter(t => t.sum === minSum);
+                const names = leaders.map(t => players[t.pi].split(' ')[0]).join(' & ');
+                return leaders.length === sorted.length ? 'All Tied' : `${names} ${minSum}`;
+              }
               return sorted.map(t => `${players[t.pi].split(' ')[0]} ${t.sum}`).join(' · ');
             }
             // Pressable items: teams and individual Match Play only —
