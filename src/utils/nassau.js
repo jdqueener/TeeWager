@@ -332,7 +332,7 @@ export function activeLegStatus(strokes, playerIdxs, legRange, legPresses, playe
 
 // Presses relevant to a specific pair within a leg. A press with no `players`
 // field (2-player games) is treated as applying to whichever pair is asked about.
-function relevantPairPresses(legPresses, a, b) {
+export function relevantPairPresses(legPresses, a, b) {
   return legPresses.filter(p => !p.players || (p.players.includes(a) && p.players.includes(b)));
 }
 

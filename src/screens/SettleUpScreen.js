@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
 import { totalBeansForPlayer, computeSettleUp, minimumCashFlow, netDollarsBeansScramble, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
-import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, computeNassauSettleUp, legMatchStatusPairStroke, legMatchStatusTeam, legMatchStatus, legStandings } from '../utils/nassau';
+import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, computeNassauSettleUp, legMatchStatusPairStroke, legMatchStatusTeam, legMatchStatus, legStandings, legStandingsTeam, relevantPairPresses } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
@@ -14,7 +14,7 @@ import ShareCard from '../components/ShareCard';
 
 export default function SettleUpScreen() {
   const { state, dispatch, pro, setPro, activeBeans, refreshProfile } = useGame();
-  const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18,
+  const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18, holeOffset = 0,
     spots = [], gameMode = 'beans', nassauStake = 5.00, strokes = [],
     nassauPresses = { front: [], back: [], total: [] },
     nassauTeams = null, nassauTeamFormat = 'match-play', nassauScoring = 'match', beansTeams = null } = state;
@@ -292,53 +292,87 @@ export default function SettleUpScreen() {
                 </View>
               );
             })}
-            {isIndividualMatch && players.length > 2 && (() => {
-              // Round-robin: every pair runs its own independent bet across
-              // all 3 legs (plus any presses they personally declared), so
-              // the leg cards above — which only show each player's overall
-              // net holes — can't explain why two players with the same
-              // overall record end up with different final dollar amounts.
-              // This head-to-head total is where that actually comes from.
+            {(isTeams || isIndividualMatch) && Object.values(nassauPresses).some(arr => arr.length > 0) && (() => {
+              // Every press adds a new, independent bet running from its own
+              // start hole to the end of the leg — it doesn't replace the
+              // base bet or any earlier press, they're all still live at
+              // once. The leg cards above only show one blended line per
+              // leg, so this is the bet-by-bet ledger that actually adds up
+              // to each player's final $ — only shown once a press exists.
               const legDefs = [
-                { key: 'front', range: frontRange },
-                ...(holeCount >= 18 ? [{ key: 'back', range: backRange }] : []),
-                { key: 'total', range: totalRange },
+                { key: 'front', title: 'Front 9', range: frontRange },
+                ...(holeCount >= 18 ? [{ key: 'back', title: 'Back 9', range: backRange }] : []),
+                { key: 'total', title: 'Total', range: totalRange },
               ];
-              const pairs = [];
-              for (let i = 0; i < playerIdxs.length; i++) {
-                for (let j = i + 1; j < playerIdxs.length; j++) pairs.push([playerIdxs[i], playerIdxs[j]]);
-              }
-              function pairNet(a, b) {
-                let net = 0;
-                for (const { key, range } of legDefs) {
-                  const legPresses = nassauPresses[key] || [];
-                  const { wins } = legStandings(strokes, [a, b], range);
-                  const diff = wins[a] - wins[b];
-                  if (diff > 0) net += nassauStake; else if (diff < 0) net -= nassauStake;
-                  for (const press of legPresses) {
-                    if (press.players && !(press.players.includes(a) && press.players.includes(b))) continue;
-                    const pressRange = range.filter(h => h >= press.startHole);
-                    if (!pressRange.length) continue;
-                    const { wins: pw } = legStandings(strokes, [a, b], pressRange);
-                    const pdiff = pw[a] - pw[b];
-                    if (pdiff > 0) net += nassauStake; else if (pdiff < 0) net -= nassauStake;
-                  }
-                }
-                return net;
-              }
+              const [teamA, teamB] = isTeams ? nassauTeams : [[], []];
+              const groups = isTeams
+                ? [{
+                    key: 'teams', label: null,
+                    net: (range) => {
+                      const { winsA, winsB } = legStandingsTeam(strokes, teamA, teamB, range);
+                      return winsA === winsB ? 0 : (winsA > winsB ? nassauStake : -nassauStake);
+                    },
+                    nameFor: (amt) => amt > 0 ? teamNames[0] : teamNames[1],
+                    relevantPresses: (legPresses) => legPresses,
+                  }]
+                : (() => {
+                    const list = [];
+                    for (let i = 0; i < playerIdxs.length; i++) {
+                      for (let j = i + 1; j < playerIdxs.length; j++) {
+                        const a = playerIdxs[i], b = playerIdxs[j];
+                        list.push({
+                          key: `${a}-${b}`,
+                          label: `${players[a].split(' ')[0]} vs ${players[b].split(' ')[0]}`,
+                          net: (range) => {
+                            const { wins } = legStandings(strokes, [a, b], range);
+                            const diff = wins[a] - wins[b];
+                            return diff === 0 ? 0 : (diff > 0 ? nassauStake : -nassauStake);
+                          },
+                          nameFor: (amt) => amt > 0 ? players[a].split(' ')[0] : players[b].split(' ')[0],
+                          relevantPresses: (legPresses) => relevantPairPresses(legPresses, a, b),
+                        });
+                      }
+                    }
+                    return list;
+                  })();
               return (
                 <>
-                  <Text style={styles.sectionLabel}>Head-to-head (all legs + presses)</Text>
-                  {pairs.map(([a, b]) => {
-                    const net = pairNet(a, b);
-                    const nameA = players[a].split(' ')[0];
-                    const nameB = players[b].split(' ')[0];
+                  <Text style={styles.sectionLabel}>Active bets (base + presses)</Text>
+                  {groups.map(group => {
+                    let total = 0;
+                    const rows = [];
+                    for (const { key, title, range } of legDefs) {
+                      const legPresses = nassauPresses[key] || [];
+                      const bets = [
+                        { label: `${title} — Base`, range },
+                        ...group.relevantPresses(legPresses).map(p => ({
+                          label: `${title} — Press since Hole ${holeOffset + p.startHole + 1}`,
+                          range: range.filter(h => h >= p.startHole),
+                        })),
+                      ];
+                      for (const bet of bets) {
+                        const amt = group.net(bet.range);
+                        total += amt;
+                        rows.push({ ...bet, amt });
+                      }
+                    }
                     return (
-                      <View key={`${a}-${b}`} style={styles.nassauLegCard}>
-                        <Text style={styles.nassauLegLabel}>{nameA} vs {nameB}</Text>
-                        <Text style={styles.nassauLegStatus}>
-                          {net === 0 ? 'Push' : net > 0 ? `${nameA} +$${net.toFixed(2)}` : `${nameB} +$${Math.abs(net).toFixed(2)}`}
-                        </Text>
+                      <View key={group.key} style={styles.nassauLegCard}>
+                        {group.label && <Text style={styles.nassauLegLabel}>{group.label}</Text>}
+                        {rows.map((row, idx) => (
+                          <View key={idx} style={styles.nassauBetRow}>
+                            <Text style={styles.nassauBetRowLabel} numberOfLines={1}>{row.label}</Text>
+                            <Text style={styles.nassauBetRowAmt}>
+                              {row.amt === 0 ? 'Push' : `${group.nameFor(row.amt)} +$${Math.abs(row.amt).toFixed(2)}`}
+                            </Text>
+                          </View>
+                        ))}
+                        <View style={[styles.nassauBetRow, styles.nassauBetRowTotal]}>
+                          <Text style={styles.nassauBetRowTotalLabel}>Total</Text>
+                          <Text style={styles.nassauLegStatus}>
+                            {total === 0 ? 'Push' : `${group.nameFor(total)} +$${Math.abs(total).toFixed(2)}`}
+                          </Text>
+                        </View>
                       </View>
                     );
                   })}
@@ -684,6 +718,13 @@ const styles = StyleSheet.create({
   nassauLegStatus:  { fontSize: 17, fontWeight: '800', color: colors.textDark },
   nassauLegPlayers: { gap: 4 },
   nassauLegPlayer:  { fontSize: 15, fontWeight: '700', color: colors.textDark },
+
+  // Active bets ledger (base + presses, bet-by-bet)
+  nassauBetRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
+  nassauBetRowLabel:   { flex: 1, fontSize: 13, fontWeight: '600', color: colors.textMid, marginRight: spacing.sm },
+  nassauBetRowAmt:      { fontSize: 13, fontWeight: '800', color: colors.textDark },
+  nassauBetRowTotal:    { borderTopWidth: 1, borderTopColor: colors.border, marginTop: 4, paddingTop: 6 },
+  nassauBetRowTotalLabel:{ fontSize: 12, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.5 },
 
   // Confirm modal
   confirmOverlay:         { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
