@@ -6,14 +6,14 @@ import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, computeNa
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { incrementRoundsCompleted } from '../utils/pro';
 import { supabase } from '../utils/supabase';
-import { saveStats, loadStats } from '../utils/storage';
+import { saveStats, loadStats, incrementRoundsPlayed } from '../utils/storage';
 import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
 import ShareCard from '../components/ShareCard';
 
 export default function SettleUpScreen() {
-  const { state, dispatch, pro, setPro, activeBeans, refreshProfile } = useGame();
+  const { state, dispatch, pro, setPro, activeBeans, refreshProfile, refreshGuestRounds } = useGame();
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18, holeOffset = 0,
     spots = [], gameMode = 'beans', nassauStake = 5.00, strokes = [],
     nassauPresses = { front: [], back: [], total: [] },
@@ -31,6 +31,9 @@ export default function SettleUpScreen() {
       if (session?.user) {
         await incrementRoundsCompleted(session.user.id);
         await refreshProfile(session.user.id);
+      } else {
+        await incrementRoundsPlayed();
+        await refreshGuestRounds();
       }
     })();
   }, []);

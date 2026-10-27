@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useReducer, useRef, useState } from 'react';
 import { BEAN_DEFS, DEFAULT_PARS } from '../utils/beans';
-import { saveGame, loadGame, clearGame, loadCustomDefs } from '../utils/storage';
-import { fetchProfile, ensureProfile, isTrialExpired, trialRoundsLeft } from '../utils/pro';
+import { saveGame, loadGame, clearGame, loadCustomDefs, getRoundsPlayed, incrementRoundsPlayed, isPro as loadLocalPro } from '../utils/storage';
+import { fetchProfile, ensureProfile, isTrialExpired, trialRoundsLeft, TRIAL_ROUNDS } from '../utils/pro';
 import { supabase } from '../utils/supabase';
 import { getReferral, clearReferral } from '../utils/referral';
 
@@ -284,6 +284,16 @@ export function GameProvider({ children }) {
   const [pro, setPro] = useState(false);
   const [profile, setProfile] = useState({ is_pro: false, rounds_completed: 0 });
   const [loading, setLoading] = useState(true);
+  // Trial enforcement for guests (no Supabase session) can't use `profile`
+  // (that's DB-backed, keyed by user id) — it's tracked locally instead, the
+  // same AsyncStorage round counter and pro flag a native guest purchase
+  // already writes to (see PaywallModal's storePro), just not previously read back.
+  const [hasSession, setHasSession] = useState(false);
+  const [guestRoundsPlayed, setGuestRoundsPlayed] = useState(0);
+
+  async function refreshGuestRounds() {
+    setGuestRoundsPlayed(await getRoundsPlayed());
+  }
 
   async function refreshProfile(userId) {
     if (!userId) return;
@@ -307,14 +317,29 @@ export function GameProvider({ children }) {
       else if (customs.length) dispatch({ type: 'LOAD', payload: { ...INITIAL_SETUP, customBeans: customs } });
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) await refreshProfile(session.user.id);
+      if (session?.user) {
+        setHasSession(true);
+        await refreshProfile(session.user.id);
+      } else {
+        setHasSession(false);
+        const [grp, localPro] = await Promise.all([getRoundsPlayed(), loadLocalPro()]);
+        setGuestRoundsPlayed(grp);
+        if (localPro) setPro(true);
+      }
 
       setLoading(false);
     })();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) refreshProfile(session.user.id);
-      else { setProfile({ is_pro: false, rounds_completed: 0 }); setPro(false); }
+      if (session?.user) {
+        setHasSession(true);
+        refreshProfile(session.user.id);
+      } else {
+        setHasSession(false);
+        setProfile({ is_pro: false, rounds_completed: 0 });
+        refreshGuestRounds();
+        loadLocalPro().then(setPro);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -355,11 +380,11 @@ export function GameProvider({ children }) {
     return state.course?.holes?.[offset + holeIdx]?.par ?? DEFAULT_PARS[offset + holeIdx];
   }
 
-  const canPlay = pro || !isTrialExpired(profile);
-  const roundsLeft = trialRoundsLeft(profile);
+  const canPlay = pro || (hasSession ? !isTrialExpired(profile) : guestRoundsPlayed < TRIAL_ROUNDS);
+  const roundsLeft = hasSession ? trialRoundsLeft(profile) : Math.max(0, TRIAL_ROUNDS - guestRoundsPlayed);
 
   return (
-    <GameContext.Provider value={{ state, dispatch, pro, setPro, profile, setProfile, refreshProfile, canPlay, roundsLeft, loading, allBeans, activeBeans, getHolePar }}>
+    <GameContext.Provider value={{ state, dispatch, pro, setPro, profile, setProfile, refreshProfile, refreshGuestRounds, canPlay, roundsLeft, loading, allBeans, activeBeans, getHolePar }}>
       {children}
     </GameContext.Provider>
   );
