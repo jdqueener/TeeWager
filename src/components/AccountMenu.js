@@ -224,7 +224,7 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
               </View>
               <TouchableOpacity style={styles.billingBtn} onPress={openBilling} activeOpacity={0.85}>
                 <Text style={styles.billingBtnIcon}>💳</Text>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.billingBtnText}>Manage billing</Text>
                   <Text style={styles.billingBtnSub}>Upgrade, cancel, or view invoices</Text>
                 </View>

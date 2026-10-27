@@ -1139,7 +1139,7 @@ export default function SetupScreen() {
               keyExtractor={item => item}
               renderItem={({ item }) => (
                 <View style={styles.pickerItem}>
-                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }} onPress={() => selectSavedPlayer(item)}>
+                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }} onPress={() => selectSavedPlayer(item)}>
                     <View style={styles.pickerAvatar}>
                       <Text style={styles.pickerAvatarText}>{item.slice(0,2).toUpperCase()}</Text>
                     </View>
