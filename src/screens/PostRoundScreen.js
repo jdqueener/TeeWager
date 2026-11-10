@@ -6,6 +6,7 @@ import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
 import { grantPro } from '../utils/pro';
 import { supabase } from '../utils/supabase';
+import { purchaseProduct } from '../utils/purchases';
 
 const STRIPE_MONTHLY  = 'https://buy.stripe.com/6oU14g4dV94G8mNeu63AY00';
 const STRIPE_ANNUAL   = 'https://buy.stripe.com/8x24gsh0H4OqbyZbhU3AY01';
@@ -36,12 +37,7 @@ const PRO_FEATURES = [
 async function nativePurchase(productId, setLoading, onSuccess) {
   try {
     setLoading(productId);
-    const Purchases = (await import('react-native-purchases')).default;
-    const offerings = await Purchases.getOfferings();
-    const all = offerings.current?.availablePackages ?? [];
-    const pkg = all.find(p => p.product.identifier === productId);
-    if (!pkg) throw new Error('Product not found');
-    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    const customerInfo = await purchaseProduct(productId);
     if (customerInfo.entitlements.active['pro']) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) await grantPro(session.user.id, planForProduct(productId));

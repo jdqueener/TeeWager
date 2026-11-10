@@ -10,6 +10,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
 import { grantPro } from '../utils/pro';
+import { purchaseProduct } from '../utils/purchases';
 
 // Web-only Stripe links — native purchases go through RevenueCat/StoreKit
 // (see nativePurchase below), required for App Store guideline 3.1.1.
@@ -34,12 +35,7 @@ function planForProduct(productId) {
 
 async function nativePurchase(productId, onDone) {
   try {
-    const Purchases = (await import('react-native-purchases')).default;
-    const offerings = await Purchases.getOfferings();
-    const all = offerings.current?.availablePackages ?? [];
-    const pkg = all.find(p => p.product.identifier === productId);
-    if (!pkg) throw new Error('Product not found');
-    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    const customerInfo = await purchaseProduct(productId);
     if (customerInfo.entitlements.active['pro']) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) await grantPro(session.user.id, planForProduct(productId));

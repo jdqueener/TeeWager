@@ -8,6 +8,7 @@ import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
 import { grantPro } from '../utils/pro';
 import { supabase } from '../utils/supabase';
+import { purchaseProduct, restorePro as restoreProPurchase } from '../utils/purchases';
 
 // Web-only Stripe links (live — replace test links when ready)
 const STRIPE_MONTHLY  = 'https://buy.stripe.com/6oU14g4dV94G8mNeu63AY00';
@@ -40,12 +41,7 @@ const PRO_FEATURES = [
 async function nativePurchase(productId, onUnlock, onClose, setLoading) {
   try {
     setLoading(productId);
-    const Purchases = (await import('react-native-purchases')).default;
-    const offerings = await Purchases.getOfferings();
-    const all = offerings.current?.availablePackages ?? [];
-    const pkg = all.find(p => p.product.identifier === productId);
-    if (!pkg) throw new Error('Product not found');
-    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    const customerInfo = await purchaseProduct(productId);
     if (customerInfo.entitlements.active['pro']) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) await grantPro(session.user.id, planForProduct(productId));
@@ -66,8 +62,7 @@ async function nativePurchase(productId, onUnlock, onClose, setLoading) {
 async function nativeRestore(onUnlock, onClose, setRestoreStatus) {
   try {
     setRestoreStatus('loading');
-    const Purchases = (await import('react-native-purchases')).default;
-    const customerInfo = await Purchases.restorePurchases();
+    const customerInfo = await restoreProPurchase();
     if (customerInfo.entitlements.active['pro']) {
       const { data: { session } } = await supabase.auth.getSession();
       const restoredProductId = customerInfo.entitlements.active['pro'].productIdentifier;
