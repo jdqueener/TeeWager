@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { totalBeansForPlayer, computeSettleUp, minimumCashFlow, netDollarsBeansScramble, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
+import { totalBeansForPlayer, computePressSettleUp, minimumCashFlow, netDollarsBeansScramble, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
 import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, computeNassauSettleUp, legMatchStatusPairStroke, legMatchStatusTeam, legMatchStatus, legStandings, legStandingsTeam, relevantPairPresses } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { incrementRoundsCompleted } from '../utils/pro';
@@ -17,6 +17,7 @@ export default function SettleUpScreen() {
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18, holeOffset = 0,
     spots = [], gameMode = 'beans', nassauStake = 5.00, strokes = [],
     nassauPresses = { front: [], back: [], total: [] },
+    pressMode = null, presses = [], tenthPressed = false, tenthPressValue, holePresses = {},
     nassauTeams = null, nassauTeamFormat = 'match-play', nassauScoring = 'match', beansTeams = null } = state;
   const lastHole = holeCount - 1;
   const [paywallVisible, setPaywallVisible] = useState(false);
@@ -105,7 +106,16 @@ export default function SettleUpScreen() {
     });
     payments = minimumCashFlow(players, net);
   } else {
-    payments = computeSettleUp(players, beanTotals, beanValue, wagers);
+    // Press-aware (also handicap-spot-aware): computeSettleUp ignored both
+    // presses and spots entirely, so a round with either active settled at
+    // the plain flat bean rate — silently wrong money the moment a press was
+    // used, since the live running total on Scorecard (netDollarsForPlayer)
+    // already factored it in and wouldn't match what Settle Up then said.
+    payments = computePressSettleUp(
+      players, scores, activeBeans, firstBonus, beanValue,
+      { pressMode, presses, tenthPressed, tenthPressValue, holePresses },
+      wagers, holeCount, spots
+    );
   }
 
   // Nassau leg summaries

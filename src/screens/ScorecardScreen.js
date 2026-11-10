@@ -635,6 +635,22 @@ export default function ScorecardScreen() {
             );
           })()}
 
+          {/* Beans mode press — only ever enabled for individual (non-team,
+              non-scramble) rounds (see SetupScreen's Press toggle), so
+              pressMode is already null here otherwise. */}
+          {showPressBtn && (
+            <View style={styles.nassauPressBar}>
+              <Text style={styles.nassauPressBarLabel}>🤝 Press available:</Text>
+              <TouchableOpacity style={styles.nassauPressBtn} onPress={handlePress} activeOpacity={0.75}>
+                <Text style={styles.nassauPressBtnText}>
+                  {pressMode === 'tenth' ? 'Press — Back 9'
+                    : pressMode === 'perHole' ? (holePresses[hole] ? 'Edit hole press' : 'Press this hole')
+                    : 'Press'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* 2v2 beans scramble: who's on each team, shown once here — everywhere
               else (totals bar, bean cards) just says "Team A"/"Team B". */}
           {gameMode !== 'nassau' && beansTeams?.length === 2 && (

@@ -985,6 +985,43 @@ export default function SetupScreen() {
           </>
         )}
 
+        {/* Press — only meaningful for individual (non-scramble, non-team)
+            beans rounds; the final settle-up math only accounts for it in
+            that case. */}
+        {beansFormat === 'individual' && (
+          <View style={styles.beanRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.beanName}>Enable Press</Text>
+              <Text style={styles.beanDesc}>Raise the bean value partway through the round</Text>
+            </View>
+            <Switch value={pressEnabled} onValueChange={setPressEnabled} trackColor={{ true: colors.green }} />
+          </View>
+        )}
+        {beansFormat === 'individual' && pressEnabled && (
+          <>
+            {[
+              { id: 'anytime', label: 'Anytime',  desc: 'Any player can press at any point — the new value applies from that hole forward.' },
+              { id: 'tenth',   label: '10th Hole', desc: 'Bean value doubles (or your chosen amount) starting on the back nine.' },
+              { id: 'perHole', label: 'Per Hole',  desc: 'A side bet between specific players on one hole only, at its own value.' },
+            ].map(({ id, label, desc }) => (
+              <TouchableOpacity
+                key={id}
+                style={[styles.formatOptionRow, pressMode === id && styles.formatOptionRowActive]}
+                onPress={() => setPressMode(id)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.formatRadio, pressMode === id && styles.formatRadioActive]}>
+                  {pressMode === id && <View style={styles.formatRadioDot} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.formatOptionLabel, pressMode === id && { color: colors.green }]}>{label}</Text>
+                  <Text style={styles.formatOptionDesc}>{desc}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
         {/* Bean value */}
         <Text style={styles.label}>$ per bean</Text>
         <TextInput
@@ -1409,13 +1446,6 @@ const styles = StyleSheet.create({
   formatOptionDesc:      { fontSize: 12, color: colors.textLight, marginTop: 2, lineHeight: 17 },
 
   // Press options
-  pressOptions:     { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.gold, padding: spacing.sm, marginBottom: spacing.sm, ...shadow.sm },
-  pressOption:      { flexDirection: 'row', alignItems: 'flex-start', padding: spacing.sm, gap: spacing.sm },
-  pressRadio:       { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center', marginTop: 2, flexShrink: 0 },
-  pressRadioActive: { borderColor: colors.gold },
-  pressRadioDot:    { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.gold },
-  pressOptionLabel: { fontSize: 14, fontWeight: '700', color: colors.textDark },
-  pressOptionDesc:  { fontSize: 12, color: colors.textLight, marginTop: 2, lineHeight: 18 },
 
   trialBadgeWrap:    { alignSelf: 'center', backgroundColor: colors.goldPale, borderRadius: radius.pill, paddingVertical: 7, paddingHorizontal: spacing.md, marginTop: spacing.lg, borderWidth: 1, borderColor: 'rgba(184,134,11,0.25)' },
   trialBadge:        { textAlign: 'center', fontSize: 12.5, fontWeight: '700', color: '#8B6914', letterSpacing: 0.2 },
