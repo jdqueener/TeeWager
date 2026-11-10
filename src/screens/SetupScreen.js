@@ -782,7 +782,7 @@ export default function SetupScreen() {
                 style={[styles.countBtn, playerCount === n && styles.countBtnActive, locked && styles.countBtnLocked]}
                 onPress={() => locked ? setPaywallVisible(true) : setPlayerCount(n)}
               >
-                <Text style={[styles.countBtnText, playerCount === n && styles.countBtnTextActive]}>
+                <Text style={[styles.countBtnText, playerCount === n && styles.countBtnTextActive, locked && styles.countBtnTextLocked]}>
                   {n}{locked ? ' 🔒' : ''}
                 </Text>
               </TouchableOpacity>
@@ -1405,9 +1405,10 @@ const styles = StyleSheet.create({
 
   countBtn:           { flex: 1, paddingVertical: 15, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', backgroundColor: colors.white, ...shadow.sm },
   countBtnActive:     { backgroundColor: colors.green, borderColor: colors.green, ...shadow.green },
-  countBtnLocked:     { opacity: 0.45 },
+  countBtnLocked:     { borderColor: colors.gold, backgroundColor: colors.goldPale },
   countBtnText:       { fontWeight: '800', color: colors.textDark, fontSize: 14 },
   countBtnTextActive: { color: colors.white },
+  countBtnTextLocked: { color: colors.gold },
 
   playerInputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   input:          { backgroundColor: colors.white, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, padding: spacing.md, fontSize: 16, color: colors.textDark, marginBottom: spacing.sm },

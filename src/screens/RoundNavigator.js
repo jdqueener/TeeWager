@@ -53,7 +53,11 @@ export default function RoundNavigator() {
       {!isNassau && (
         <TouchableOpacity style={[styles.fab, { bottom: tabBarHeight + 16 }]} onPress={onFabPress} activeOpacity={0.85}>
           <Text style={styles.fabText}>+</Text>
-          {!pro && <Text style={styles.fabLock}>🔒</Text>}
+          {!pro && (
+            <View style={styles.fabLockBadge}>
+              <Text style={styles.fabLockText}>🔒</Text>
+            </View>
+          )}
         </TouchableOpacity>
       )}
 
@@ -86,5 +90,10 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 32, marginTop: -2 },
-  fabLock: { fontSize: 10, position: 'absolute', top: 6, right: 6 },
+  fabLockBadge: {
+    position: 'absolute', top: 2, right: 2, width: 20, height: 20, borderRadius: 10,
+    backgroundColor: colors.gold, borderWidth: 1.5, borderColor: colors.white,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  fabLockText: { fontSize: 10 },
 });
