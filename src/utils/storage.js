@@ -1,4 +1,6 @@
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { supabase } from './supabase';
 import { pushPlayers } from './cloudSync';
 
@@ -54,7 +56,22 @@ export async function saveStats(stats) {
   await AsyncStorage.setItem(KEYS.STATS, JSON.stringify(stats));
 }
 
+// On iOS the guest free-round counter is anchored in the Keychain instead of
+// AsyncStorage. AsyncStorage is wiped when the app is deleted, letting a
+// guest reset their 3 free rounds just by reinstalling; Keychain items
+// survive app deletion, closing that loophole. Android/web have no
+// equivalent persistent store and keep using AsyncStorage.
 export async function getRoundsPlayed() {
+  if (Platform.OS === 'ios') {
+    const val = await SecureStore.getItemAsync(KEYS.ROUNDS_PLAYED);
+    if (val !== null) return parseInt(val, 10);
+    // One-time migration for existing installs that already have a count
+    // in the old AsyncStorage location.
+    const legacy = await AsyncStorage.getItem(KEYS.ROUNDS_PLAYED);
+    const seeded = legacy ? parseInt(legacy, 10) : 0;
+    await SecureStore.setItemAsync(KEYS.ROUNDS_PLAYED, String(seeded));
+    return seeded;
+  }
   const val = await AsyncStorage.getItem(KEYS.ROUNDS_PLAYED);
   return val ? parseInt(val, 10) : 0;
 }
@@ -62,7 +79,11 @@ export async function getRoundsPlayed() {
 export async function incrementRoundsPlayed() {
   const current = await getRoundsPlayed();
   const next = current + 1;
-  await AsyncStorage.setItem(KEYS.ROUNDS_PLAYED, String(next));
+  if (Platform.OS === 'ios') {
+    await SecureStore.setItemAsync(KEYS.ROUNDS_PLAYED, String(next));
+  } else {
+    await AsyncStorage.setItem(KEYS.ROUNDS_PLAYED, String(next));
+  }
   return next;
 }
 
