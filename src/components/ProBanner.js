@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   menuItemSub: { fontSize: 12, color: colors.textLight, marginTop: 2 },
 
   menuBody:       { fontSize: 14, color: colors.textMid, paddingHorizontal: spacing.md, paddingBottom: spacing.md, textAlign: 'center' },
-  menuConfirm:    { marginHorizontal: spacing.md, marginBottom: spacing.sm, backgroundColor: '#DC2626', borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
+  menuConfirm:    { marginHorizontal: spacing.md, marginBottom: spacing.sm, backgroundColor: colors.destructive, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   menuConfirmText:{ fontSize: 16, fontWeight: '700', color: colors.white },
   menuCancel:     { padding: spacing.md, alignItems: 'center' },
   menuCancelText: { fontSize: 16, color: colors.textMid, fontWeight: '600' },

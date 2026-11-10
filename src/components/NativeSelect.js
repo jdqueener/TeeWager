@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#ccc', borderRadius: radius.sm,
     paddingVertical: 10, paddingHorizontal: 10, backgroundColor: colors.white, marginBottom: 8,
   },
-  triggerText: { fontSize: 15, color: colors.textDark, flex: 1 },
+  triggerText: { fontSize: 15, color: colors.textDark, flex: 1, minWidth: 0 },
   chevron:     { fontSize: 13, color: colors.textLight, marginLeft: 6 },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: spacing.lg },

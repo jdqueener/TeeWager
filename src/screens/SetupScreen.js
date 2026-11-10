@@ -100,7 +100,7 @@ function TeamAssignmentPicker({ names, teamAssign, setTeamAssign }) {
           ))}
         </View>
         <View style={[styles.teamColumn, styles.teamColumnB]}>
-          <Text style={[styles.teamColumnHeader, { color: '#1d6fa4' }]}>Team B</Text>
+          <Text style={[styles.teamColumnHeader, { color: colors.teamBlue }]}>Team B</Text>
           {[2, 3].map(slot => (
             Platform.OS === 'web' ? (
               <select key={slot} value={slots[slot]} onChange={e => pickPlayer(slot, Number(e.target.value))} style={sel}>
@@ -1274,18 +1274,17 @@ const styles = StyleSheet.create({
   teamGrid:             { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
   teamColumn:           { flex: 1, borderRadius: radius.md, padding: spacing.sm, borderWidth: 1 },
   teamColumnA:          { borderColor: colors.green, backgroundColor: 'rgba(34,139,34,0.08)' },
-  teamColumnB:          { borderColor: '#1d6fa4', backgroundColor: 'rgba(29,111,164,0.08)' },
+  teamColumnB:          { borderColor: colors.teamBlue, backgroundColor: 'rgba(29,111,164,0.08)' },
   teamColumnHeader:     { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
   teamColumnPlayer:     { fontSize: 13, fontWeight: '600', color: colors.textDark, paddingVertical: 1 },
   teamAssignRow:        { flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, borderWidth: 1.5, padding: spacing.sm, marginBottom: spacing.xs },
   teamAssignRowA:       { borderColor: colors.green, backgroundColor: 'rgba(34,139,34,0.06)' },
-  teamAssignRowB:       { borderColor: '#1d6fa4', backgroundColor: 'rgba(29,111,164,0.06)' },
-  teamAssignName:       { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textDark },
+  teamAssignRowB:       { borderColor: colors.teamBlue, backgroundColor: 'rgba(29,111,164,0.06)' },
   teamAssignBadge:      { fontSize: 13, fontWeight: '700' },
   teamToggle:           { flexDirection: 'row', gap: 6 },
   teamToggleBtn:        { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.offWhite },
   teamToggleBtnA:       { borderColor: colors.green, backgroundColor: colors.green },
-  teamToggleBtnB:       { borderColor: '#1d6fa4', backgroundColor: '#1d6fa4' },
+  teamToggleBtnB:       { borderColor: colors.teamBlue, backgroundColor: colors.teamBlue },
   teamToggleBtnText:    { fontSize: 12, fontWeight: '700', color: colors.textMid },
   teamToggleBtnTextActive: { color: colors.white },
 
@@ -1333,7 +1332,7 @@ const styles = StyleSheet.create({
   courseResultName:{ fontSize: 15, fontWeight: '700', color: colors.textDark },
   courseResultSub: { fontSize: 12, color: colors.textLight, marginTop: 3 },
   courseChip:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.green, borderRadius: radius.pill, paddingVertical: 12, paddingHorizontal: spacing.md, marginBottom: spacing.xs, ...shadow.green },
-  courseChipText:  { flex: 1, color: colors.white, fontWeight: '700', fontSize: 14 },
+  courseChipText:  { flex: 1, minWidth: 0, color: colors.white, fontWeight: '700', fontSize: 14 },
   courseChipClear: { paddingLeft: spacing.sm },
   courseChipClearText: { color: 'rgba(255,255,255,0.8)', fontSize: 18, fontWeight: '700' },
 

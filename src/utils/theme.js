@@ -8,6 +8,8 @@ export const colors = {
   goldPale:    '#FBF6E9',   // warm tint for press/pro surfaces
   red:         '#C0392B',
   redPale:     '#FBECEA',
+  destructive: '#DC2626',
+  teamBlue:    '#1D6FA4',
   white:       '#FFFFFF',
   offWhite:    '#F5F5F0',
   border:      '#E4E7E2',

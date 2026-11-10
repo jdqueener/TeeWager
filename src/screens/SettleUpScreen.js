@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
 
   // Bean totals
   row:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.xs, ...shadow.sm },
-  name:   { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
+  name:   { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '700', color: colors.textDark },
   val:    { fontSize: 15, fontWeight: '800', color: colors.green, marginLeft: spacing.sm },
   neg:    { color: colors.red },
 
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
 
   // Payment cards
   paymentCard:      { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', borderLeftWidth: 4, borderLeftColor: colors.gold, ...shadow.md },
-  paymentPlayer:    { flex: 1 },
+  paymentPlayer:    { flex: 1, minWidth: 0 },
   paymentName:      { fontSize: 17, fontWeight: '900', color: colors.textDark, letterSpacing: -0.3 },
   paymentTeam:      { fontSize: 11, color: colors.textMid, fontWeight: '600', marginTop: 1 },
   paymentRole:      { fontSize: 10, color: colors.textLight, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 3 },
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
 
   // Active bets ledger (base + presses, bet-by-bet)
   nassauBetRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
-  nassauBetRowLabel:   { flex: 1, fontSize: 13, fontWeight: '600', color: colors.textMid, marginRight: spacing.sm },
+  nassauBetRowLabel:   { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '600', color: colors.textMid, marginRight: spacing.sm },
   nassauBetRowAmt:      { fontSize: 13, fontWeight: '800', color: colors.textDark },
   nassauBetRowTotal:    { borderTopWidth: 1, borderTopColor: colors.border, marginTop: 4, paddingTop: 6 },
   nassauBetRowTotalLabel:{ fontSize: 12, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.5 },

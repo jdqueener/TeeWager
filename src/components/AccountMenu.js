@@ -20,8 +20,8 @@ function initials(name) {
 function Row({ label, value, hint }) {
   return (
     <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={[styles.infoValue, !value && styles.infoValueEmpty]}>{value || hint || 'Not set'}</Text>
+      <Text style={styles.infoLabel} numberOfLines={1}>{label}</Text>
+      <Text style={[styles.infoValue, !value && styles.infoValueEmpty]} numberOfLines={1}>{value || hint || 'Not set'}</Text>
     </View>
   );
 }
@@ -271,7 +271,7 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
               onPress={confirmDeleteAccount}
             >
               {deleting
-                ? <ActivityIndicator color="#DC2626" />
+                ? <ActivityIndicator color={colors.destructive} />
                 : <Text style={styles.deleteText}>Delete Account</Text>}
             </TouchableOpacity>
           </ScrollView>
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   confirmCard:            { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 340 },
   confirmTitle:           { fontSize: 20, fontWeight: '900', color: colors.textDark, marginBottom: spacing.xs },
   confirmSub:             { fontSize: 14, color: colors.textMid, marginBottom: spacing.lg },
-  confirmDestructive:     { backgroundColor: '#DC2626', borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', marginBottom: spacing.sm },
+  confirmDestructive:     { backgroundColor: colors.destructive, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', marginBottom: spacing.sm },
   confirmDestructiveText: { color: colors.white, fontWeight: '800', fontSize: 16 },
   confirmCancel:          { paddingVertical: 12, alignItems: 'center' },
   confirmCancelText:      { color: colors.textMid, fontSize: 15 },
@@ -333,8 +333,8 @@ const styles = StyleSheet.create({
   editLink:      { fontSize: 14, fontWeight: '700', color: colors.green },
 
   infoRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  infoLabel:     { fontSize: 14, color: colors.textMid, flex: 1 },
-  infoValue:      { fontSize: 14, fontWeight: '600', color: colors.textDark, flex: 1, textAlign: 'right' },
+  infoLabel:     { fontSize: 14, color: colors.textMid, flex: 1, minWidth: 0 },
+  infoValue:      { fontSize: 14, fontWeight: '600', color: colors.textDark, flex: 1, minWidth: 0, textAlign: 'right' },
   infoValueEmpty: { color: colors.textLight, fontWeight: '400', fontStyle: 'italic' },
 
   fieldLabel:    { fontSize: 12, fontWeight: '700', color: colors.textMid, marginBottom: 4, marginTop: spacing.sm },
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   input:         { backgroundColor: colors.background, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, padding: 13, fontSize: 15, color: colors.textDark, marginBottom: spacing.xs },
   inputDisabled: { opacity: 0.5 },
 
-  errorText:     { fontSize: 13, color: '#DC2626', marginTop: spacing.xs },
+  errorText:     { fontSize: 13, color: colors.destructive, marginTop: spacing.xs },
   savedText:     { fontSize: 13, color: colors.green, fontWeight: '700', marginTop: spacing.xs, marginBottom: spacing.xs },
 
   editBtns:      { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   supportText:   { fontSize: 14, color: colors.green, fontWeight: '600' },
 
   signOutBtn:    { backgroundColor: '#FEF2F2', borderRadius: radius.md, paddingVertical: 15, alignItems: 'center', borderWidth: 1, borderColor: '#FCA5A5' },
-  signOutText:   { fontSize: 16, fontWeight: '700', color: '#DC2626' },
+  signOutText:   { fontSize: 16, fontWeight: '700', color: colors.destructive },
 
   deleteBtn:     { marginTop: spacing.sm, paddingVertical: 13, alignItems: 'center' },
   deleteText:    { fontSize: 14, color: colors.textLight, textDecorationLine: 'underline' },

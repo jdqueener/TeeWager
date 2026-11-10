@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
 
   nassauHoleLabel:    { fontSize: 13, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm },
   nassauStrokeRow:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm },
-  nassauPlayerName:   { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
+  nassauPlayerName:   { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '700', color: colors.textDark },
   nassauStepper:      { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   nassauStepBtn:      { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   nassauStepText:     { fontSize: 20, fontWeight: '300', color: colors.textDark, lineHeight: 24 },

@@ -360,7 +360,7 @@ export default function ScorecardScreen() {
   function strokeColor(s, p) {
     if (!s) return null;
     const d = s - p;
-    if (d <= -2) return '#B8860B';
+    if (d <= -2) return colors.gold;
     if (d === -1) return colors.green;
     if (d === 1)  return '#E67E22';
     if (d >= 2)   return colors.red;
@@ -1148,7 +1148,7 @@ function PressAmountPicker({ beanValue, currentValue, chosen, custom, onChoose, 
 // ── Stroke dropdown (web only) ────────────────────────────────────────────
 function StrokePicker({ value, par, onChange }) {
   const d   = value ? value - par : null;
-  const bg  = d == null ? null : d <= -2 ? '#B8860B' : d === -1 ? '#2d6a4f' : d === 1 ? '#E67E22' : d >= 2 ? '#c0392b' : null;
+  const bg  = d == null ? null : d <= -2 ? colors.gold : d === -1 ? '#2d6a4f' : d === 1 ? '#E67E22' : d >= 2 ? colors.red : null;
   const fg  = bg ? '#ffffff' : '#1a1a1a';
   const bdr = bg ? bg : '#cccccc';
 
@@ -1471,7 +1471,7 @@ const styles = StyleSheet.create({
   nassauLegStatus:    { fontSize: 12, fontWeight: '700', color: colors.white, textAlign: 'center' },
   nassauHoleLabel:    { fontSize: 13, fontWeight: '700', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm },
   nassauStrokeRow:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm },
-  nassauPlayerName:   { flex: 1, fontSize: 16, fontWeight: '700', color: colors.textDark },
+  nassauPlayerName:   { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '700', color: colors.textDark },
   nassauRelPar:       { fontSize: 14, fontWeight: '700', color: colors.textMid, minWidth: 28, textAlign: 'right', marginLeft: spacing.sm },
   nassauStakeNote:    { fontSize: 12, color: colors.textLight, textAlign: 'center', marginTop: spacing.md },
   nassauPressBar:     { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.xs, backgroundColor: colors.green, paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
@@ -1504,7 +1504,7 @@ const styles = StyleSheet.create({
   totalsCard:         { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
   totalsSectionLabel: { fontSize: 12, fontWeight: '800', color: colors.textMid, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: spacing.sm },
   totalRow:           { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  totalNameWrap:      { flex: 1 },
+  totalNameWrap:      { flex: 1, minWidth: 0 },
   totalName2:         { fontSize: 14, fontWeight: '700', color: colors.textDark },
   totalNameSub:       { fontSize: 11, color: colors.textMid, marginTop: 1 },
   totalSplit:         { fontSize: 13, color: colors.textMid, width: 36, textAlign: 'center' },
