@@ -38,10 +38,17 @@ export async function pushCourses(userId, courses) {
   await supabase.from('profiles').update({ saved_courses: courses }).eq('id', userId);
 }
 
-// Clear local saved players and courses on sign-out
+// Clear local saved players/courses, the in-progress round, and lifetime
+// stats on sign-out or account deletion. Without clearing the round and
+// stats too, the next person to use this device — a new guest, or someone
+// else signing in — would resume the previous account's live round (real
+// names, hole-by-hole scores, live bet state) and see their stats history,
+// since neither is namespaced per-account, just stored flat on-device.
 export async function clearLocalUserData() {
   await Promise.all([
     AsyncStorage.removeItem('teewager_players_v1'),
     AsyncStorage.removeItem('recent_courses'),
+    AsyncStorage.removeItem('teewager_game_v1'),
+    AsyncStorage.removeItem('teewager_stats_v1'),
   ]);
 }
