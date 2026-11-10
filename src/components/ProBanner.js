@@ -6,7 +6,6 @@ import AccountMenu from './AccountMenu';
 import AuthScreen from '../screens/AuthScreen';
 import PostRoundScreen from '../screens/PostRoundScreen';
 import { useGame } from '../context/GameContext';
-import { setTrialUsed, setProPlan } from '../utils/storage';
 
 function computeSummary(state) {
   const { players, scores, beanValue } = state;
@@ -24,16 +23,14 @@ function computeSummary(state) {
   return { players: totals, winner, beanValue: beanValue || 1 };
 }
 
-// Flip to false when Stripe is live and the paywall should be enforced
-const IS_BETA = false;
-
-export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
-  const { state } = useGame();
+export default function ProBanner({ pro, onUpgrade, onReset }) {
+  const {
+    state, postRoundVisible, postRoundView,
+    acceptTrial, skipPostRound, handleTrialPurchaseSuccess,
+  } = useGame();
   const insets = useSafeAreaInsets();
   const [menuVisible, setMenuVisible] = useState(false);
   const [authVisible, setAuthVisible] = useState(false);
-  const [postRoundVisible, setPostRoundVisible] = useState(false);
-  const [postRoundView, setPostRoundView] = useState('nudge'); // 'nudge' | 'paywall'
 
   function handleNewRound() {
     if (state.phase === 'round') {
@@ -41,19 +38,6 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
     } else {
       onReset?.();
     }
-  }
-
-  async function handleAcceptTrial() {
-    await setTrialUsed();
-    await setProPlan('trial');
-    onSetPro?.(true);
-    setPostRoundVisible(false);
-    onReset?.();
-  }
-
-  function handlePostRoundSkip() {
-    setPostRoundVisible(false);
-    onReset?.();
   }
 
   return (
@@ -87,8 +71,9 @@ export default function ProBanner({ pro, onUpgrade, onReset, onSetPro }) {
         visible={postRoundVisible}
         view={postRoundView}
         summary={computeSummary(state)}
-        onAcceptTrial={handleAcceptTrial}
-        onSkip={handlePostRoundSkip}
+        onAcceptTrial={acceptTrial}
+        onSkip={skipPostRound}
+        onPurchaseSuccess={handleTrialPurchaseSuccess}
       />
 
       <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>

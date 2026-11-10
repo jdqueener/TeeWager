@@ -95,19 +95,6 @@ export async function setTrialUsed() {
   await AsyncStorage.setItem(KEYS.TRIAL_USED, '1');
 }
 
-export async function setProPlan(plan) {
-  // plan: 'monthly' | 'annual' | 'lifetime' | 'trial' | null
-  if (plan) {
-    await AsyncStorage.setItem(KEYS.PRO, plan);
-  } else {
-    await AsyncStorage.removeItem(KEYS.PRO);
-  }
-}
-
-export async function getProPlan() {
-  return await AsyncStorage.getItem(KEYS.PRO);
-}
-
 export async function loadSavedPlayers() {
   const raw = await AsyncStorage.getItem(KEYS.PLAYERS);
   return raw ? JSON.parse(raw) : [];

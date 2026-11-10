@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer, useRef, useState } from 'react';
 import { BEAN_DEFS, DEFAULT_PARS } from '../utils/beans';
-import { saveGame, loadGame, clearGame, loadCustomDefs, getRoundsPlayed, incrementRoundsPlayed, isPro as loadLocalPro } from '../utils/storage';
+import { saveGame, loadGame, clearGame, loadCustomDefs, getRoundsPlayed, incrementRoundsPlayed, isPro as loadLocalPro, isTrialUsed, setTrialUsed } from '../utils/storage';
 import { fetchProfile, ensureProfile, isTrialExpired, trialRoundsLeft, TRIAL_ROUNDS } from '../utils/pro';
 import { syncPurchasesIdentity } from '../utils/purchases';
 import { supabase } from '../utils/supabase';
@@ -296,6 +296,58 @@ export function GameProvider({ children }) {
     setGuestRoundsPlayed(await getRoundsPlayed());
   }
 
+  // Guest free-trial-round nudge: shown once, after a guest's very first
+  // completed round, offering one bonus round with Pro unlocked. Lives here
+  // rather than in ProBanner because ProBanner remounts fresh at every
+  // phase transition (App.js swaps between RoundNavigator and SetupScreen),
+  // so any state it owned locally would be lost before this could ever fire.
+  const [postRoundVisible, setPostRoundVisible] = useState(false);
+  const [postRoundView, setPostRoundView] = useState('nudge'); // 'nudge' | 'paywall'
+  // True for exactly the one bonus round accepted below — deliberately not
+  // persisted anywhere, since it's meant to expire the moment that round
+  // ends (see the effect below), not survive a restart.
+  const [trialActive, setTrialActive] = useState(false);
+
+  const prevPhaseRef = useRef(state.phase);
+  useEffect(() => {
+    const prevPhase = prevPhaseRef.current;
+    prevPhaseRef.current = state.phase;
+    if (!(prevPhase === 'round' && state.phase !== 'round')) return;
+
+    if (trialActive) {
+      setTrialActive(false);
+      setPro(false);
+      setPostRoundView('paywall');
+      setPostRoundVisible(true);
+      return;
+    }
+
+    if (!hasSession && !pro && guestRoundsPlayed === 1) {
+      isTrialUsed().then(used => {
+        if (!used) {
+          setPostRoundView('nudge');
+          setPostRoundVisible(true);
+        }
+      });
+    }
+  }, [state.phase]);
+
+  async function acceptTrial() {
+    await setTrialUsed();
+    setTrialActive(true);
+    setPro(true);
+    setPostRoundVisible(false);
+  }
+
+  function skipPostRound() {
+    setPostRoundVisible(false);
+  }
+
+  function handleTrialPurchaseSuccess() {
+    setPro(true);
+    setPostRoundVisible(false);
+  }
+
   async function refreshProfile(userId) {
     if (!userId) return;
     const ref = getReferral();
@@ -388,7 +440,7 @@ export function GameProvider({ children }) {
   const roundsLeft = hasSession ? trialRoundsLeft(profile) : Math.max(0, TRIAL_ROUNDS - guestRoundsPlayed);
 
   return (
-    <GameContext.Provider value={{ state, dispatch, pro, setPro, profile, setProfile, refreshProfile, refreshGuestRounds, canPlay, roundsLeft, loading, allBeans, activeBeans, getHolePar }}>
+    <GameContext.Provider value={{ state, dispatch, pro, setPro, profile, setProfile, refreshProfile, refreshGuestRounds, canPlay, roundsLeft, loading, allBeans, activeBeans, getHolePar, hasSession, guestRoundsPlayed, postRoundVisible, postRoundView, acceptTrial, skipPostRound, handleTrialPurchaseSuccess }}>
       {children}
     </GameContext.Provider>
   );
