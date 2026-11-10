@@ -9,7 +9,6 @@ import { supabase } from '../utils/supabase';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
-import { grantPro } from '../utils/pro';
 import { purchaseProduct } from '../utils/purchases';
 
 // Web-only Stripe links — native purchases go through RevenueCat/StoreKit
@@ -24,21 +23,10 @@ const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';
 const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
 const PRODUCT_LIFETIME = 'io.teewager.app.pro.lifetime';
 
-// Maps a RevenueCat product id to the plan value stored on profiles.plan —
-// used by the partner portal's live subscription breakdown.
-function planForProduct(productId) {
-  if (productId === PRODUCT_MONTHLY)  return 'monthly';
-  if (productId === PRODUCT_ANNUAL)   return 'annual';
-  if (productId === PRODUCT_LIFETIME) return 'lifetime';
-  return null;
-}
-
 async function nativePurchase(productId, onDone) {
   try {
     const customerInfo = await purchaseProduct(productId);
     if (customerInfo.entitlements.active['pro']) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) await grantPro(session.user.id, planForProduct(productId));
       await storePro(true);
       onDone(true);
     }

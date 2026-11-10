@@ -37,10 +37,6 @@ export async function incrementRoundsCompleted(userId) {
   return next;
 }
 
-export async function grantPro(userId, plan = null) {
-  await supabase.from('profiles').update({ is_pro: true, ...(plan ? { plan } : {}) }).eq('id', userId);
-}
-
 export function trialRoundsLeft(profile) {
   return Math.max(0, TRIAL_ROUNDS - (profile?.rounds_completed || 0));
 }

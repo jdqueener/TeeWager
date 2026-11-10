@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useReducer, useRef, useSta
 import { BEAN_DEFS, DEFAULT_PARS } from '../utils/beans';
 import { saveGame, loadGame, clearGame, loadCustomDefs, getRoundsPlayed, incrementRoundsPlayed, isPro as loadLocalPro } from '../utils/storage';
 import { fetchProfile, ensureProfile, isTrialExpired, trialRoundsLeft, TRIAL_ROUNDS } from '../utils/pro';
+import { syncPurchasesIdentity } from '../utils/purchases';
 import { supabase } from '../utils/supabase';
 import { getReferral, clearReferral } from '../utils/referral';
 
@@ -319,12 +320,13 @@ export function GameProvider({ children }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setHasSession(true);
-        await refreshProfile(session.user.id);
+        await Promise.all([refreshProfile(session.user.id), syncPurchasesIdentity(session.user.id)]);
       } else {
         setHasSession(false);
         const [grp, localPro] = await Promise.all([getRoundsPlayed(), loadLocalPro()]);
         setGuestRoundsPlayed(grp);
         if (localPro) setPro(true);
+        syncPurchasesIdentity(null);
       }
 
       setLoading(false);
@@ -334,11 +336,13 @@ export function GameProvider({ children }) {
       if (session?.user) {
         setHasSession(true);
         refreshProfile(session.user.id);
+        syncPurchasesIdentity(session.user.id);
       } else {
         setHasSession(false);
         setProfile({ is_pro: false, rounds_completed: 0 });
         refreshGuestRounds();
         loadLocalPro().then(setPro);
+        syncPurchasesIdentity(null);
       }
     });
     return () => subscription.unsubscribe();

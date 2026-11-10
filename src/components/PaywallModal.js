@@ -6,7 +6,6 @@ import {
 import * as WebBrowser from 'expo-web-browser';
 import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
-import { grantPro } from '../utils/pro';
 import { supabase } from '../utils/supabase';
 import { purchaseProduct, restorePro as restoreProPurchase } from '../utils/purchases';
 
@@ -19,15 +18,6 @@ const STRIPE_LIFETIME = 'https://buy.stripe.com/5kQ00cbGn6WyeLb1Hk3AY02';
 const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';
 const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
 const PRODUCT_LIFETIME = 'io.teewager.app.pro.lifetime';
-
-// Maps a RevenueCat product id to the plan value stored on profiles.plan —
-// used by the partner portal's live subscription breakdown.
-function planForProduct(productId) {
-  if (productId === PRODUCT_MONTHLY)  return 'monthly';
-  if (productId === PRODUCT_ANNUAL)   return 'annual';
-  if (productId === PRODUCT_LIFETIME) return 'lifetime';
-  return null;
-}
 
 const PRO_FEATURES = [
   'Full scorecard with real yardages — ditch the paper',
@@ -43,8 +33,6 @@ async function nativePurchase(productId, onUnlock, onClose, setLoading) {
     setLoading(productId);
     const customerInfo = await purchaseProduct(productId);
     if (customerInfo.entitlements.active['pro']) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) await grantPro(session.user.id, planForProduct(productId));
       await storePro(true);
       onUnlock();
       onClose();
@@ -64,9 +52,6 @@ async function nativeRestore(onUnlock, onClose, setRestoreStatus) {
     setRestoreStatus('loading');
     const customerInfo = await restoreProPurchase();
     if (customerInfo.entitlements.active['pro']) {
-      const { data: { session } } = await supabase.auth.getSession();
-      const restoredProductId = customerInfo.entitlements.active['pro'].productIdentifier;
-      if (session?.user) await grantPro(session.user.id, planForProduct(restoredProductId));
       await storePro(true);
       setRestoreStatus('success');
       setTimeout(() => { onUnlock(); onClose(); setRestoreStatus(''); }, 800);
