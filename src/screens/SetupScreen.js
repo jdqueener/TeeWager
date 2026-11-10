@@ -1050,7 +1050,6 @@ export default function SetupScreen() {
                   value={on}
                   onValueChange={() => toggleBean(bean.id, bean.free)}
                   trackColor={{ true: colors.green }}
-                  disabled={locked && !pro}
                 />
               </View>
               {bean.id === 'longDrive' && on && (
