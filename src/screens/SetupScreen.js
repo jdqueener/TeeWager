@@ -13,7 +13,7 @@ import NativeSelect from '../components/NativeSelect';
 import AccountMenu from '../components/AccountMenu';
 import AuthScreen from './AuthScreen';
 import OnboardingScreen from './OnboardingScreen';
-import { loadSavedPlayers, savePlayer, deleteSavedPlayer, hasOnboarded, setOnboarded, loadGuestFlag, saveGuestFlag, clearGuestFlag } from '../utils/storage';
+import { loadSavedPlayers, savePlayer, deleteSavedPlayer, hasOnboarded, setOnboarded, loadGuestFlag, saveGuestFlag, clearGuestFlag, saveCustomDefs } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
 import {
   searchCoursesByName,
@@ -118,7 +118,7 @@ function TeamAssignmentPicker({ names, teamAssign, setTeamAssign }) {
 }
 
 export default function SetupScreen() {
-  const { dispatch, pro, setPro, canPlay, roundsLeft } = useGame();
+  const { state, dispatch, pro, setPro, canPlay, roundsLeft } = useGame();
   const [trialExpiredVisible, setTrialExpiredVisible] = useState(false);
   const [heroWidth, setHeroWidth] = useState(0);
   const [playerCount, setPlayerCount] = useState(2);
@@ -138,7 +138,11 @@ export default function SetupScreen() {
   const [enabledBeans, setEnabledBeans] = useState(
     new Set(BEAN_DEFS.map(b => b.id))
   );
-  const [customBeans, setCustomBeans] = useState([]);
+  // Seeded from state.customBeans (restored on app load from storage.js's
+  // saveCustomDefs/loadCustomDefs, or carried over from the just-finished
+  // round) — otherwise a custom bean only ever lived for a single round
+  // before vanishing, since this screen always started from an empty list.
+  const [customBeans, setCustomBeans] = useState(() => state.customBeans || []);
   const [pressEnabled, setPressEnabled] = useState(false);
   const [pressMode, setPressMode] = useState('anytime');
   const [spotsEnabled, setSpotsEnabled] = useState(false);
@@ -493,6 +497,7 @@ export default function SetupScreen() {
     }
 
     const validCustom = customBeans.filter(b => b.name.trim());
+    await saveCustomDefs(validCustom);
     const isGroupScramble = gameMode === 'beans' && beansFormat === 'scramble' && beansScrambleMode === 'group';
     const allEnabled = [...enabledBeans].filter(id =>
       (!id.startsWith('custom_') || validCustom.some(b => b.id === id))
