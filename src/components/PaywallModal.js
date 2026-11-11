@@ -8,6 +8,8 @@ import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
 import { supabase } from '../utils/supabase';
 import { purchaseProduct, restorePro as restoreProPurchase } from '../utils/purchases';
+import { useGame } from '../context/GameContext';
+import AuthScreen from '../screens/AuthScreen';
 
 // Web-only Stripe links (live — replace test links when ready)
 const STRIPE_MONTHLY  = 'https://buy.stripe.com/6oU14g4dV94G8mNeu63AY00';
@@ -67,9 +69,24 @@ async function nativeRestore(onUnlock, onClose, setRestoreStatus) {
 }
 
 export default function PaywallModal({ visible, onClose, onUnlock }) {
+  const { hasSession } = useGame();
   const [view, setView] = useState('main');
   const [loading, setLoading] = useState(null);
   const [restoreStatus, setRestoreStatus] = useState('');
+  const [pendingProduct, setPendingProduct] = useState(null);
+  const [authGateVisible, setAuthGateVisible] = useState(false);
+
+  // A guest's purchase can't be tied to a profile — verify-purchase no-ops
+  // with no Supabase session (see purchases.js) — so an account is required
+  // before a native purchase can proceed. Resume automatically once signed in.
+  useEffect(() => {
+    if (hasSession && pendingProduct) {
+      const productId = pendingProduct;
+      setPendingProduct(null);
+      setAuthGateVisible(false);
+      nativePurchase(productId, onUnlock, onClose, setLoading);
+    }
+  }, [hasSession]);
 
   async function handlePurchase(productId, stripeUrl) {
     if (Platform.OS === 'web') {
@@ -80,6 +97,11 @@ export default function PaywallModal({ visible, onClose, onUnlock }) {
       window.location.href = session?.user
         ? `${stripeUrl}?client_reference_id=${session.user.id}`
         : stripeUrl;
+      return;
+    }
+    if (!hasSession) {
+      setPendingProduct(productId);
+      setAuthGateVisible(true);
       return;
     }
     await nativePurchase(productId, onUnlock, onClose, setLoading);
@@ -95,6 +117,7 @@ export default function PaywallModal({ visible, onClose, onUnlock }) {
   }
 
   return (
+    <>
     <Modal visible={visible} animationType="slide" transparent onRequestClose={resetAndClose}>
       <View style={styles.overlay}>
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={resetAndClose} />
@@ -184,6 +207,20 @@ export default function PaywallModal({ visible, onClose, onUnlock }) {
         </View>
       </View>
     </Modal>
+
+    <Modal
+      visible={authGateVisible}
+      animationType="slide"
+      onRequestClose={() => { setAuthGateVisible(false); setPendingProduct(null); }}
+    >
+      <AuthScreen
+        onSkip={() => { setAuthGateVisible(false); setPendingProduct(null); }}
+        initialMode="signup"
+        bypassPlanPicker
+        hideGuestLink
+      />
+    </Modal>
+    </>
   );
 }
 

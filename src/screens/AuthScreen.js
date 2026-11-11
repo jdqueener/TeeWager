@@ -207,7 +207,7 @@ function ResetScreen({ onDone }) {
 }
 
 // ─── Step 1: Auth form ────────────────────────────────────────────────────────
-function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
+function AuthForm({ onSkip, initialMode, onSignedUp, onForgot, hideGuestLink }) {
   const { signUp, signIn, signInWithGoogle, signInWithApple } = useAuth();
   const [mode, setMode] = useState(initialMode === 'signup' ? 'signup' : 'signin');
   const [fullName, setFullName]         = useState('');
@@ -384,9 +384,11 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot }) {
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity onPress={() => onSkip(true)} style={styles.guestLink} activeOpacity={0.7}>
-            <Text style={styles.guestLinkText}>Continue as Guest</Text>
-          </TouchableOpacity>
+          {!hideGuestLink && (
+            <TouchableOpacity onPress={() => onSkip(true)} style={styles.guestLink} activeOpacity={0.7}>
+              <Text style={styles.guestLinkText}>Continue as Guest</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -537,7 +539,7 @@ function WelcomeScreen({ plan, onDone, onUpgradeAnnual, upgrading }) {
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
-export default function AuthScreen({ onSkip, initialMode }) {
+export default function AuthScreen({ onSkip, initialMode, bypassPlanPicker, hideGuestLink }) {
   const [step, setStep] = useState('auth'); // 'auth' | 'forgot' | 'reset' | 'plan' | 'welcome'
   const [plan, setPlan] = useState('free');
   const [purchasing, setPurchasing] = useState(null);
@@ -618,8 +620,9 @@ export default function AuthScreen({ onSkip, initialMode }) {
     <AuthForm
       onSkip={onSkip}
       initialMode={initialMode}
-      onSignedUp={() => setStep('plan')}
+      onSignedUp={bypassPlanPicker ? onSkip : () => setStep('plan')}
       onForgot={() => setStep('forgot')}
+      hideGuestLink={hideGuestLink}
     />
   );
 }

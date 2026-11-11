@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, Alert, Image,
+  View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, Alert, Image, Modal,
 } from 'react-native';
 import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
 import { supabase } from '../utils/supabase';
 import { purchaseProduct } from '../utils/purchases';
+import { useGame } from '../context/GameContext';
+import AuthScreen from './AuthScreen';
 
 const STRIPE_MONTHLY  = 'https://buy.stripe.com/6oU14g4dV94G8mNeu63AY00';
 const STRIPE_ANNUAL   = 'https://buy.stripe.com/8x24gsh0H4OqbyZbhU3AY01';
@@ -100,7 +102,22 @@ function NudgeView({ summary, onAcceptTrial, onSkip }) {
 
 // ── Paywall view — shown after trial round ────────────────────────────────────
 function PaywallView({ onSkip, onPurchaseSuccess }) {
+  const { hasSession } = useGame();
   const [loading, setLoading] = useState(null);
+  const [pendingProduct, setPendingProduct] = useState(null);
+  const [authGateVisible, setAuthGateVisible] = useState(false);
+
+  // A guest's purchase can't be tied to a profile — verify-purchase no-ops
+  // with no Supabase session (see purchases.js) — so an account is required
+  // before a native purchase can proceed. Resume automatically once signed in.
+  useEffect(() => {
+    if (hasSession && pendingProduct) {
+      const productId = pendingProduct;
+      setPendingProduct(null);
+      setAuthGateVisible(false);
+      nativePurchase(productId, setLoading, onPurchaseSuccess);
+    }
+  }, [hasSession]);
 
   async function handlePurchase(productId, stripeUrl) {
     if (Platform.OS === 'web') {
@@ -111,6 +128,11 @@ function PaywallView({ onSkip, onPurchaseSuccess }) {
       window.location.href = session?.user
         ? `${stripeUrl}?client_reference_id=${session.user.id}`
         : stripeUrl;
+      return;
+    }
+    if (!hasSession) {
+      setPendingProduct(productId);
+      setAuthGateVisible(true);
       return;
     }
     await nativePurchase(productId, setLoading, onPurchaseSuccess);
@@ -165,6 +187,19 @@ function PaywallView({ onSkip, onPurchaseSuccess }) {
       <TouchableOpacity style={styles.skipBtn} onPress={onSkip} disabled={!!loading}>
         <Text style={styles.skipText}>Not now — continue free</Text>
       </TouchableOpacity>
+
+      <Modal
+        visible={authGateVisible}
+        animationType="slide"
+        onRequestClose={() => { setAuthGateVisible(false); setPendingProduct(null); }}
+      >
+        <AuthScreen
+          onSkip={() => { setAuthGateVisible(false); setPendingProduct(null); }}
+          initialMode="signup"
+          bypassPlanPicker
+          hideGuestLink
+        />
+      </Modal>
     </View>
   );
 }
