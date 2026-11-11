@@ -4,10 +4,13 @@ const SUPABASE_URL             = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const REVENUECAT_WEBHOOK_TOKEN = Deno.env.get('REVENUECAT_WEBHOOK_TOKEN') ?? '';
 
+// RevenueCat reports the underlying store product id here (not a package
+// identifier), which differs per platform — iOS uses reverse-DNS ids, Android
+// uses Play Console's own ids — so both need to be listed.
 function planForProduct(productId: string | undefined): string | null {
-  if (productId === 'io.teewager.app.pro.monthly')  return 'monthly';
-  if (productId === 'io.teewager.app.pro.annual')   return 'annual';
-  if (productId === 'io.teewager.app.pro.lifetime') return 'lifetime';
+  if (productId === 'io.teewager.app.pro.monthly'  || productId === 'teewager_monthly')  return 'monthly';
+  if (productId === 'io.teewager.app.pro.annual'   || productId === 'teewager_annual')   return 'annual';
+  if (productId === 'io.teewager.app.pro.lifetime' || productId === 'teewager_lifetime') return 'lifetime';
   return null;
 }
 

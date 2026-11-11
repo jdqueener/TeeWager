@@ -49,7 +49,7 @@ async function verifyAndGrantPro() {
   }
 }
 
-export async function purchaseProduct(productId) {
+export async function purchaseProduct(packageIdentifier) {
   const Purchases = (await import('react-native-purchases')).default;
   const offerings = await withTimeout(
     Purchases.getOfferings(),
@@ -57,7 +57,11 @@ export async function purchaseProduct(productId) {
     'Unable to load store information. Please check your connection and try again.'
   );
   const all = offerings.current?.availablePackages ?? [];
-  const pkg = all.find(p => p.product.identifier === productId);
+  // Matched on RevenueCat's own Package identifier (e.g. "$rc_monthly"), which
+  // is the same across platforms — p.product.identifier is the underlying
+  // store product id instead, which differs per platform (iOS uses reverse-DNS
+  // ids, Android uses Play Console's own) and would never match on Android.
+  const pkg = all.find(p => p.identifier === packageIdentifier);
   if (!pkg) throw new Error('Product not found');
   const { customerInfo } = await withTimeout(
     Purchases.purchasePackage(pkg),

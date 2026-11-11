@@ -13,9 +13,11 @@ const STRIPE_MONTHLY  = 'https://buy.stripe.com/6oU14g4dV94G8mNeu63AY00';
 const STRIPE_ANNUAL   = 'https://buy.stripe.com/8x24gsh0H4OqbyZbhU3AY01';
 const STRIPE_LIFETIME = 'https://buy.stripe.com/5kQ00cbGn6WyeLb1Hk3AY02';
 
-const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';
-const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
-const PRODUCT_LIFETIME = 'io.teewager.app.pro.lifetime';
+// RevenueCat Package identifiers (stable across iOS/Android) — see
+// purchaseProduct in utils/purchases.js for why these aren't store product ids.
+const PRODUCT_MONTHLY  = '$rc_monthly';
+const PRODUCT_ANNUAL   = '$rc_annual';
+const PRODUCT_LIFETIME = '$rc_lifetime';
 
 const PRO_FEATURES = [
   'Full scorecard with real yardages — ditch the paper',

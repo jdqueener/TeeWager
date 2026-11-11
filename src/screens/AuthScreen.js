@@ -19,9 +19,11 @@ const STRIPE_LIFETIME = 'https://buy.stripe.com/5kQ00cbGn6WyeLb1Hk3AY02';
 
 const HERO_AUTH_RATIO = 1468 / 1071;
 
-const PRODUCT_MONTHLY  = 'io.teewager.app.pro.monthly';
-const PRODUCT_ANNUAL   = 'io.teewager.app.pro.annual';
-const PRODUCT_LIFETIME = 'io.teewager.app.pro.lifetime';
+// RevenueCat Package identifiers (stable across iOS/Android) — see
+// purchaseProduct in utils/purchases.js for why these aren't store product ids.
+const PRODUCT_MONTHLY  = '$rc_monthly';
+const PRODUCT_ANNUAL   = '$rc_annual';
+const PRODUCT_LIFETIME = '$rc_lifetime';
 
 async function nativePurchase(productId, onDone) {
   try {
