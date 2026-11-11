@@ -72,16 +72,29 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
     }
   }
 
-  async function openBilling() {
+  function openBilling() {
     if (Platform.OS === 'web') {
       window.open(STRIPE_PORTAL, '_blank');
       return;
     }
     // Native: route to the OS subscription management screen (App Store /
     // Play Store) instead of linking out to Stripe — required for App Store
-    // guideline 3.1.1 compliance.
-    const Purchases = (await import('react-native-purchases')).default;
-    await Purchases.showManageSubscriptions();
+    // guideline 3.1.1 compliance. This modal must be fully dismissed first —
+    // presenting Apple's native subscription sheet while this modal is still
+    // on screen can silently fail to appear at all (a modal-over-modal
+    // presentation conflict), which otherwise looks like nothing happened.
+    setVisible(false);
+    setTimeout(async () => {
+      try {
+        const Purchases = (await import('react-native-purchases')).default;
+        await Purchases.showManageSubscriptions();
+      } catch (e) {
+        console.warn('Manage subscriptions failed', e);
+        const msg = 'Could not open subscription management. You can also manage your subscription in iOS Settings → your name → Subscriptions.';
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert('Unable to Open', msg);
+      }
+    }, 300);
   }
 
   async function runDeleteAccount() {
