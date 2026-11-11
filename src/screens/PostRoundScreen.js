@@ -5,7 +5,7 @@ import {
 import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
 import { supabase } from '../utils/supabase';
-import { purchaseProduct } from '../utils/purchases';
+import { purchaseProduct, restorePro as restoreProPurchase } from '../utils/purchases';
 import { useGame } from '../context/GameContext';
 import AuthScreen from './AuthScreen';
 
@@ -43,6 +43,25 @@ async function nativePurchase(productId, setLoading, onSuccess) {
     }
   } finally {
     setLoading(null);
+  }
+}
+
+async function nativeRestore(setRestoreStatus, onSuccess) {
+  try {
+    setRestoreStatus('loading');
+    const customerInfo = await restoreProPurchase();
+    if (customerInfo.entitlements.active['pro']) {
+      await storePro(true);
+      setRestoreStatus('success');
+      setTimeout(() => { onSuccess(); setRestoreStatus(''); }, 800);
+    } else {
+      setRestoreStatus('none');
+      setTimeout(() => setRestoreStatus(''), 2000);
+    }
+  } catch (e) {
+    console.warn('Restore error', e);
+    setRestoreStatus('');
+    Alert.alert('Restore Failed', e.message || 'Something went wrong restoring your purchase. Please try again.');
   }
 }
 
@@ -108,6 +127,12 @@ function PaywallView({ onSkip, onPurchaseSuccess }) {
   const [loading, setLoading] = useState(null);
   const [pendingProduct, setPendingProduct] = useState(null);
   const [authGateVisible, setAuthGateVisible] = useState(false);
+  const [restoreStatus, setRestoreStatus] = useState('');
+
+  async function handleRestore() {
+    if (Platform.OS === 'web') return;
+    await nativeRestore(setRestoreStatus, onPurchaseSuccess);
+  }
 
   // A guest's purchase can't be tied to a profile — verify-purchase no-ops
   // with no Supabase session (see purchases.js) — so an account is required
@@ -186,6 +211,18 @@ function PaywallView({ onSkip, onPurchaseSuccess }) {
           : <Text style={styles.tierPrice}>$79.99<Text style={styles.tierPer}> once</Text></Text>}
       </TouchableOpacity>
 
+      {Platform.OS !== 'web' && (
+        <TouchableOpacity onPress={handleRestore} style={styles.restoreBtn} disabled={!!loading}>
+          {restoreStatus === 'loading'
+            ? <ActivityIndicator color={colors.textMid} />
+            : restoreStatus === 'success'
+            ? <Text style={styles.restoreSuccessText}>✓ Pro restored!</Text>
+            : restoreStatus === 'none'
+            ? <Text style={styles.skipText}>No purchase found</Text>
+            : <Text style={styles.skipText}>Restore purchase</Text>}
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity style={styles.skipBtn} onPress={onSkip} disabled={!!loading}>
         <Text style={styles.skipText}>Not now — continue free</Text>
       </TouchableOpacity>
@@ -250,6 +287,8 @@ const styles = StyleSheet.create({
 
   skipBtn:    { alignItems: 'center', paddingVertical: spacing.xs },
   skipText:   { color: colors.textLight, fontSize: 14 },
+  restoreBtn:  { alignItems: 'center' },
+  restoreSuccessText: { fontSize: 15, color: colors.green, fontWeight: '800' },
 
   // Tier cards
   tierCard:         { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, position: 'relative', overflow: 'hidden' },

@@ -42,6 +42,9 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
   const [email,        setEmail]        = useState('');
 
   const displayName = profile?.scoring_name || profile?.display_name || user?.email || 'Guest';
+  const planLabel = profile?.is_pro
+    ? (profile?.plan ? `Pro (${profile.plan[0].toUpperCase()}${profile.plan.slice(1)})` : 'Pro')
+    : 'Free';
 
   function openAccount() {
     setFullName(profile?.full_name || '');
@@ -233,7 +236,7 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
               <Text style={styles.sectionTitle}>Billing</Text>
               <View style={styles.planChip}>
                 <Text style={styles.planChipLabel}>Current plan</Text>
-                <Text style={styles.planChipValue}>Free</Text>
+                <Text style={styles.planChipValue}>{planLabel}</Text>
               </View>
               <TouchableOpacity style={styles.billingBtn} onPress={openBilling} activeOpacity={0.85}>
                 <Text style={styles.billingBtnIcon}>💳</Text>

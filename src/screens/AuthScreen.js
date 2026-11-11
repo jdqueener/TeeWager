@@ -9,7 +9,7 @@ import { supabase } from '../utils/supabase';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { colors, spacing, radius } from '../utils/theme';
 import { setPro as storePro } from '../utils/storage';
-import { purchaseProduct } from '../utils/purchases';
+import { purchaseProduct, restorePro as restoreProPurchase } from '../utils/purchases';
 
 // Web-only Stripe links — native purchases go through RevenueCat/StoreKit
 // (see nativePurchase below), required for App Store guideline 3.1.1.
@@ -398,8 +398,8 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot, hideGuestLink }) 
 }
 
 // ─── Step 2: Plan picker ──────────────────────────────────────────────────────
-function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetime, busy }) {
-  const anyBusy = !!busy;
+function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetime, busy, onRestore, restoreStatus }) {
+  const anyBusy = !!busy || restoreStatus === 'loading';
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
@@ -467,6 +467,18 @@ function PlanPicker({ onSelectFree, onSelectPro, onSelectAnnual, onSelectLifetim
             <Text style={[styles.planCtaText, { color: colors.textMid }]}>Continue free →</Text>
           </View>
         </TouchableOpacity>
+
+        {Platform.OS !== 'web' && (
+          <TouchableOpacity onPress={onRestore} style={styles.restoreBtn} disabled={anyBusy}>
+            {restoreStatus === 'loading'
+              ? <ActivityIndicator color={colors.textMid} />
+              : restoreStatus === 'success'
+              ? <Text style={styles.successText}>✓ Pro restored!</Text>
+              : restoreStatus === 'none'
+              ? <Text style={styles.restoreText}>No purchase found</Text>
+              : <Text style={styles.restoreText}>Restore purchase</Text>}
+          </TouchableOpacity>
+        )}
 
         <Text style={styles.planFootnote}>
           {Platform.OS === 'web' ? 'Pro subscriptions billed through Stripe. Cancel anytime.' : 'Pro subscriptions billed through the App Store. Cancel anytime.'}
@@ -545,6 +557,7 @@ export default function AuthScreen({ onSkip, initialMode, bypassPlanPicker, hide
   const [step, setStep] = useState('auth'); // 'auth' | 'forgot' | 'reset' | 'plan' | 'welcome'
   const [plan, setPlan] = useState('free');
   const [purchasing, setPurchasing] = useState(null);
+  const [restoreStatus, setRestoreStatus] = useState('');
 
   // Detect password-reset redirect (?mode=reset in URL)
   useEffect(() => {
@@ -593,11 +606,41 @@ export default function AuthScreen({ onSkip, initialMode, bypassPlanPicker, hide
     setStep('welcome');
   }
 
+  async function handleRestore() {
+    if (Platform.OS === 'web') return;
+    try {
+      setRestoreStatus('loading');
+      const customerInfo = await restoreProPurchase();
+      if (customerInfo.entitlements.active['pro']) {
+        await storePro(true);
+        setRestoreStatus('success');
+        setTimeout(() => { setPlan('pro'); setStep('welcome'); setRestoreStatus(''); }, 800);
+      } else {
+        setRestoreStatus('none');
+        setTimeout(() => setRestoreStatus(''), 2000);
+      }
+    } catch (e) {
+      console.warn('Restore error', e);
+      setRestoreStatus('');
+      Alert.alert('Restore Failed', e.message || 'Something went wrong restoring your purchase. Please try again.');
+    }
+  }
+
   if (step === 'forgot') return <ForgotScreen onBack={() => setStep('auth')} />;
   if (step === 'reset')  return <ResetScreen onDone={onSkip} />;
 
   if (step === 'plan') {
-    return <PlanPicker onSelectFree={handleSelectFree} onSelectPro={handleSelectMonthly} onSelectAnnual={handleSelectAnnual} onSelectLifetime={handleSelectLifetime} busy={purchasing} />;
+    return (
+      <PlanPicker
+        onSelectFree={handleSelectFree}
+        onSelectPro={handleSelectMonthly}
+        onSelectAnnual={handleSelectAnnual}
+        onSelectLifetime={handleSelectLifetime}
+        busy={purchasing}
+        onRestore={handleRestore}
+        restoreStatus={restoreStatus}
+      />
+    );
   }
 
   if (step === 'welcome') {
@@ -732,6 +775,8 @@ const styles = StyleSheet.create({
   planDesc:     { fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 19, marginBottom: spacing.xs },
   planPer:      { fontSize: 13, fontWeight: '400' },
   planFootnote: { fontSize: 11, color: colors.textLight, textAlign: 'center', marginTop: spacing.sm, lineHeight: 16 },
+  restoreBtn:   { alignItems: 'center', marginTop: spacing.md },
+  restoreText:  { color: colors.textMid, fontSize: 14, textDecorationLine: 'underline' },
 
   // Welcome nudge
   upgradeNudge:      { backgroundColor: '#FFF9E6', borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.gold, padding: spacing.md, marginTop: spacing.lg, marginBottom: spacing.md },

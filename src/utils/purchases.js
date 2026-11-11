@@ -51,6 +51,18 @@ async function verifyAndGrantPro() {
 
 export async function purchaseProduct(packageIdentifier) {
   const Purchases = (await import('react-native-purchases')).default;
+  // Ensure RevenueCat's app_user_id is linked to the signed-in Supabase user
+  // before purchasing — GameContext's auth listener also calls
+  // syncPurchasesIdentity, but fires it without awaiting, so a purchase
+  // triggered right after sign-in/sign-up (e.g. the account-gate's
+  // auto-resumed purchase) could otherwise race ahead of it and get
+  // recorded under the pre-signup anonymous id, which neither
+  // verify-purchase nor the webhook would ever attribute back to this
+  // account. Purchases.logIn is idempotent, so calling it again here is
+  // always safe.
+  const { supabase } = await import('./supabase');
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) await syncPurchasesIdentity(session.user.id);
   const offerings = await withTimeout(
     Purchases.getOfferings(),
     15000,
