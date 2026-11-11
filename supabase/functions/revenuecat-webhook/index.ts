@@ -6,11 +6,15 @@ const REVENUECAT_WEBHOOK_TOKEN = Deno.env.get('REVENUECAT_WEBHOOK_TOKEN') ?? '';
 
 // RevenueCat reports the underlying store product id here (not a package
 // identifier), which differs per platform — iOS uses reverse-DNS ids, Android
-// uses Play Console's own ids — so both need to be listed.
+// uses Play Console's own ids, with the base plan id appended after a colon
+// for subscriptions (e.g. "teewager_monthly:monthly-499") — so both need to
+// be listed, and Android ones are matched on the part before the colon since
+// the base plan id can change independently of the product itself.
 function planForProduct(productId: string | undefined): string | null {
-  if (productId === 'io.teewager.app.pro.monthly'  || productId === 'teewager_monthly')  return 'monthly';
-  if (productId === 'io.teewager.app.pro.annual'   || productId === 'teewager_annual')   return 'annual';
-  if (productId === 'io.teewager.app.pro.lifetime' || productId === 'teewager_lifetime') return 'lifetime';
+  const base = productId?.split(':')[0];
+  if (base === 'io.teewager.app.pro.monthly'  || base === 'teewager_monthly')  return 'monthly';
+  if (base === 'io.teewager.app.pro.annual'   || base === 'teewager_annual')   return 'annual';
+  if (base === 'io.teewager.app.pro.lifetime' || base === 'teewager_lifetime') return 'lifetime';
   return null;
 }
 
