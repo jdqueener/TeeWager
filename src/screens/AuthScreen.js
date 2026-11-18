@@ -264,7 +264,11 @@ function AuthForm({ onSkip, initialMode, onSignedUp, onForgot, hideGuestLink }) 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <View onLayout={e => setHeroWidth(e.nativeEvent.layout.width)}>
+      {/* maxWidth caps the measured width on a wide desktop browser window —
+          without it, heroWidth (and the height derived from it) grows
+          unbounded, pushing the actual sign-in form below the fold with no
+          way to scroll back up to it. */}
+      <View style={styles.heroWrap} onLayout={e => setHeroWidth(e.nativeEvent.layout.width)}>
         {heroWidth > 0 && (
           <Image
             source={require('../../assets/hero-auth.webp')}
@@ -675,6 +679,7 @@ export default function AuthScreen({ onSkip, initialMode, bypassPlanPicker, hide
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root:     { flex: 1, backgroundColor: colors.green },
+  heroWrap: { width: '100%', maxWidth: 480, alignSelf: 'center' },
 
   hero:     { alignItems: 'center', paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 24 : 70, paddingBottom: 32, paddingHorizontal: spacing.xl },
   heroEmoji:{ fontSize: 52, marginBottom: spacing.sm },
