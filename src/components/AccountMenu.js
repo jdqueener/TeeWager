@@ -90,6 +90,17 @@ export default function AccountMenu({ onSignIn, size = 36 }) {
     setTimeout(async () => {
       try {
         const Purchases = (await import('react-native-purchases')).default;
+        const customerInfo = await Purchases.getCustomerInfo();
+        const hasNativeEntitlement = !!customerInfo.entitlements.active['pro'];
+        // profile.is_pro but RevenueCat has no matching active entitlement —
+        // the grant almost certainly came from a Stripe (web) subscription,
+        // which Apple/Google's native subscription sheet has no knowledge of
+        // at all (it only shows App Store/Play Store purchases), so opening
+        // it here would show nothing useful and no way to actually cancel.
+        if (!hasNativeEntitlement && profile?.is_pro) {
+          Linking.openURL(STRIPE_PORTAL);
+          return;
+        }
         await Purchases.showManageSubscriptions();
       } catch (e) {
         console.warn('Manage subscriptions failed', e);
