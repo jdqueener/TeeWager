@@ -557,8 +557,8 @@ function WelcomeScreen({ plan, onDone, onUpgradeAnnual, upgrading }) {
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
-export default function AuthScreen({ onSkip, initialMode, bypassPlanPicker, hideGuestLink }) {
-  const [step, setStep] = useState('auth'); // 'auth' | 'forgot' | 'reset' | 'plan' | 'welcome'
+export default function AuthScreen({ onSkip, initialMode, bypassPlanPicker, hideGuestLink, forceStep }) {
+  const [step, setStep] = useState(forceStep || 'auth'); // 'auth' | 'forgot' | 'reset' | 'plan' | 'welcome'
   const [plan, setPlan] = useState('free');
   const [purchasing, setPurchasing] = useState(null);
   const [restoreStatus, setRestoreStatus] = useState('');

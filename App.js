@@ -4,9 +4,10 @@ import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GameProvider, useGame } from './src/context/GameContext';
-import { AuthProvider } from './src/context/AuthContext';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import SetupScreen    from './src/screens/SetupScreen';
 import RoundNavigator from './src/screens/RoundNavigator';
+import AuthScreen     from './src/screens/AuthScreen';
 import { View, ActivityIndicator } from 'react-native';
 import { colors } from './src/utils/theme';
 import { captureReferral } from './src/utils/referral';
@@ -16,6 +17,7 @@ const RC_ANDROID_KEY = 'goog_jBnQlLaUiGEBwtJfSWTNCCTQKCt';
 
 function AppContent() {
   const { state, loading } = useGame();
+  const { passwordRecovery, clearPasswordRecovery } = useAuth();
 
   if (loading) {
     return (
@@ -23,6 +25,13 @@ function AppContent() {
         <ActivityIndicator color={colors.green} size="large" />
       </View>
     );
+  }
+
+  // A password-reset link lands here with no session yet established and no
+  // modal already open to host AuthScreen — show the reset form directly,
+  // overriding the normal app, until it's done.
+  if (passwordRecovery) {
+    return <AuthScreen forceStep="reset" onSkip={clearPasswordRecovery} />;
   }
 
   return state.phase === 'round' ? <RoundNavigator /> : <SetupScreen />;

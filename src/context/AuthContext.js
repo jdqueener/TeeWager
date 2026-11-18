@@ -15,17 +15,28 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Set when Supabase detects a password-recovery token in the URL (the link
+  // from forgotPassword's email) — App.js uses this to force the reset-
+  // password screen regardless of auth state, since AuthScreen otherwise
+  // only mounts inside a modal the user has to manually open, which a fresh
+  // link click never does.
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  function clearPasswordRecovery() {
+    setPasswordRecovery(false);
+  }
 
   useEffect(() => {
     if (!session?.user) { setProfile(null); return; }
@@ -135,7 +146,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      session, profile, loading,
+      session, profile, loading, passwordRecovery, clearPasswordRecovery,
       user: session?.user ?? null,
       signUp, signIn, signOut, updateProfile, forgotPassword, signInWithGoogle, signInWithApple, updatePassword, deleteAccount,
     }}>
