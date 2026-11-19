@@ -14,7 +14,7 @@ import AccountMenu from '../components/AccountMenu';
 import AuthScreen from './AuthScreen';
 import OnboardingScreen from './OnboardingScreen';
 import LastRoundScreen from './LastRoundScreen';
-import { loadSavedPlayers, savePlayer, deleteSavedPlayer, hasOnboarded, setOnboarded, loadGuestFlag, saveGuestFlag, clearGuestFlag, saveCustomDefs } from '../utils/storage';
+import { loadSavedPlayers, savePlayer, deleteSavedPlayer, hasOnboarded, setOnboarded, loadGuestFlag, saveGuestFlag, clearGuestFlag, saveCustomDefs, loadBeanPreferences, saveBeanPreferences } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
 import {
   searchCoursesByName,
@@ -140,6 +140,11 @@ export default function SetupScreen() {
   const [enabledBeans, setEnabledBeans] = useState(
     new Set(BEAN_DEFS.map(b => b.id))
   );
+  // Once a bean preference is saved, the full toggle list collapses behind a
+  // summary on future visits (fewer things to re-configure every round) —
+  // "Adjust" re-expands it.
+  const [beanPrefsSaved, setBeanPrefsSaved] = useState(false);
+  const [beanListExpanded, setBeanListExpanded] = useState(true);
   // Seeded from state.customBeans (restored on app load from storage.js's
   // saveCustomDefs/loadCustomDefs, or carried over from the just-finished
   // round) — otherwise a custom bean only ever lived for a single round
@@ -203,6 +208,20 @@ export default function SetupScreen() {
         guestModeRef.current = true;
         setGuestMode(true);
         setAuthVisible(false);
+      }
+    });
+  }, []);
+
+  // Restore a saved bean preference, if one exists, and collapse the full
+  // toggle list behind a summary — it only shows expanded on a visit where
+  // nothing's been saved yet, or when "Adjust" is tapped.
+  useEffect(() => {
+    loadBeanPreferences().then(saved => {
+      if (saved && saved.length) {
+        const standardIds = new Set(BEAN_DEFS.map(b => b.id));
+        setEnabledBeans(new Set(saved.filter(id => standardIds.has(id))));
+        setBeanPrefsSaved(true);
+        setBeanListExpanded(false);
       }
     });
   }, []);
@@ -430,6 +449,13 @@ export default function SetupScreen() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  }
+
+  function saveBeanPrefs() {
+    const standardIds = new Set(BEAN_DEFS.map(b => b.id));
+    saveBeanPreferences([...enabledBeans].filter(id => standardIds.has(id)));
+    setBeanPrefsSaved(true);
+    Alert.alert('Saved', 'Your bean selection will be used by default next time.');
   }
 
   async function startRound() {
@@ -1087,62 +1113,80 @@ export default function SetupScreen() {
         {beansFormat === 'scramble' && beansScrambleMode === 'group' && (
           <Text style={styles.fieldHint}>Group Scramble: only beans independent of the shared score are offered.</Text>
         )}
-        {BEAN_DEFS.filter(b => !b.impromptu)
-          .filter(b => !(beansFormat === 'scramble' && beansScrambleMode === 'group') || SCRAMBLE_GROUP_BEAN_IDS.includes(b.id))
-          .map(bean => {
-          const locked = !bean.free && !pro;
-          const on = enabledBeans.has(bean.id);
-          return (
-            <React.Fragment key={bean.id}>
-              <View style={[styles.beanRow, { borderLeftColor: locked ? colors.gold : colors.green }]}>
-                <View style={[styles.beanDot, { backgroundColor: locked ? colors.gold : colors.green }]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.beanName}>
-                    {bean.name}
-                    {locked && <Text style={styles.beanProBadge}> PRO</Text>}
-                    <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
-                      {'  '}{beanLabel(bean.v, bean.awardToOthers)}
-                    </Text>
-                  </Text>
-                  {bean.desc ? <Text style={styles.beanDesc}>{bean.desc}</Text> : null}
-                </View>
-                <Switch
-                  value={on}
-                  onValueChange={() => toggleBean(bean.id, bean.free)}
-                  trackColor={{ true: colors.green }}
-                />
-              </View>
-              {bean.id === 'longDrive' && on && (
-                <View style={styles.carryoverRow}>
-                  <Text style={styles.carryoverIcon}>↩</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.carryoverLabel}>Carry over Long Drive</Text>
-                    <Text style={styles.carryoverDesc}>No winner = bean rolls to next hole</Text>
+        {beanPrefsSaved && !beanListExpanded ? (
+          <View style={styles.beanPrefsCollapsed}>
+            <Text style={styles.beanPrefsSummary} numberOfLines={2}>
+              {BEAN_DEFS.filter(b => !b.impromptu && enabledBeans.has(b.id)).map(b => b.name).join(', ') || 'No beans selected'}
+            </Text>
+            <TouchableOpacity onPress={() => setBeanListExpanded(true)} activeOpacity={0.7}>
+              <Text style={styles.beanPrefsAdjustLink}>Adjust</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {BEAN_DEFS.filter(b => !b.impromptu)
+              .filter(b => !(beansFormat === 'scramble' && beansScrambleMode === 'group') || SCRAMBLE_GROUP_BEAN_IDS.includes(b.id))
+              .map(bean => {
+              const locked = !bean.free && !pro;
+              const on = enabledBeans.has(bean.id);
+              return (
+                <React.Fragment key={bean.id}>
+                  <View style={[styles.beanRow, { borderLeftColor: locked ? colors.gold : colors.green }]}>
+                    <View style={[styles.beanDot, { backgroundColor: locked ? colors.gold : colors.green }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.beanName}>
+                        {bean.name}
+                        {locked && <Text style={styles.beanProBadge}> PRO</Text>}
+                        <Text style={[styles.beanValue, bean.v < 0 && styles.neg]}>
+                          {'  '}{beanLabel(bean.v, bean.awardToOthers)}
+                        </Text>
+                      </Text>
+                      {bean.desc ? <Text style={styles.beanDesc}>{bean.desc}</Text> : null}
+                    </View>
+                    <Switch
+                      value={on}
+                      onValueChange={() => toggleBean(bean.id, bean.free)}
+                      trackColor={{ true: colors.green }}
+                    />
                   </View>
-                  <Switch
-                    value={ldCarryoverEnabled}
-                    onValueChange={setLdCarryoverEnabled}
-                    trackColor={{ true: colors.green }}
-                  />
-                </View>
-              )}
-              {bean.id === 'kp' && on && (
-                <View style={styles.carryoverRow}>
-                  <Text style={styles.carryoverIcon}>↩</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.carryoverLabel}>Carry over KP</Text>
-                    <Text style={styles.carryoverDesc}>No winner = bean rolls to next hole</Text>
-                  </View>
-                  <Switch
-                    value={kpCarryoverEnabled}
-                    onValueChange={setKpCarryoverEnabled}
-                    trackColor={{ true: colors.green }}
-                  />
-                </View>
-              )}
-            </React.Fragment>
-          );
-        })}
+                  {bean.id === 'longDrive' && on && (
+                    <View style={styles.carryoverRow}>
+                      <Text style={styles.carryoverIcon}>↩</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.carryoverLabel}>Carry over Long Drive</Text>
+                        <Text style={styles.carryoverDesc}>No winner = bean rolls to next hole</Text>
+                      </View>
+                      <Switch
+                        value={ldCarryoverEnabled}
+                        onValueChange={setLdCarryoverEnabled}
+                        trackColor={{ true: colors.green }}
+                      />
+                    </View>
+                  )}
+                  {bean.id === 'kp' && on && (
+                    <View style={styles.carryoverRow}>
+                      <Text style={styles.carryoverIcon}>↩</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.carryoverLabel}>Carry over KP</Text>
+                        <Text style={styles.carryoverDesc}>No winner = bean rolls to next hole</Text>
+                      </View>
+                      <Switch
+                        value={kpCarryoverEnabled}
+                        onValueChange={setKpCarryoverEnabled}
+                        trackColor={{ true: colors.green }}
+                      />
+                    </View>
+                  )}
+                </React.Fragment>
+              );
+            })}
+
+            <TouchableOpacity style={styles.saveBeanPrefsBtn} onPress={saveBeanPrefs} activeOpacity={0.7}>
+              <Text style={styles.saveBeanPrefsText}>💾 Save bean preferences</Text>
+            </TouchableOpacity>
+            <Text style={styles.fieldHint}>Saves this selection as your default — collapsed to a summary on future visits, with an Adjust link to reopen it.</Text>
+          </>
+        )}
 
         {customBeans.map(bean => (
           <View key={bean.id} style={[styles.beanRow, { borderLeftColor: colors.green }]}>
@@ -1450,6 +1494,12 @@ const styles = StyleSheet.create({
   customBeanInput: { fontSize: 15, fontWeight: '700', color: colors.textDark, padding: 0, marginBottom: 2 },
   addCustomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: spacing.md, marginBottom: spacing.sm, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.green, borderStyle: 'dashed', backgroundColor: colors.greenPale },
   addCustomText: { fontSize: 14, fontWeight: '700', color: colors.green },
+
+  beanPrefsCollapsed: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm, ...shadow.sm },
+  beanPrefsSummary:   { flex: 1, fontSize: 13, color: colors.textMid, marginRight: spacing.sm },
+  beanPrefsAdjustLink:{ fontSize: 14, fontWeight: '700', color: colors.green },
+  saveBeanPrefsBtn:   { alignItems: 'center', padding: spacing.sm, marginTop: 4, marginBottom: 4 },
+  saveBeanPrefsText:  { fontSize: 14, fontWeight: '700', color: colors.green },
 
   // Spots
   spotsWrap:    { backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.green, padding: spacing.sm, marginBottom: spacing.sm, ...shadow.sm },

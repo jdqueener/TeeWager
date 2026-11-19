@@ -15,6 +15,7 @@ const KEYS = {
   TRIAL_USED:    'teewager_trial_used',
   ONBOARDED:     'teewager_onboarded_v1',
   GUEST_MODE:    'teewager_guest_mode',
+  BEAN_PREFS:    'teewager_bean_prefs_v1',
 };
 
 export async function saveGame(state) {
@@ -45,6 +46,17 @@ export async function loadLastRound() {
 
 export async function clearLastRound() {
   await AsyncStorage.removeItem(KEYS.LAST_ROUND);
+}
+
+// A saved default for which beans the Setup screen's bean list toggles on —
+// lets a returning player skip re-configuring the full list each round.
+export async function loadBeanPreferences() {
+  const raw = await AsyncStorage.getItem(KEYS.BEAN_PREFS);
+  return raw ? JSON.parse(raw) : null;
+}
+
+export async function saveBeanPreferences(beanIds) {
+  await AsyncStorage.setItem(KEYS.BEAN_PREFS, JSON.stringify(beanIds));
 }
 
 export async function loadCustomDefs() {
