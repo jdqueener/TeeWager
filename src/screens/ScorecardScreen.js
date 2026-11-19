@@ -11,6 +11,7 @@ import { colors, spacing, radius, shadow } from '../utils/theme';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
 import NativeStrokePicker from '../components/NativeStrokePicker';
+import ChipOffCard from '../components/ChipOffCard';
 
 const CELL_W  = 38;
 const LABEL_W = 70;
@@ -44,11 +45,51 @@ export default function ScorecardScreen() {
   const [customPressAmt, setCustomPressAmt] = useState('');
   const [chosenPressAmt, setChosenPressAmt] = useState(null);
   const [roundFinished, setRoundFinished] = useState(false);
+  const [finishPending, setFinishPending] = useState(false);
+  const [chipOffVisible, setChipOffVisible] = useState(false);
 
   const hole = currentHole;
   const par  = getHolePar(hole);
   const lastHole = holeCount - 1;
   const isPastHole = hole < progressHole;
+
+  // Nassau has no Skins/Long Drive/KP carryover concept — chip-off only
+  // applies to Beans mode.
+  const needsChipOff = gameMode !== 'nassau' && (ldCarryover > 0 || kpCarryover > 0 || skinsCarryover > 0);
+
+  // finishRound()'s various confirm paths all funnel through setFinishPending
+  // rather than marking the round finished directly, so this runs once per
+  // "finish" attempt, after the last hole's own scoring has been dispatched
+  // and this render has the resulting (possibly still > 0) carryover values.
+  useEffect(() => {
+    if (!finishPending) return;
+    setFinishPending(false);
+    if (needsChipOff) setChipOffVisible(true);
+    else setRoundFinished(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finishPending]);
+
+  // Once every pending carryover has been awarded or voided, needsChipOff
+  // goes false on its own (the reducer resets each type to 0) — finish the
+  // round the moment that happens rather than requiring an extra tap.
+  useEffect(() => {
+    if (chipOffVisible && !needsChipOff) {
+      setChipOffVisible(false);
+      setRoundFinished(true);
+    }
+  }, [chipOffVisible, needsChipOff]);
+
+  function awardChipOff(type, playerIdx) {
+    if (type === 'ld') dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: lastHole, totalBeans: 1 + ldCarryover });
+    else if (type === 'kp') dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: lastHole, totalBeans: 1 + kpCarryover });
+    else dispatch({ type: 'SKINS_AWARD', playerIdx, holeIdx: lastHole, totalBeans: 1 + skinsCarryover });
+  }
+
+  function voidChipOffCarryovers() {
+    if (ldCarryover > 0) dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
+    if (kpCarryover > 0) dispatch({ type: 'KP_AWARD_WITH_CARRYOVER', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
+    if (skinsCarryover > 0) dispatch({ type: 'SKINS_AWARD', playerIdx: -1, holeIdx: lastHole, totalBeans: 0 });
+  }
 
   // Current effective bean value at this hole
   const currentEffValue = getEffectiveBeanValue(beanValue, hole, pressMode, presses, tenthPressed, tenthPressValue);
@@ -195,9 +236,9 @@ export default function ScorecardScreen() {
   // "Finish Round" resolves the last hole the same way, without advancing.
   function finishRound() {
     if (hole !== lastHole) return;
-    if (checkMissingScores('Finish', () => { proceedAdvanceHole(false); setRoundFinished(true); })) return;
+    if (checkMissingScores('Finish', () => { proceedAdvanceHole(false); setFinishPending(true); })) return;
     proceedAdvanceHole(false);
-    setRoundFinished(true);
+    setFinishPending(true);
   }
 
   function proceedAdvanceHole(advance) {
@@ -252,10 +293,10 @@ export default function ScorecardScreen() {
       if (Platform.OS !== 'web') {
         Alert.alert(title, msg, [
           { text: 'Go Back', style: 'cancel' },
-          { text: confirmLabel, onPress: () => { next(); if (!advance) setRoundFinished(true); } },
+          { text: confirmLabel, onPress: () => { next(); if (!advance) setFinishPending(true); } },
         ]);
       } else {
-        setConflictPrompt({ title, msg, onConfirm: () => { next(); if (!advance) setRoundFinished(true); }, confirmLabel });
+        setConflictPrompt({ title, msg, onConfirm: () => { next(); if (!advance) setFinishPending(true); }, confirmLabel });
       }
     };
 
@@ -1129,6 +1170,26 @@ export default function ScorecardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Chip-Off — raised right after "Finish Round" so carryovers get
+          resolved before the round is considered done, not after, at Settle
+          Up. Back button/void link both count as an explicit "skip" choice
+          rather than silently dismissing with the carryover unresolved. */}
+      <Modal visible={chipOffVisible} transparent animationType="fade" onRequestClose={voidChipOffCarryovers}>
+        <View style={styles.confirmOverlay}>
+          <ScrollView contentContainerStyle={styles.chipOffModalWrap} style={styles.chipOffModalScroll}>
+            <Text style={styles.chipOffModalTitle}>Resolve carryovers before finishing</Text>
+            <ChipOffCard
+              ldCarryover={ldCarryover}
+              kpCarryover={kpCarryover}
+              skinsCarryover={skinsCarryover}
+              players={players}
+              onAward={awardChipOff}
+              onVoid={voidChipOffCarryovers}
+            />
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1564,6 +1625,9 @@ const styles = StyleSheet.create({
   // Conflict confirm modal
   confirmOverlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   confirmCard:         { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.lg, width: '100%', maxWidth: 360 },
+  chipOffModalScroll:  { width: '100%', maxWidth: 400 },
+  chipOffModalWrap:    { flexGrow: 1, justifyContent: 'center' },
+  chipOffModalTitle:   { fontSize: 18, fontWeight: '800', color: colors.white, textAlign: 'center', marginBottom: spacing.sm },
   confirmTitle:        { fontSize: 17, fontWeight: '800', color: colors.textDark, marginBottom: spacing.xs },
   confirmMsg:          { fontSize: 14, color: colors.textMid, marginBottom: spacing.lg, lineHeight: 20 },
   confirmAdvance:      { backgroundColor: colors.red, borderRadius: radius.pill, paddingVertical: 13, alignItems: 'center', marginBottom: spacing.sm },
