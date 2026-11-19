@@ -12,6 +12,7 @@ import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
 import NativeStrokePicker from '../components/NativeStrokePicker';
 import ChipOffCard from '../components/ChipOffCard';
+import CelebrationBurst from '../components/CelebrationBurst';
 
 const CELL_W  = 38;
 const LABEL_W = 70;
@@ -47,6 +48,7 @@ export default function ScorecardScreen() {
   const [roundFinished, setRoundFinished] = useState(false);
   const [finishPending, setFinishPending] = useState(false);
   const [chipOffVisible, setChipOffVisible] = useState(false);
+  const [celebrationVisible, setCelebrationVisible] = useState(false);
 
   const hole = currentHole;
   const par  = getHolePar(hole);
@@ -78,6 +80,10 @@ export default function ScorecardScreen() {
       setRoundFinished(true);
     }
   }, [chipOffVisible, needsChipOff]);
+
+  useEffect(() => {
+    if (roundFinished) setCelebrationVisible(true);
+  }, [roundFinished]);
 
   function awardChipOff(type, playerIdx) {
     if (type === 'ld') dispatch({ type: 'LD_AWARD_WITH_CARRYOVER', playerIdx, holeIdx: lastHole, totalBeans: 1 + ldCarryover });
@@ -1190,6 +1196,8 @@ export default function ScorecardScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      <CelebrationBurst visible={celebrationVisible} onDone={() => setCelebrationVisible(false)} />
     </View>
   );
 }
