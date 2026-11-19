@@ -18,8 +18,8 @@ export default function CelebrationBurst({ visible, onDone }) {
     Array.from({ length: PARTICLE_COUNT }, () => ({
       anim: new Animated.Value(0),
       x: randomBetween(0, width),
-      delay: randomBetween(0, 250),
-      duration: randomBetween(1400, 2000),
+      delay: randomBetween(0, 800),
+      duration: randomBetween(2800, 4000),
       rotateTo: randomBetween(-180, 180),
       symbol: SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
       color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
