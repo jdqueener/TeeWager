@@ -245,15 +245,21 @@ function PaywallView({ onSkip, onPurchaseSuccess }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function PostRoundScreen({ visible, view, summary, onAcceptTrial, onSkip, onPurchaseSuccess }) {
-  if (!visible) return null;
+  // A plain View overlay (the previous implementation) has no way to
+  // intercept Android's hardware/gesture back button — pressing it fell
+  // through to whatever was underneath instead of dismissing this the same
+  // way "Not now"/tapping outside does. A real Modal's onRequestClose is
+  // what wires the back button up correctly, same as every other popup here.
   return (
-    <View style={styles.overlay}>
-      <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onSkip} />
-      {view === 'nudge'
-        ? <NudgeView summary={summary} onAcceptTrial={onAcceptTrial} onSkip={onSkip} />
-        : <PaywallView onSkip={onSkip} onPurchaseSuccess={onPurchaseSuccess ?? onSkip} />
-      }
-    </View>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onSkip}>
+      <View style={styles.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onSkip} />
+        {view === 'nudge'
+          ? <NudgeView summary={summary} onAcceptTrial={onAcceptTrial} onSkip={onSkip} />
+          : <PaywallView onSkip={onSkip} onPurchaseSuccess={onPurchaseSuccess ?? onSkip} />
+        }
+      </View>
+    </Modal>
   );
 }
 
