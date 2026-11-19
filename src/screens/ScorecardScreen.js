@@ -266,7 +266,14 @@ export default function ScorecardScreen() {
     const ldWon      = players.some((_, pi) => hasBean(pi, 'longDrive'));
     const kpWon      = players.some((_, pi) => hasBean(pi, 'kp'));
 
+    // Rolling a carryover forward only means something if there's a next
+    // hole for it to land on. On the last hole (advance === false, from
+    // finishRound), there isn't one — chip-off is what resolves "this
+    // hole's own slot went unclaimed" now, so incrementing here as well
+    // would double-count: once here, and again when chip-off adds its own
+    // +1 on top of the already-rolled-forward value.
     const doCarryovers = () => {
+      if (!advance) return;
       if (ldCarryoverEnabled && ldEligible && !ldWon) dispatch({ type: 'LD_CARRYOVER', holeIdx: hole });
       if (kpCarryoverEnabled && kpEligible && !kpWon) dispatch({ type: 'KP_CARRYOVER', holeIdx: hole });
     };
@@ -284,8 +291,10 @@ export default function ScorecardScreen() {
     if (!allEntered) {
       // Can't determine a low-score leader without every stroke entered —
       // carry the skins pot forward rather than letting it silently drop,
-      // unless a winner was already manually awarded on this hole.
-      if (winnerGroup < 0 && skinsBean) dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
+      // unless a winner was already manually awarded on this hole. Same
+      // "no next hole to carry into" reasoning as doCarryovers() above
+      // applies here when finishing rather than advancing.
+      if (advance && winnerGroup < 0 && skinsBean) dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
       next();
       return;
     }
@@ -318,11 +327,12 @@ export default function ScorecardScreen() {
     }
 
     // No skins winner — auto-award outright winner (to the first real
-    // player in the winning group) or carry over tie
+    // player in the winning group) or carry over a tie (only if there's a
+    // next hole to carry into — see doCarryovers() above).
     if (winnerGroup < 0 && skinsBean) {
       if (outright) {
         dispatch({ type: 'SKINS_AWARD', playerIdx: strokeGroups[hLeaders.indexOf(true)][0], holeIdx: hole, totalBeans: 1 + skinsCarryover });
-      } else {
+      } else if (advance) {
         dispatch({ type: 'SKINS_CARRYOVER', holeIdx: hole });
       }
     }
