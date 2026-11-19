@@ -592,8 +592,8 @@ export default function SettleUpScreen({ historicalState, onClose }) {
         ))}
 
         {/* Actions */}
-        <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={() => (pro ? setShareVisible(true) : setPaywallVisible(true))}>
-          <Text style={styles.btnSecText}>📤 Share Results {!pro ? '🔒' : ''}</Text>
+        <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={() => setShareVisible(true)}>
+          <Text style={styles.btnSecText}>📤 Share Results</Text>
         </TouchableOpacity>
         {!readOnly && (
           <TouchableOpacity style={[styles.btn, styles.btnSecondary, saved && styles.btnSaved]} onPress={saved ? null : saveToStats}>
