@@ -13,6 +13,7 @@ import NativeSelect from '../components/NativeSelect';
 import AccountMenu from '../components/AccountMenu';
 import AuthScreen from './AuthScreen';
 import OnboardingScreen from './OnboardingScreen';
+import LastRoundScreen from './LastRoundScreen';
 import { loadSavedPlayers, savePlayer, deleteSavedPlayer, hasOnboarded, setOnboarded, loadGuestFlag, saveGuestFlag, clearGuestFlag, saveCustomDefs } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -118,8 +119,9 @@ function TeamAssignmentPicker({ names, teamAssign, setTeamAssign }) {
 }
 
 export default function SetupScreen() {
-  const { state, dispatch, pro, setPro, canPlay, roundsLeft } = useGame();
+  const { state, dispatch, pro, setPro, canPlay, roundsLeft, lastRound } = useGame();
   const [trialExpiredVisible, setTrialExpiredVisible] = useState(false);
+  const [viewingLastRound, setViewingLastRound] = useState(false);
   const [heroWidth, setHeroWidth] = useState(0);
   const [playerCount, setPlayerCount] = useState(2);
   const [holeCount, setHoleCount] = useState(18);
@@ -553,6 +555,22 @@ export default function SetupScreen() {
             />
           )}
         </View>
+
+        {lastRound && (
+          <TouchableOpacity style={styles.lastRoundCard} onPress={() => setViewingLastRound(true)} activeOpacity={0.85}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.lastRoundTitle}>View Last Round</Text>
+              <Text style={styles.lastRoundSub} numberOfLines={1}>
+                {lastRound.course?.name || `${lastRound.players?.length || 0} players`} · {lastRound.holeCount || 18} holes
+              </Text>
+            </View>
+            <Text style={styles.lastRoundChevron}>›</Text>
+          </TouchableOpacity>
+        )}
+
+        <Modal visible={viewingLastRound} animationType="slide" onRequestClose={() => setViewingLastRound(false)}>
+          <LastRoundScreen lastRound={lastRound} onClose={() => setViewingLastRound(false)} />
+        </Modal>
 
         <Modal visible={onboardingVisible} animationType="fade">
           <OnboardingScreen onDone={handleOnboardingDone} />
@@ -1328,6 +1346,12 @@ const styles = StyleSheet.create({
   // Hero header
   hero:      { borderRadius: radius.xl, marginBottom: spacing.lg, overflow: 'hidden', ...shadow.green },
   heroImage: { width: '100%' },
+
+  // Last round history card
+  lastRoundCard:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.lg, ...shadow.sm },
+  lastRoundTitle:   { fontSize: 15, fontWeight: '700', color: colors.textDark },
+  lastRoundSub:     { fontSize: 12, color: colors.textLight, marginTop: 2 },
+  lastRoundChevron: { fontSize: 22, color: colors.textLight, fontWeight: '300' },
 
   label:   { fontSize: 12, fontWeight: '800', color: colors.textMid, marginTop: spacing.lg, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 1 },
 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer, useRef, useState } from 'react';
-import { BEAN_DEFS, DEFAULT_PARS } from '../utils/beans';
-import { saveGame, loadGame, clearGame, loadCustomDefs, getRoundsPlayed, incrementRoundsPlayed, isPro as loadLocalPro, isTrialUsed, setTrialUsed } from '../utils/storage';
+import { BEAN_DEFS, computeActiveBeans, makeGetHolePar } from '../utils/beans';
+import { saveGame, loadGame, clearGame, loadCustomDefs, getRoundsPlayed, incrementRoundsPlayed, isPro as loadLocalPro, isTrialUsed, setTrialUsed, saveLastRound, loadLastRound, clearLastRound } from '../utils/storage';
 import { fetchProfile, ensureProfile, isTrialExpired, trialRoundsLeft, TRIAL_ROUNDS } from '../utils/pro';
 import { syncPurchasesIdentity } from '../utils/purchases';
 import { supabase } from '../utils/supabase';
@@ -339,6 +339,30 @@ export function GameProvider({ children }) {
     setPostRoundVisible(false);
   }
 
+  // Last-round history: a single, read-only snapshot of whatever round just
+  // finished, viewable (Breakdown/Settle Up) until the next round actually
+  // starts. Needs the full outgoing state, not just the phase flag — by the
+  // time a phase-change effect sees RESET's result, the round data it reset
+  // is already gone, so a ref tracks the previous full state instead.
+  const [lastRound, setLastRound] = useState(null);
+  const prevStateRef = useRef(state);
+  useEffect(() => {
+    const prevState = prevStateRef.current;
+    prevStateRef.current = state;
+    // Skip while the initial mount is still resolving — resuming a saved
+    // in-progress round dispatches LOAD with phase 'round', which would
+    // otherwise look like "a new round just started" and wipe the
+    // previously saved last-round history for no reason.
+    if (loading) return;
+    if (prevState.phase === 'round' && state.phase !== 'round') {
+      setLastRound(prevState);
+      saveLastRound(prevState).catch(e => console.warn('Save last round failed', e));
+    } else if (prevState.phase !== 'round' && state.phase === 'round') {
+      setLastRound(null);
+      clearLastRound().catch(e => console.warn('Clear last round failed', e));
+    }
+  }, [state, loading]);
+
   function skipPostRound() {
     setPostRoundVisible(false);
   }
@@ -363,11 +387,12 @@ export function GameProvider({ children }) {
 
   useEffect(() => {
     (async () => {
-      const [saved, customs] = await Promise.all([loadGame(), loadCustomDefs()]);
+      const [saved, customs, savedLastRound] = await Promise.all([loadGame(), loadCustomDefs(), loadLastRound()]);
       // Discard saves from before gameMode was added — they would default to beans even for Nassau rounds
       if (saved && saved.gameMode !== undefined) dispatch({ type: 'LOAD', payload: { ...saved, customBeans: customs } });
       else if (saved) dispatch({ type: 'LOAD', payload: { ...INITIAL_SETUP, customBeans: customs } });
       else if (customs.length) dispatch({ type: 'LOAD', payload: { ...INITIAL_SETUP, customBeans: customs } });
+      if (savedLastRound) setLastRound(savedLastRound);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -428,19 +453,14 @@ export function GameProvider({ children }) {
     runSave();
   }, [state, loading]);
 
-  const allBeans = [...BEAN_DEFS, ...(state.customBeans || [])];
-  const activeBeans = allBeans.filter(b => b.impromptu || state.enabledBeans.includes(b.id));
-
-  function getHolePar(holeIdx) {
-    const offset = state.holeOffset ?? 0;
-    return state.course?.holes?.[offset + holeIdx]?.par ?? DEFAULT_PARS[offset + holeIdx];
-  }
+  const activeBeans = computeActiveBeans(state);
+  const getHolePar = makeGetHolePar(state);
 
   const canPlay = pro || (hasSession ? !isTrialExpired(profile) : guestRoundsPlayed < TRIAL_ROUNDS);
   const roundsLeft = hasSession ? trialRoundsLeft(profile) : Math.max(0, TRIAL_ROUNDS - guestRoundsPlayed);
 
   return (
-    <GameContext.Provider value={{ state, dispatch, pro, setPro, profile, setProfile, refreshProfile, refreshGuestRounds, canPlay, roundsLeft, loading, allBeans, activeBeans, getHolePar, hasSession, guestRoundsPlayed, postRoundVisible, postRoundView, acceptTrial, skipPostRound, handleTrialPurchaseSuccess }}>
+    <GameContext.Provider value={{ state, dispatch, pro, setPro, profile, setProfile, refreshProfile, refreshGuestRounds, canPlay, roundsLeft, loading, activeBeans, getHolePar, hasSession, guestRoundsPlayed, postRoundVisible, postRoundView, acceptTrial, skipPostRound, handleTrialPurchaseSuccess, lastRound }}>
       {children}
     </GameContext.Provider>
   );

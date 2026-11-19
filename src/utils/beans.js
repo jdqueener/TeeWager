@@ -45,6 +45,21 @@ export function isParAllowed(bean, par) {
   return bean.pf.includes(par);
 }
 
+// Shared with GameContext (live round) and the read-only last-round viewer
+// (BreakdownScreen/SettleUpScreen fed a saved snapshot instead of live
+// state) — both need the identical derivation, just from a different state.
+export function computeActiveBeans(state) {
+  const allBeans = [...BEAN_DEFS, ...(state.customBeans || [])];
+  return allBeans.filter(b => b.impromptu || state.enabledBeans.includes(b.id));
+}
+
+export function makeGetHolePar(state) {
+  return function getHolePar(holeIdx) {
+    const offset = state.holeOffset ?? 0;
+    return state.course?.holes?.[offset + holeIdx]?.par ?? DEFAULT_PARS[offset + holeIdx];
+  };
+}
+
 export function getEffectiveValue(bean, playerIdx, holeIdx, firstBonus) {
   if (!bean.fb) return bean.v;
   const first = firstBonus?.[bean.id];

@@ -5,11 +5,22 @@ import { getEffectiveValue, totalBeansForTeam, beansAtHoleForTeam, totalBeansFor
 import { holeWinner, holeResultTeam, legMatchStatus, legMatchStatusTeam, relevantPairPresses, pairLegNet, teamLegNet } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { colors, spacing, radius, shadow } from '../utils/theme';
+import { computeActiveBeans, makeGetHolePar } from '../utils/beans';
 import ProBanner from '../components/ProBanner';
 import PaywallModal from '../components/PaywallModal';
 
-export default function BreakdownScreen() {
-  const { state, dispatch, pro, setPro, activeBeans, getHolePar } = useGame();
+// historicalState/onClose: viewing a saved last-round snapshot (read-only)
+// instead of the live round — see LastRoundScreen. activeBeans/getHolePar
+// from useGame() are derived from the LIVE round, so they'd be wrong here
+// (different enabledBeans/course); recomputed locally from the snapshot
+// instead, same derivation GameContext itself uses for the live round.
+export default function BreakdownScreen({ historicalState, onClose }) {
+  const { state: liveState, dispatch: liveDispatch, pro, setPro, activeBeans: liveActiveBeans, getHolePar: liveGetHolePar } = useGame();
+  const readOnly = !!historicalState;
+  const state = historicalState || liveState;
+  const dispatch = readOnly ? () => {} : liveDispatch;
+  const activeBeans = readOnly ? computeActiveBeans(state) : liveActiveBeans;
+  const getHolePar = readOnly ? makeGetHolePar(state) : liveGetHolePar;
   const { players, scores, firstBonus, bonusBeanDescs = {}, holeCount = 18, holeOffset = 0,
     gameMode = 'beans', nassauStake = 5.00, strokes = [], nassauTeams = null, nassauTeamFormat = 'match-play',
     nassauScoring = 'match', nassauPresses = { front: [], back: [], total: [] }, beansTeams = null } = state;
@@ -153,7 +164,7 @@ export default function BreakdownScreen() {
 
   return (
     <View style={styles.root}>
-      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
+      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={readOnly ? onClose : () => dispatch({ type: 'RESET' })} onSetPro={setPro} />
 
       <ScrollView contentContainerStyle={styles.content}>
         {isNassau ? (

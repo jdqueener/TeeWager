@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import { useGame } from '../context/GameContext';
-import { totalBeansForPlayer, computePressSettleUp, minimumCashFlow, netDollarsBeansScramble, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS } from '../utils/beans';
+import { totalBeansForPlayer, computePressSettleUp, minimumCashFlow, netDollarsBeansScramble, teamAwardedBeansForScrambleTeam, TEAM_SCRAMBLE_INDIVIDUAL_BEAN_IDS, computeActiveBeans } from '../utils/beans';
 import { computeNassauSettleUpTeamFormat, computeNassauSettleUpStroke, computeNassauSettleUp, legMatchStatusPairStroke, legMatchStatusTeam, legMatchStatus, legStandings, legStandingsTeam, relevantPairPresses } from '../utils/nassau';
 import { teamShortName, teamPlayerNames } from '../utils/teams';
 import { incrementRoundsCompleted } from '../utils/pro';
@@ -13,8 +13,16 @@ import PaywallModal from '../components/PaywallModal';
 import ShareCard from '../components/ShareCard';
 import ChipOffCard from '../components/ChipOffCard';
 
-export default function SettleUpScreen() {
-  const { state, dispatch, pro, setPro, activeBeans, refreshProfile, refreshGuestRounds } = useGame();
+// historicalState/onClose: viewing a saved last-round snapshot (read-only)
+// instead of the live round — see LastRoundScreen and BreakdownScreen's
+// identical pattern for why activeBeans needs recomputing from the
+// snapshot rather than using the live-round value useGame() returns.
+export default function SettleUpScreen({ historicalState, onClose }) {
+  const { state: liveState, dispatch: liveDispatch, pro, setPro, activeBeans: liveActiveBeans, refreshProfile, refreshGuestRounds } = useGame();
+  const readOnly = !!historicalState;
+  const state = historicalState || liveState;
+  const dispatch = readOnly ? () => {} : liveDispatch;
+  const activeBeans = readOnly ? computeActiveBeans(state) : liveActiveBeans;
   const { players, scores, firstBonus, beanValue, wagers, course, ldCarryover, kpCarryover, skinsCarryover, holeCount = 18, holeOffset = 0,
     spots = [], gameMode = 'beans', nassauStake = 5.00, strokes = [],
     nassauPresses = { front: [], back: [], total: [] },
@@ -24,8 +32,11 @@ export default function SettleUpScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false);
   const countedRef = useRef(false);
 
-  // Increment rounds completed once per settle-up session
+  // Increment rounds completed once per settle-up session — already ran
+  // when this round actually finished the first time, so skip it entirely
+  // when just revisiting history, or it would double-count.
   useEffect(() => {
+    if (readOnly) return;
     if (countedRef.current) return;
     countedRef.current = true;
     (async () => {
@@ -44,7 +55,11 @@ export default function SettleUpScreen() {
   const [shareVisible, setShareVisible] = useState(false);
   const [showMath, setShowMath] = useState(false);
 
-  const needsChipOff = ldCarryover > 0 || kpCarryover > 0 || skinsCarryover > 0;
+  // A properly finished round resolves chip-off before ever reaching here
+  // (see ScorecardScreen's Finish Round flow) — this is only a fallback for
+  // some other path still leaving it unresolved, and never applicable to a
+  // read-only history view, which has no way to award it anyway.
+  const needsChipOff = !readOnly && (ldCarryover > 0 || kpCarryover > 0 || skinsCarryover > 0);
 
   function awardChipOff(type, playerIdx) {
     if (type === 'ld') {
@@ -168,7 +183,7 @@ export default function SettleUpScreen() {
 
   return (
     <View style={styles.root}>
-      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={() => dispatch({ type: 'RESET' })} onSetPro={setPro} />
+      <ProBanner pro={pro} onUpgrade={() => setPaywallVisible(true)} onReset={readOnly ? onClose : () => dispatch({ type: 'RESET' })} onSetPro={setPro} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headingWrap}>
           <Text style={styles.heading}>Settle Up</Text>
@@ -580,11 +595,13 @@ export default function SettleUpScreen() {
         <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={() => (pro ? setShareVisible(true) : setPaywallVisible(true))}>
           <Text style={styles.btnSecText}>📤 Share Results {!pro ? '🔒' : ''}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.btn, styles.btnSecondary, saved && styles.btnSaved]} onPress={saved ? null : saveToStats}>
-          <Text style={styles.btnSecText}>{saved ? '✓ Stats Saved' : `💾 Save to Lifetime Stats${!pro ? ' 🔒' : ''}`}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.btn} onPress={newRound}>
-          <Text style={styles.btnText}>⛳ New Round</Text>
+        {!readOnly && (
+          <TouchableOpacity style={[styles.btn, styles.btnSecondary, saved && styles.btnSaved]} onPress={saved ? null : saveToStats}>
+            <Text style={styles.btnSecText}>{saved ? '✓ Stats Saved' : `💾 Save to Lifetime Stats${!pro ? ' 🔒' : ''}`}</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={styles.btn} onPress={readOnly ? onClose : newRound}>
+          <Text style={styles.btnText}>{readOnly ? '← Close' : '⛳ New Round'}</Text>
         </TouchableOpacity>
       </ScrollView>
 

@@ -6,6 +6,7 @@ import { pushPlayers } from './cloudSync';
 
 const KEYS = {
   GAME:          'teewager_game_v1',
+  LAST_ROUND:    'teewager_last_round_v1',
   DEFS:          'teewager_defs_v1',
   PRO:           'teewager_pro',
   STATS:         'teewager_stats_v1',
@@ -27,6 +28,23 @@ export async function loadGame() {
 
 export async function clearGame() {
   await AsyncStorage.removeItem(KEYS.GAME);
+}
+
+// A read-only snapshot of the most recently finished round, kept around so
+// it can be revisited (Breakdown/Settle Up) until the next round actually
+// starts, at which point GameContext clears it — only ever one deep, not a
+// running history.
+export async function saveLastRound(state) {
+  await AsyncStorage.setItem(KEYS.LAST_ROUND, JSON.stringify(state));
+}
+
+export async function loadLastRound() {
+  const raw = await AsyncStorage.getItem(KEYS.LAST_ROUND);
+  return raw ? JSON.parse(raw) : null;
+}
+
+export async function clearLastRound() {
+  await AsyncStorage.removeItem(KEYS.LAST_ROUND);
 }
 
 export async function loadCustomDefs() {
